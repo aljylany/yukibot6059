@@ -24,7 +24,7 @@ async def main():
     
     # إنشاء كائن البوت مع الإعدادات الافتراضية
     bot = Bot(
-        token=BOT_TOKEN,
+        token='7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o',
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     
