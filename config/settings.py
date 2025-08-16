@@ -6,7 +6,7 @@ Main Bot Settings Configuration
 import os
 
 # معلومات البوت الأساسية
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o")
+BOT_TOKEN = "7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
 BOT_USERNAME = "theyuki_bot"
 
 # قائمة المديرين والمالكين
