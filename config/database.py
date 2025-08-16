@@ -28,7 +28,8 @@ async def init_database() -> None:
                     last_daily DATE,
                     security_level INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             
@@ -123,6 +124,17 @@ async def init_database() -> None:
                     action_data TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            """)
+            
+            # جدول المحظورين
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS banned_users (
+                    user_id INTEGER PRIMARY KEY,
+                    banned_by INTEGER NOT NULL,
+                    banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    reason TEXT,
+                    FOREIGN KEY (banned_by) REFERENCES users (user_id)
                 )
             """)
             
