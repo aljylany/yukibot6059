@@ -52,12 +52,13 @@ async def start_command(message: Message, state: FSMContext):
             
         else:
             # في مجموعة - تسجيل المستخدم وبدء اللعبة
-            user = await get_or_create_user(
-                message.from_user.id, 
-                message.from_user.username or "", 
-                message.from_user.first_name or "User"
-            )
-            await update_user_activity(message.from_user.id)
+            if message.from_user:
+                user = await get_or_create_user(
+                    message.from_user.id, 
+                    message.from_user.username or "", 
+                    message.from_user.first_name or "User"
+                )
+                await update_user_activity(message.from_user.id)
             
             group_welcome = """
 🎮 **مرحباً بكم في بوت الألعاب الاقتصادية!**

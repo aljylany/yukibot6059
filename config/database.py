@@ -293,6 +293,68 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول التيمات
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS teams (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    team_name TEXT NOT NULL,
+                    team_code TEXT UNIQUE NOT NULL,
+                    leader_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    members_count INTEGER DEFAULT 1,
+                    points INTEGER DEFAULT 0,
+                    level INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # إنشاء جدول أعضاء التيمات
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS team_members (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    team_code TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (team_code) REFERENCES teams (team_code)
+                )
+            ''')
+            
+            # إنشاء جدول الردود المخصصة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS custom_replies (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    trigger_word TEXT NOT NULL,
+                    reply_text TEXT NOT NULL,
+                    created_by INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # إنشاء جدول الأوامر المخصصة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS custom_commands (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    old_command TEXT NOT NULL,
+                    new_command TEXT NOT NULL,
+                    created_by INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # إنشاء جدول الكلمات المحظورة (تحديث اسم الجدول)
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS banned_words (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    word TEXT NOT NULL,
+                    added_by INTEGER NOT NULL,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             # إنشاء فهارس لتحسين الأداء
             await db.execute('CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)')
@@ -305,6 +367,10 @@ async def init_database():
             await db.execute('CREATE INDEX IF NOT EXISTS idx_banned_users_chat ON banned_users(chat_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_muted_users_chat ON muted_users(chat_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_entertainment_ranks_chat ON entertainment_ranks(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_teams_chat ON teams(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_team_members_code ON team_members(team_code)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_custom_replies_chat ON custom_replies(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_banned_words_chat ON banned_words(chat_id)')
             
             await db.commit()
             logger.info("✅ تم تهيئة قاعدة البيانات بنجاح")

@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 
 from database.operations import get_or_create_user, update_user_activity, get_user
 from modules import banks, real_estate, theft, stocks, investment, administration, farm, castle
-from modules import admin_management, group_settings, entertainment
+from modules import admin_management, group_settings, entertainment, clear_commands, fun_commands, utility_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -239,10 +239,109 @@ async def handle_general_message(message: Message, state: FSMContext):
         await entertainment.handle_marriage(message, text)
     elif text in ['زوجي', 'زوجتي']:
         await entertainment.show_marriage_status(message)
-    elif text in ['سيارتي', 'منزلي', 'عمري', 'طولي', 'وزني', 'تحبني', 'تكرهني']:
-        await entertainment.handle_entertainment_command(message, text)
-    elif text.startswith('نسبه '):
-        await entertainment.handle_entertainment_command(message, text)
+    elif text == 'سيارتي':
+        await fun_commands.my_car(message)
+    elif text == 'منزلي':
+        await fun_commands.my_house(message)
+    elif text == 'عمري':
+        await fun_commands.my_age(message)
+    elif text == 'طولي':
+        await fun_commands.my_height(message)
+    elif text == 'وزني':
+        await fun_commands.my_weight(message)
+    elif text == 'تحبني':
+        await fun_commands.do_you_love_me(message)
+    elif text == 'تكرهني':
+        await fun_commands.do_you_hate_me(message)
+    elif text == 'شبيهي' or text == 'شبيهتي':
+        await fun_commands.get_similar(message)
+    elif text == 'اهدي لي':
+        await fun_commands.give_gift(message)
+    elif text == 'شرايك في افتاري':
+        await fun_commands.avatar_opinion(message)
+    elif text.startswith('نسبة الحب'):
+        parts = text.split()
+        if len(parts) >= 3:
+            await fun_commands.love_percentage(message, parts[2], parts[3] if len(parts) > 3 else "شخص آخر")
+    elif text == 'نسبة الغباء' and message.reply_to_message:
+        await fun_commands.stupidity_percentage(message)
+    elif text == 'نسبة انوثتها' and message.reply_to_message:
+        await fun_commands.femininity_percentage(message)
+    elif text == 'نسبة رجولته' and message.reply_to_message:
+        await fun_commands.masculinity_percentage(message)
+    elif text.startswith('مايكي السحري'):
+        question = text.replace('مايكي السحري', '').strip()
+        await fun_commands.magic_yuki(message, question)
+    
+    # === أوامر خدمية ===
+    elif text == 'من ضافني':
+        await utility_commands.who_added_me(message)
+    elif text == 'البايو بالرد' and message.reply_to_message:
+        await utility_commands.get_bio(message)
+    elif text.startswith('قوقل '):
+        query = text.replace('قوقل ', '').strip()
+        await utility_commands.google_search(message, query)
+    elif text.startswith('تطبيق '):
+        app_name = text.replace('تطبيق ', '').strip()
+        await utility_commands.download_app(message, app_name)
+    elif text.startswith('تحميل لعبه '):
+        game_name = text.replace('تحميل لعبه ', '').strip()
+        await utility_commands.download_game(message, game_name)
+    elif text.startswith('زخرف '):
+        text_to_decorate = text.replace('زخرف ', '').strip()
+        await fun_commands.decorative_text(message, text_to_decorate)
+    elif text == 'قرآن' or text == 'آيه':
+        await utility_commands.islamic_quran(message)
+    elif text == 'حديث':
+        await utility_commands.islamic_hadith(message)
+    elif text in ['اقتباسات', 'اقتباس']:
+        await fun_commands.send_quote(message)
+    elif text in ['شعر', 'قصائد']:
+        await fun_commands.send_poetry(message)
+    elif text == 'صراحه':
+        await fun_commands.truth_dare(message)
+    elif text == 'لو خيروك':
+        await fun_commands.would_you_rather(message)
+    elif text == 'كت تويت':
+        await fun_commands.kit_tweet(message)
+    elif text == 'تحويل' and message.reply_to_message:
+        await utility_commands.convert_formats(message)
+    elif text.startswith('انشاء تيم '):
+        team_name = text.replace('انشاء تيم ', '').strip()
+        await utility_commands.create_team(message, team_name)
+    elif text.startswith('دخول التيم '):
+        team_code = text.replace('دخول التيم ', '').strip()
+        await utility_commands.join_team(message, team_code)
+    elif text.startswith('ارسل '):
+        # زاجل - إرسال رسالة خاصة
+        parts = text.split()
+        if len(parts) >= 3 and parts[1].startswith('@'):
+            username = parts[1][1:]  # إزالة @
+            message_text = ' '.join(parts[2:])
+            await utility_commands.send_message_private(message, username, message_text)
+    elif text.startswith('صيح '):
+        username = text.replace('صيح ', '').strip()
+        await utility_commands.disturb_user(message, username)
+    elif text == 'صيح' and message.reply_to_message:
+        await utility_commands.disturb_user(message)
+    
+    # === أوامر المسح الإضافية ===
+    elif text == 'مسح المحظورين':
+        await clear_commands.clear_banned(message)
+    elif text == 'مسح المكتومين':
+        await clear_commands.clear_muted(message)
+    elif text == 'مسح قائمة المنع':
+        await clear_commands.clear_ban_words(message)
+    elif text == 'مسح الردود':
+        await clear_commands.clear_replies(message)
+    elif text == 'مسح الاوامر المضافه':
+        await clear_commands.clear_custom_commands(message)
+    elif text == 'مسح الايدي':
+        await clear_commands.clear_id_template(message)
+    elif text == 'مسح الترحيب':
+        await clear_commands.clear_welcome(message)
+    elif text == 'مسح الرابط':
+        await clear_commands.clear_link(message)
     
     # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
 
