@@ -265,19 +265,8 @@ async def show_bank_menu(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ لم تقم بإنشاء حساب بنكي بعد!\n\nاكتب 'انشاء حساب بنكي' للبدء")
             return
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="💵 إيداع", callback_data="bank_deposit"),
-                InlineKeyboardButton(text="🏧 سحب", callback_data="bank_withdraw")
-            ],
-            [
-                InlineKeyboardButton(text="💰 رصيد البنك", callback_data="bank_balance"),
-                InlineKeyboardButton(text="📊 معلومات الفائدة", callback_data="bank_interest")
-            ]
-        ])
         
         bank_text = f"""
 🏦 **البنك الخاص بك**
@@ -285,15 +274,25 @@ async def show_bank_menu(message: Message):
 💵 النقد المتاح: {format_number(user['balance'])}$
 🏦 رصيد البنك: {format_number(user['bank_balance'])}$
 
+🎮 **الخدمات المتاحة:**
+• اكتب 'ايداع [المبلغ]' لإيداع أموال في البنك
+• اكتب 'سحب [المبلغ]' لسحب أموال من البنك
+• اكتب 'تحويل [المبلغ] [@المستخدم]' لتحويل أموال
+• اكتب 'راتب' لجمع راتبك اليومي
+
 💡 **مميزات البنك:**
 • حماية أموالك من السرقة
-• فائدة يومية بنسبة {GAME_SETTINGS['bank_interest_rate']*100}%
-• عمليات إيداع وسحب مجانية
+• إمكانية الإيداع والسحب بأوامر بسيطة
+• تحويل الأموال للاعبين آخرين
+• راتب يومي عشوائي حسب نوع البنك
 
-اختر العملية المطلوبة:
+💰 **أمثلة:**
+• ايداع 1000
+• سحب 500
+• تحويل 200 @username
         """
         
-        await message.reply(bank_text, reply_markup=keyboard)
+        await message.reply(bank_text)
         
     except Exception as e:
         logging.error(f"خطأ في قائمة البنك: {e}")

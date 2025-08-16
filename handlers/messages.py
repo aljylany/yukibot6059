@@ -61,7 +61,7 @@ async def handle_general_message(message: Message):
     
     # التحقق من طلب إنشاء حساب بنكي
     if any(phrase in text for phrase in ['انشاء حساب بنكي', 'إنشاء حساب بنكي', 'انشئ حساب', 'حساب بنكي جديد']):
-        await handle_bank_account_creation(message)
+        await handle_bank_account_creation(message, state)
         return
     
     # البحث عن كلمات مفتاحية محددة فقط
@@ -87,7 +87,7 @@ async def handle_general_message(message: Message):
     # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
 
 
-async def handle_bank_account_creation(message: Message):
+async def handle_bank_account_creation(message: Message, state: FSMContext):
     """معالج إنشاء الحساب البنكي"""
     try:
         # التحقق من أن المحادثة في مجموعة
@@ -111,12 +111,8 @@ async def handle_bank_account_creation(message: Message):
         # إنشاء حساب جديد مع نظام اختيار البنك
         await banks.start_bank_selection(message)
         
-        # تعيين الحالة لانتظار اختيار البنك من message handler
-        from aiogram.fsm.context import FSMContext
-        state_storage = message.bot.storage if hasattr(message.bot, 'storage') else None
-        if state_storage:
-            state = FSMContext(storage=state_storage, key=f"user:{message.from_user.id}")
-            await state.set_state(BanksStates.waiting_bank_selection)
+        # تعيين الحالة لانتظار اختيار البنك
+        await state.set_state(BanksStates.waiting_bank_selection)
         
     except Exception as e:
         logging.error(f"خطأ في إنشاء الحساب البنكي: {e}")
