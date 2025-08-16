@@ -171,3 +171,70 @@ The architecture prioritizes modularity and group-based gaming, allowing easy ad
 - **Group Focus**: All features designed for group-only operation
 
 The bot now includes a comprehensive command system covering all features from the original command list, with proper Arabic language support and group-focused functionality.
+
+### 🛡️ Advanced Group Management System (August 16, 2025)
+
+#### Complete Member Moderation Features
+- **Ban System (حظر)**: Permanent ban with proper permission checks and error handling
+  - Bot verifies its own administrator status and `can_restrict_members` permission
+  - Prevents banning of other administrators or creators
+  - Tracks banned users in database with timestamps
+  - Clear success/error messages with specific guidance for setup issues
+
+- **Kick System (طرد)**: Temporary removal allowing return via invite
+  - Comprehensive permission validation before action
+  - Cannot kick administrators or group creators
+  - Uses ban/unban sequence for clean removal
+  - Informative feedback about re-entry possibility
+
+- **Mute System (كتم)**: Message restriction with duration support
+  - Advanced ChatPermissions configuration blocking all communication
+  - Duration parsing supporting Arabic time units (د=minutes, س=hours, ي=days)
+  - Database tracking of muted users with expiration dates
+  - Proper administrator exemption and permission checks
+
+- **Unban/Unmute System**: Complete reversal of restrictions
+  - **إلغاء حظر**: Removes permanent bans and database records
+  - **إلغاء كتم**: Restores normal ChatPermissions and cleans database
+  - Validates bot permissions before attempting actions
+  - User-friendly error messages for common issues
+
+#### Enhanced Administrative Tools
+- **Permission Validation**: Multi-layer verification system
+  - Bot administrator status verification
+  - Specific permission checks (`can_restrict_members`)
+  - Target user status validation (prevent moderating other admins)
+  - Clear instructional messages for permission setup
+
+- **Database Integration**: Complete tracking system
+  - `banned_users` table with moderator info and timestamps
+  - `muted_users` table with duration tracking and expiration
+  - Automatic cleanup when restrictions are removed
+  - Historical records for administrative oversight
+
+- **List Management**: View current restrictions
+  - **المحظورين**: Display all banned users with ban dates
+  - **المكتومين**: Show muted users with duration information
+  - Formatted output with user mentions and timestamps
+  - Admin-only access with proper permission verification
+
+#### Technical Implementation Details
+- **Error Handling**: Comprehensive TelegramBadRequest management
+  - Specific error detection for permission issues
+  - User-friendly error messages in Arabic
+  - Detailed logging for debugging and monitoring
+  - Graceful fallback for unexpected situations
+
+- **Command Integration**: Seamless handler system integration
+  - Arabic command recognition in messages.py
+  - Multiple command variants (حظر, إلغاء حظر, الغاء حظر)
+  - Reply-based and username-based targeting
+  - State management for complex operations
+
+- **Performance Optimization**: Efficient async operations
+  - Parallel permission checks and database operations
+  - Connection pooling for database queries
+  - Proper resource cleanup and error recovery
+  - Minimal API calls through intelligent caching
+
+The group management system provides enterprise-level moderation capabilities with Arabic language support, making it suitable for large Arabic-speaking communities while maintaining performance and reliability.

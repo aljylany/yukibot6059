@@ -210,6 +210,18 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text.startswith('تحذير '):
         await admin_management.handle_warn_user(message)
     
+    # === أوامر إلغاء الحظر والكتم ===
+    elif text == 'الغاء حظر' or text.startswith('الغاء حظر ') or text == 'إلغاء حظر' or text.startswith('إلغاء حظر '):
+        await admin_management.handle_unban_user(message)
+    elif text == 'الغاء كتم' or text.startswith('الغاء كتم ') or text == 'إلغاء كتم' or text.startswith('إلغاء كتم '):
+        await admin_management.handle_unmute_user(message)
+    
+    # === أوامر عرض القوائم ===
+    elif text == 'المحظورين' or text == 'قائمة المحظورين':
+        await admin_management.show_banned_users(message)
+    elif text == 'المكتومين' or text == 'قائمة المكتومين':
+        await admin_management.show_muted_users(message)
+    
     # === أوامر القفل والفتح ===
     elif text.startswith('قفل '):
         await handle_lock_command(message, text)

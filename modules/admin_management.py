@@ -133,8 +133,24 @@ async def handle_ban_user(message: Message):
             await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
             return
 
-        # حظر المستخدم
+        # التحقق من صلاحيات البوت أولاً
         try:
+            bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            if bot_member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ البوت يحتاج صلاحيات إدارية لحظر الأعضاء\n\n🔧 يرجى ترقية البوت لمشرف مع صلاحية حظر الأعضاء")
+                return
+            
+            if not bot_member.can_restrict_members:
+                await message.reply("❌ البوت لا يملك صلاحية حظر الأعضاء\n\n🔧 يرجى إعطاء البوت صلاحية 'تقييد الأعضاء'")
+                return
+            
+            # التحقق من أن المستخدم المستهدف ليس مشرف
+            target_member = await message.bot.get_chat_member(message.chat.id, target_user.id)
+            if target_member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ لا يمكن حظر المشرفين أو المالكين")
+                return
+            
+            # حظر المستخدم
             await message.bot.ban_chat_member(message.chat.id, target_user.id)
             
             # إضافة إلى قائمة المحظورين
@@ -143,10 +159,18 @@ async def handle_ban_user(message: Message):
                 (target_user.id, message.chat.id, message.from_user.id, datetime.now().isoformat())
             )
             
-            await message.reply(f"✅ تم حظر {format_user_mention(target_user)} من المجموعة")
+            await message.reply(f"✅ تم حظر {format_user_mention(target_user)} من المجموعة\n\n🚫 لن يتمكن من الدخول مرة أخرى حتى يتم إلغاء الحظر")
             
         except TelegramBadRequest as e:
-            await message.reply(f"❌ فشل في حظر المستخدم: {e}")
+            if "Not enough rights" in str(e):
+                await message.reply("❌ البوت لا يملك صلاحيات كافية لحظر هذا المستخدم")
+            elif "User is an administrator" in str(e):
+                await message.reply("❌ لا يمكن حظر مشرف المجموعة")
+            else:
+                await message.reply(f"❌ فشل في حظر المستخدم: {str(e)}")
+        except Exception as e:
+            logging.error(f"خطأ غير متوقع في الحظر: {e}")
+            await message.reply("❌ حدث خطأ غير متوقع أثناء الحظر")
 
     except Exception as e:
         logging.error(f"خطأ في حظر المستخدم: {e}")
@@ -174,14 +198,38 @@ async def handle_kick_user(message: Message):
             return
 
         try:
-            # طرد المستخدم
+            # التحقق من صلاحيات البوت
+            bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            if bot_member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ البوت يحتاج صلاحيات إدارية لطرد الأعضاء\n\n🔧 يرجى ترقية البوت لمشرف مع صلاحية طرد الأعضاء")
+                return
+            
+            if not bot_member.can_restrict_members:
+                await message.reply("❌ البوت لا يملك صلاحية طرد الأعضاء\n\n🔧 يرجى إعطاء البوت صلاحية 'تقييد الأعضاء'")
+                return
+            
+            # التحقق من أن المستخدم المستهدف ليس مشرف
+            target_member = await message.bot.get_chat_member(message.chat.id, target_user.id)
+            if target_member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ لا يمكن طرد المشرفين أو المالكين")
+                return
+            
+            # طرد المستخدم (حظر مؤقت ثم إلغاء الحظر)
             await message.bot.ban_chat_member(message.chat.id, target_user.id)
             await message.bot.unban_chat_member(message.chat.id, target_user.id)
             
-            await message.reply(f"✅ تم طرد {format_user_mention(target_user)} من المجموعة")
+            await message.reply(f"✅ تم طرد {format_user_mention(target_user)} من المجموعة\n\n↩️ يمكنه العودة مرة أخرى بدعوة من الأعضاء")
             
         except TelegramBadRequest as e:
-            await message.reply(f"❌ فشل في طرد المستخدم: {e}")
+            if "Not enough rights" in str(e):
+                await message.reply("❌ البوت لا يملك صلاحيات كافية لطرد هذا المستخدم")
+            elif "User is an administrator" in str(e):
+                await message.reply("❌ لا يمكن طرد مشرف المجموعة")
+            else:
+                await message.reply(f"❌ فشل في طرد المستخدم: {str(e)}")
+        except Exception as e:
+            logging.error(f"خطأ غير متوقع في الطرد: {e}")
+            await message.reply("❌ حدث خطأ غير متوقع أثناء الطرد")
 
     except Exception as e:
         logging.error(f"خطأ في طرد المستخدم: {e}")
@@ -216,15 +264,47 @@ async def handle_mute_user(message: Message):
             return
 
         try:
-            # كتم المستخدم
+            # التحقق من صلاحيات البوت
+            bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            if bot_member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ البوت يحتاج صلاحيات إدارية لكتم الأعضاء\n\n🔧 يرجى ترقية البوت لمشرف مع صلاحية كتم الأعضاء")
+                return
+            
+            if not bot_member.can_restrict_members:
+                await message.reply("❌ البوت لا يملك صلاحية كتم الأعضاء\n\n🔧 يرجى إعطاء البوت صلاحية 'تقييد الأعضاء'")
+                return
+            
+            # التحقق من أن المستخدم المستهدف ليس مشرف
+            target_member = await message.bot.get_chat_member(message.chat.id, target_user.id)
+            if target_member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ لا يمكن كتم المشرفين أو المالكين")
+                return
+            
+            # تحديد مدة الكتم
             until_date = None
             if duration:
                 until_date = datetime.now() + timedelta(seconds=duration)
             
+            # استيراد ChatPermissions لتحديد الصلاحيات المقيدة
+            from aiogram.types import ChatPermissions
+            
+            # إنشاء صلاحيات مقيدة (منع الإرسال)
+            restricted_permissions = ChatPermissions(
+                can_send_messages=False,
+                can_send_media_messages=False,
+                can_send_polls=False,
+                can_send_other_messages=False,
+                can_add_web_page_previews=False,
+                can_change_info=False,
+                can_invite_users=False,
+                can_pin_messages=False
+            )
+            
+            # كتم المستخدم
             await message.bot.restrict_chat_member(
                 message.chat.id,
                 target_user.id,
-                permissions=message.chat.permissions,
+                permissions=restricted_permissions,
                 until_date=until_date
             )
             
@@ -236,10 +316,18 @@ async def handle_mute_user(message: Message):
             )
             
             duration_text = f" لمدة {format_duration(duration)}" if duration else " بشكل دائم"
-            await message.reply(f"✅ تم كتم {format_user_mention(target_user)}{duration_text}")
+            await message.reply(f"✅ تم كتم {format_user_mention(target_user)}{duration_text}\n\n🔇 لن يتمكن من إرسال الرسائل")
             
         except TelegramBadRequest as e:
-            await message.reply(f"❌ فشل في كتم المستخدم: {e}")
+            if "Not enough rights" in str(e):
+                await message.reply("❌ البوت لا يملك صلاحيات كافية لكتم هذا المستخدم")
+            elif "User is an administrator" in str(e):
+                await message.reply("❌ لا يمكن كتم مشرف المجموعة")
+            else:
+                await message.reply(f"❌ فشل في كتم المستخدم: {str(e)}")
+        except Exception as e:
+            logging.error(f"خطأ غير متوقع في الكتم: {e}")
+            await message.reply("❌ حدث خطأ غير متوقع أثناء الكتم")
 
     except Exception as e:
         logging.error(f"خطأ في كتم المستخدم: {e}")
@@ -337,6 +425,206 @@ async def show_group_ranks(message: Message, rank_type: str = None):
     except Exception as e:
         logging.error(f"خطأ في عرض الرتب: {e}")
         await message.reply("❌ حدث خطأ أثناء عرض الرتب")
+
+
+async def handle_unban_user(message: Message):
+    """معالج إلغاء حظر المستخدم"""
+    try:
+        if not await has_permission(message.from_user.id, message.chat.id, "ادمن"):
+            await message.reply("❌ ليس لديك صلاحية إلغاء الحظر")
+            return
+
+        target_user = None
+        if message.reply_to_message:
+            target_user = message.reply_to_message.from_user
+        else:
+            text_parts = message.text.split()
+            if len(text_parts) > 1:
+                username = text_parts[1].replace("@", "")
+                target_user = await get_user_by_username(username)
+
+        if not target_user:
+            await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
+            return
+
+        try:
+            # التحقق من صلاحيات البوت
+            bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            if bot_member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ البوت يحتاج صلاحيات إدارية لإلغاء حظر الأعضاء")
+                return
+            
+            if not bot_member.can_restrict_members:
+                await message.reply("❌ البوت لا يملك صلاحية إلغاء حظر الأعضاء")
+                return
+            
+            # إلغاء حظر المستخدم
+            await message.bot.unban_chat_member(message.chat.id, target_user.id)
+            
+            # إزالة من قائمة المحظورين
+            await execute_query(
+                "DELETE FROM banned_users WHERE user_id = ? AND chat_id = ?",
+                (target_user.id, message.chat.id)
+            )
+            
+            await message.reply(f"✅ تم إلغاء حظر {format_user_mention(target_user)}\n\n🔓 يمكنه الآن الدخول للمجموعة مرة أخرى")
+            
+        except TelegramBadRequest as e:
+            if "User not found" in str(e):
+                await message.reply("❌ المستخدم غير محظور أساساً")
+            else:
+                await message.reply(f"❌ فشل في إلغاء حظر المستخدم: {str(e)}")
+        except Exception as e:
+            logging.error(f"خطأ غير متوقع في إلغاء الحظر: {e}")
+            await message.reply("❌ حدث خطأ غير متوقع أثناء إلغاء الحظر")
+
+    except Exception as e:
+        logging.error(f"خطأ في إلغاء حظر المستخدم: {e}")
+        await message.reply("❌ حدث خطأ أثناء إلغاء الحظر")
+
+
+async def handle_unmute_user(message: Message):
+    """معالج إلغاء كتم المستخدم"""
+    try:
+        if not await has_permission(message.from_user.id, message.chat.id, "ادمن"):
+            await message.reply("❌ ليس لديك صلاحية إلغاء الكتم")
+            return
+
+        target_user = None
+        if message.reply_to_message:
+            target_user = message.reply_to_message.from_user
+        else:
+            text_parts = message.text.split()
+            if len(text_parts) > 1:
+                username = text_parts[1].replace("@", "")
+                target_user = await get_user_by_username(username)
+
+        if not target_user:
+            await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
+            return
+
+        try:
+            # التحقق من صلاحيات البوت
+            bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            if bot_member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+                await message.reply("❌ البوت يحتاج صلاحيات إدارية لإلغاء كتم الأعضاء")
+                return
+            
+            if not bot_member.can_restrict_members:
+                await message.reply("❌ البوت لا يملك صلاحية إلغاء كتم الأعضاء")
+                return
+            
+            # استيراد ChatPermissions لإعادة الصلاحيات
+            from aiogram.types import ChatPermissions
+            
+            # إنشاء صلاحيات عادية (إلغاء القيود)
+            normal_permissions = ChatPermissions(
+                can_send_messages=True,
+                can_send_media_messages=True,
+                can_send_polls=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True,
+                can_change_info=False,
+                can_invite_users=True,
+                can_pin_messages=False
+            )
+            
+            # إلغاء كتم المستخدم
+            await message.bot.restrict_chat_member(
+                message.chat.id,
+                target_user.id,
+                permissions=normal_permissions
+            )
+            
+            # إزالة من قائمة المكتومين
+            await execute_query(
+                "DELETE FROM muted_users WHERE user_id = ? AND chat_id = ?",
+                (target_user.id, message.chat.id)
+            )
+            
+            await message.reply(f"✅ تم إلغاء كتم {format_user_mention(target_user)}\n\n🔊 يمكنه الآن إرسال الرسائل مرة أخرى")
+            
+        except TelegramBadRequest as e:
+            if "User not found" in str(e):
+                await message.reply("❌ المستخدم غير مكتوم أساساً")
+            else:
+                await message.reply(f"❌ فشل في إلغاء كتم المستخدم: {str(e)}")
+        except Exception as e:
+            logging.error(f"خطأ غير متوقع في إلغاء الكتم: {e}")
+            await message.reply("❌ حدث خطأ غير متوقع أثناء إلغاء الكتم")
+
+    except Exception as e:
+        logging.error(f"خطأ في إلغاء كتم المستخدم: {e}")
+        await message.reply("❌ حدث خطأ أثناء إلغاء الكتم")
+
+
+async def show_banned_users(message: Message):
+    """عرض قائمة المحظورين"""
+    try:
+        if not await has_permission(message.from_user.id, message.chat.id, "ادمن"):
+            await message.reply("❌ ليس لديك صلاحية عرض قائمة المحظورين")
+            return
+
+        banned_users = await execute_query(
+            "SELECT user_id, banned_at FROM banned_users WHERE chat_id = ?",
+            (message.chat.id,),
+            fetch_all=True
+        )
+
+        if not banned_users:
+            await message.reply("📝 لا يوجد أعضاء محظورين في المجموعة")
+            return
+
+        banned_text = "🚫 **قائمة المحظورين:**\n\n"
+        
+        for i, ban in enumerate(banned_users, 1):
+            user_id = ban[0]
+            banned_at = ban[1]
+            user = await get_user(user_id)
+            user_mention = f"@{user['username']}" if user and user.get('username') else f"#{user_id}"
+            banned_text += f"{i}. {user_mention} - {banned_at}\n"
+
+        await message.reply(banned_text)
+
+    except Exception as e:
+        logging.error(f"خطأ في عرض المحظورين: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض قائمة المحظورين")
+
+
+async def show_muted_users(message: Message):
+    """عرض قائمة المكتومين"""
+    try:
+        if not await has_permission(message.from_user.id, message.chat.id, "ادمن"):
+            await message.reply("❌ ليس لديك صلاحية عرض قائمة المكتومين")
+            return
+
+        muted_users = await execute_query(
+            "SELECT user_id, muted_at, until_date FROM muted_users WHERE chat_id = ?",
+            (message.chat.id,),
+            fetch_all=True
+        )
+
+        if not muted_users:
+            await message.reply("📝 لا يوجد أعضاء مكتومين في المجموعة")
+            return
+
+        muted_text = "🔇 **قائمة المكتومين:**\n\n"
+        
+        for i, mute in enumerate(muted_users, 1):
+            user_id = mute[0]
+            muted_at = mute[1]
+            until_date = mute[2]
+            user = await get_user(user_id)
+            user_mention = f"@{user['username']}" if user and user.get('username') else f"#{user_id}"
+            
+            duration_text = f" - حتى {until_date}" if until_date else " - دائم"
+            muted_text += f"{i}. {user_mention} - {muted_at}{duration_text}\n"
+
+        await message.reply(muted_text)
+
+    except Exception as e:
+        logging.error(f"خطأ في عرض المكتومين: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض قائمة المكتومين")
 
 
 # دوال مساعدة
