@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 
 from database.operations import get_or_create_user, update_user_activity, get_user
 from modules import banks, real_estate, theft, stocks, investment, administration, farm, castle
+from modules import admin_management, group_settings, entertainment
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -186,7 +187,187 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif any(word in text for word in ['ترتيب', 'متصدرين', 'رانكنغ']):
         from modules import ranking
         await ranking.show_leaderboard(message)
+    
+    # === أوامر الإدارة والرفع/التنزيل ===
+    elif text.startswith('رفع '):
+        await handle_admin_command(message, text)
+    elif text.startswith('تنزيل '):
+        await handle_admin_command(message, text)
+    elif text == 'تنزيل الكل':
+        await admin_management.handle_rank_promotion(message, "", "تنزيل الكل")
+    
+    # === أوامر المسح ===
+    elif text.startswith('مسح '):
+        await handle_clear_command(message, text)
+    
+    # === أوامر الطرد والحظر ===
+    elif text == 'حظر' or text.startswith('حظر '):
+        await admin_management.handle_ban_user(message)
+    elif text == 'طرد' or text.startswith('طرد '):
+        await admin_management.handle_kick_user(message)
+    elif text == 'كتم' or text.startswith('كتم '):
+        await admin_management.handle_mute_user(message)
+    elif text.startswith('تحذير '):
+        await admin_management.handle_warn_user(message)
+    
+    # === أوامر القفل والفتح ===
+    elif text.startswith('قفل '):
+        await handle_lock_command(message, text)
+    elif text.startswith('فتح '):
+        await handle_unlock_command(message, text)
+    
+    # === أوامر التفعيل والتعطيل ===
+    elif text.startswith('تفعيل '):
+        await handle_toggle_command(message, text, 'تفعيل')
+    elif text.startswith('تعطيل '):
+        await handle_toggle_command(message, text, 'تعطيل')
+    
+    # === أوامر العرض ===
+    elif text in ['المالكين الاساسيين', 'المالكين', 'المنشئين', 'المدراء', 'الادمنيه', 'المميزين']:
+        await admin_management.show_group_ranks(message, text)
+    elif text == 'الاعدادات':
+        await group_settings.show_group_settings(message)
+    elif text == 'القوانين':
+        await group_settings.show_group_rules(message)
+    elif text == 'المجموعه':
+        await group_settings.show_group_info(message)
+    
+    # === أوامر التسلية ===
+    elif any(rank in text for rank in ['هطف', 'بثر', 'حمار', 'كلب', 'كلبه', 'عتوي', 'عتويه', 'لحجي', 'لحجيه', 'خروف', 'خفيفه', 'خفيف']):
+        await handle_entertainment_rank_command(message, text)
+    elif text in ['زواج', 'طلاق']:
+        await entertainment.handle_marriage(message, text)
+    elif text in ['زوجي', 'زوجتي']:
+        await entertainment.show_marriage_status(message)
+    elif text in ['سيارتي', 'منزلي', 'عمري', 'طولي', 'وزني', 'تحبني', 'تكرهني']:
+        await entertainment.handle_entertainment_command(message, text)
+    elif text.startswith('نسبه '):
+        await entertainment.handle_entertainment_command(message, text)
+    
     # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
+
+
+# === دوال مساعدة للأوامر الإدارية ===
+
+async def handle_admin_command(message: Message, text: str):
+    """معالج أوامر الرفع والتنزيل"""
+    try:
+        parts = text.split()
+        if len(parts) < 2:
+            return
+            
+        action = parts[0]  # رفع أو تنزيل
+        rank_text = ' '.join(parts[1:])  # باقي النص
+        
+        # تحديد نوع الرتبة
+        rank_map = {
+            'مالك اساسي': 'مالك اساسي',
+            'مالك': 'مالك', 
+            'منشئ': 'منشئ',
+            'مدير': 'مدير',
+            'ادمن': 'ادمن',
+            'مشرف': 'مشرف',
+            'مميز': 'مميز'
+        }
+        
+        rank_type = None
+        for key, value in rank_map.items():
+            if key in rank_text:
+                rank_type = value
+                break
+        
+        if rank_type:
+            await admin_management.handle_rank_promotion(message, rank_type, action)
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالجة الأمر الإداري: {e}")
+
+
+async def handle_clear_command(message: Message, text: str):
+    """معالج أوامر المسح"""
+    try:
+        clear_text = text.replace('مسح ', '').strip()
+        
+        if clear_text == 'الكل':
+            await admin_management.handle_clear_ranks(message, 'الكل')
+        elif clear_text == 'المالكين':
+            await admin_management.handle_clear_ranks(message, 'مالك')
+        elif clear_text == 'المنشئين':
+            await admin_management.handle_clear_ranks(message, 'منشئ')
+        elif clear_text == 'المدراء':
+            await admin_management.handle_clear_ranks(message, 'مدير')
+        elif clear_text == 'الادمنيه':
+            await admin_management.handle_clear_ranks(message, 'ادمن')
+        elif clear_text == 'المميزين':
+            await admin_management.handle_clear_ranks(message, 'مميز')
+        elif clear_text.isdigit():
+            # مسح عدد من الرسائل
+            count = int(clear_text)
+            await group_settings.handle_delete_messages(message, count)
+        elif clear_text == 'بالرد' and message.reply_to_message:
+            # مسح رسالة واحدة بالرد
+            await group_settings.handle_delete_messages(message, 1)
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالجة أمر المسح: {e}")
+
+
+async def handle_lock_command(message: Message, text: str):
+    """معالج أوامر القفل"""
+    try:
+        setting = text.replace('قفل ', '').strip()
+        await group_settings.handle_lock_command(message, setting, 'قفل')
+    except Exception as e:
+        logging.error(f"خطأ في معالجة أمر القفل: {e}")
+
+
+async def handle_unlock_command(message: Message, text: str):
+    """معالج أوامر الفتح"""
+    try:
+        setting = text.replace('فتح ', '').strip()
+        await group_settings.handle_lock_command(message, setting, 'فتح')
+    except Exception as e:
+        logging.error(f"خطأ في معالجة أمر الفتح: {e}")
+
+
+async def handle_toggle_command(message: Message, text: str, action: str):
+    """معالج أوامر التفعيل والتعطيل"""
+    try:
+        setting = text.replace(f'{action} ', '').strip()
+        await group_settings.handle_toggle_command(message, setting, action)
+    except Exception as e:
+        logging.error(f"خطأ في معالجة أمر {action}: {e}")
+
+
+async def handle_entertainment_rank_command(message: Message, text: str):
+    """معالج أوامر رتب التسلية"""
+    try:
+        # تحديد الرتبة والعمل
+        entertainment_ranks = ['هطف', 'بثر', 'حمار', 'كلب', 'كلبه', 'عتوي', 'عتويه', 'لحجي', 'لحجيه', 'خروف', 'خفيفه', 'خفيف']
+        
+        rank_type = None
+        action = None
+        
+        # البحث عن نوع الرتبة
+        for rank in entertainment_ranks:
+            if rank in text:
+                rank_type = rank
+                break
+        
+        # تحديد العمل (رفع أو تنزيل)
+        if text.startswith('رفع '):
+            action = 'رفع'
+        elif text.startswith('تنزيل '):
+            action = 'تنزيل'
+        
+        if rank_type and action:
+            await entertainment.handle_entertainment_rank(message, rank_type, action)
+        elif rank_type and not action:
+            # عرض قائمة الرتبة
+            await entertainment.show_entertainment_ranks(message, rank_type)
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالجة رتب التسلية: {e}")
 
 
 async def handle_bank_account_creation(message: Message, state: FSMContext):

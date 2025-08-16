@@ -168,6 +168,131 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول رتب المجموعة (نظام الإدارة)
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS group_ranks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    chat_id INTEGER,
+                    rank_type TEXT,
+                    promoted_by INTEGER,
+                    promoted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    UNIQUE(user_id, chat_id, rank_type)
+                )
+            ''')
+            
+            # إنشاء جدول المحظورين
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS banned_users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    chat_id INTEGER,
+                    banned_by INTEGER,
+                    ban_reason TEXT,
+                    banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    UNIQUE(user_id, chat_id)
+                )
+            ''')
+            
+            # إنشاء جدول المكتومين
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS muted_users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    chat_id INTEGER,
+                    muted_by INTEGER,
+                    mute_reason TEXT,
+                    muted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    until_date TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    UNIQUE(user_id, chat_id)
+                )
+            ''')
+            
+            # إنشاء جدول التحذيرات
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS user_warnings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    chat_id INTEGER,
+                    warned_by INTEGER,
+                    warn_level TEXT,
+                    warn_reason TEXT,
+                    warned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
+            # إنشاء جدول إعدادات المجموعة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS group_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER,
+                    setting_key TEXT,
+                    setting_value TEXT,
+                    updated_by INTEGER,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(chat_id, setting_key)
+                )
+            ''')
+            
+            # إنشاء جدول الكلمات المحظورة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS forbidden_words (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER,
+                    word TEXT,
+                    added_by INTEGER,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(chat_id, word)
+                )
+            ''')
+            
+            # إنشاء جدول أعمال الإدارة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS admin_actions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    chat_id INTEGER,
+                    action_type TEXT,
+                    target TEXT,
+                    details TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
+            # إنشاء جدول رتب التسلية
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS entertainment_ranks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    chat_id INTEGER,
+                    rank_type TEXT,
+                    given_by INTEGER,
+                    given_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    UNIQUE(user_id, chat_id, rank_type)
+                )
+            ''')
+            
+            # إنشاء جدول الزواج (للتسلية)
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS entertainment_marriages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user1_id INTEGER,
+                    user2_id INTEGER,
+                    chat_id INTEGER,
+                    married_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user1_id) REFERENCES users (user_id),
+                    FOREIGN KEY (user2_id) REFERENCES users (user_id),
+                    UNIQUE(user1_id, chat_id),
+                    UNIQUE(user2_id, chat_id)
+                )
+            ''')
+            
             # إنشاء فهارس لتحسين الأداء
             await db.execute('CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)')
@@ -175,6 +300,11 @@ async def init_database():
             await db.execute('CREATE INDEX IF NOT EXISTS idx_stocks_user_id ON user_stocks(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_investments_user_id ON user_investments(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_activity_user_id ON activity_log(user_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_group_ranks_chat_user ON group_ranks(chat_id, user_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_group_settings_chat ON group_settings(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_banned_users_chat ON banned_users(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_muted_users_chat ON muted_users(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_entertainment_ranks_chat ON entertainment_ranks(chat_id)')
             
             await db.commit()
             logger.info("✅ تم تهيئة قاعدة البيانات بنجاح")

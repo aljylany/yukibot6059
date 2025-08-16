@@ -73,6 +73,127 @@ async def parse_user_mention(text: str, message: Message) -> Optional[int]:
             # مؤقتاً نعيد None
             return None
         
+        # إذا كان النص رقم مباشرة (معرف المستخدم)
+        if text.isdigit():
+            return int(text)
+        
+        return None
+        
+    except Exception:
+        return None
+
+
+def format_user_mention(user) -> str:
+    """تنسيق عرض المستخدم"""
+    try:
+        if hasattr(user, 'first_name'):
+            name = user.first_name
+            if hasattr(user, 'username') and user.username:
+                return f"@{user.username}"
+            return name
+        elif isinstance(user, dict):
+            if 'username' in user and user['username']:
+                return f"@{user['username']}"
+            elif 'first_name' in user:
+                return user['first_name']
+        
+        return "مستخدم غير معروف"
+        
+    except Exception:
+        return "مستخدم غير معروف"
+
+
+def parse_user_mention_from_text(text: str) -> Optional[str]:
+    """استخراج معرف المستخدم من النص"""
+    try:
+        if '@' in text:
+            # استخراج المعرف بعد @
+            match = re.search(r'@(\w+)', text)
+            if match:
+                return match.group(1)
+        return None
+    except Exception:
+        return None
+
+
+def is_admin_command(text: str) -> bool:
+    """التحقق من أن النص أمر إداري"""
+    admin_commands = [
+        'رفع', 'تنزيل', 'حظر', 'طرد', 'كتم', 'تحذير',
+        'قفل', 'فتح', 'تفعيل', 'تعطيل', 'مسح'
+    ]
+    
+    for command in admin_commands:
+        if text.startswith(command + ' ') or text == command:
+            return True
+    return False
+
+
+def extract_duration_from_text(text: str) -> Optional[int]:
+    """استخراج المدة بالثواني من النص"""
+    try:
+        # البحث عن الأرقام متبوعة بوحدة زمنية
+        pattern = r'(\d+)\s*(د|دقيقة|دقائق|س|ساعة|ساعات|ي|يوم|أيام)'
+        match = re.search(pattern, text)
+        
+        if match:
+            number = int(match.group(1))
+            unit = match.group(2)
+            
+            if unit in ['د', 'دقيقة', 'دقائق']:
+                return number * 60
+            elif unit in ['س', 'ساعة', 'ساعات']:
+                return number * 3600
+            elif unit in ['ي', 'يوم', 'أيام']:
+                return number * 86400
+        
+        return None
+        
+    except Exception:
+        return None
+
+
+def format_time_remaining(seconds: int) -> str:
+    """تنسيق الوقت المتبقي"""
+    try:
+        if seconds < 60:
+            return f"{seconds} ثانية"
+        elif seconds < 3600:
+            minutes = seconds // 60
+            return f"{minutes} دقيقة"
+        elif seconds < 86400:
+            hours = seconds // 3600
+            return f"{hours} ساعة"
+        else:
+            days = seconds // 86400
+            return f"{days} يوم"
+    except Exception:
+        return "وقت غير محدد"
+
+
+def clean_text(text: str) -> str:
+    """تنظيف النص من الرموز غير المرغوبة"""
+    try:
+        # إزالة المسافات الزائدة
+        text = text.strip()
+        
+        # إزالة الأسطر الفارغة المتعددة
+        text = re.sub(r'\n+', '\n', text)
+        
+        return text
+        
+    except Exception:
+        return text
+
+
+def is_arabic_text(text: str) -> bool:
+    """التحقق من أن النص عربي"""
+    try:
+        arabic_range = r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]'
+        return bool(re.search(arabic_range, text))
+    except Exception:
+        return False
+        
         # إذا كان النص رقم (user_id)
         if text.isdigit():
             return int(text)
