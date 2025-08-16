@@ -26,6 +26,8 @@ async def init_database() -> None:
                     balance INTEGER DEFAULT 1000,
                     bank_balance INTEGER DEFAULT 0,
                     last_daily DATE,
+                    last_salary_time TEXT,
+                    bank_type TEXT DEFAULT 'سامبا',
                     security_level INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

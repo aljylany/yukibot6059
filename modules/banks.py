@@ -187,13 +187,17 @@ async def collect_daily_salary(message: Message):
             await message.reply("❌ لم تقم بإنشاء حساب بنكي بعد!\n\nاكتب 'انشاء حساب بنكي' للبدء")
             return
         
-        today = date.today()
-        last_salary = user.get('last_daily')
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        last_salary_time = user.get('last_salary_time')
         
-        # التحقق من آخر راتب
-        if last_salary and str(last_salary) == str(today):
-            await message.reply("⏰ لقد جمعت راتبك اليومي بالفعل!\n\nعد غداً لجمع راتب جديد.")
-            return
+        # التحقق من آخر راتب - كل 3 دقائق
+        if last_salary_time:
+            last_time = datetime.fromisoformat(last_salary_time) if isinstance(last_salary_time, str) else last_salary_time
+            if now - last_time < timedelta(minutes=3):
+                remaining_time = 3 - int((now - last_time).total_seconds() / 60)
+                await message.reply(f"⏰ يجب انتظار {remaining_time} دقيقة أخرى لجمع راتبك!\n\nالراتب متاح كل 3 دقائق.")
+                return
         
         # تحديد نوع البنك المختار (افتراضي سامبا للمستخدمين القدامى)
         bank_type = user.get('bank_type', 'سامبا')
@@ -221,8 +225,15 @@ async def collect_daily_salary(message: Message):
         total_earned = daily_salary + bonus
         new_balance = user['balance'] + total_earned
         
-        # تحديث الرصيد وتاريخ آخر راتب
+        # تحديث الرصيد ووقت آخر راتب
         await update_user_balance(message.from_user.id, new_balance)
+        
+        # تحديث وقت آخر راتب في قاعدة البيانات
+        from database.operations import execute_query
+        await execute_query(
+            "UPDATE users SET last_salary_time = ? WHERE user_id = ?",
+            (now.isoformat(), message.from_user.id)
+        )
         
         # إضافة معاملة
         await add_transaction(

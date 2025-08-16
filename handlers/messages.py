@@ -47,7 +47,7 @@ async def handle_text_messages(message: Message, state: FSMContext):
         elif current_state.startswith("Admin"):
             await handle_admin_message(message, state, current_state)
         else:
-            await handle_general_message(message)
+            await handle_general_message(message, state)
             
     except Exception as e:
         logging.error(f"خطأ في معالجة الرسالة: {e}")
@@ -154,7 +154,7 @@ async def handle_transfer_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء التحويل، حاول مرة أخرى")
 
 
-async def handle_general_message(message: Message):
+async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
