@@ -11,8 +11,7 @@ from aiogram.fsm.context import FSMContext
 from database.operations import get_or_create_user, update_user_activity
 from modules import banks, real_estate, theft, stocks, investment, administration, farm, castle
 from utils.states import *
-from utils.decorators import user_required
-from utils.keyboards import get_main_keyboard
+from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
 
 router = Router()

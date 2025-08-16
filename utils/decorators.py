@@ -12,19 +12,66 @@ from database.operations import get_user, is_user_banned, update_user_activity
 from config.settings import ADMIN_IDS, SYSTEM_MESSAGES
 
 
+def group_only(func: Callable) -> Callable:
+    """ديكوريتر للتأكد من أن الأمر يعمل في المجموعات فقط"""
+    @wraps(func)
+    async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
+        try:
+            # تحديد نوع الكائن والمحادثة
+            if isinstance(message_or_query, CallbackQuery):
+                chat_type = message_or_query.message.chat.type
+                chat_method = message_or_query.message.reply
+                await message_or_query.answer()
+            else:
+                chat_type = message_or_query.chat.type
+                chat_method = message_or_query.reply
+            
+            # التحقق من نوع المحادثة
+            if chat_type == 'private':
+                await chat_method(
+                    "🚫 **هذا الأمر متاح في المجموعات فقط!**\n\n"
+                    "➕ أضف البوت لمجموعتك واكتب /start لبدء اللعب"
+                )
+                return
+            
+            return await func(message_or_query, *args, **kwargs)
+            
+        except Exception as e:
+            logging.error(f"خطأ في ديكوريتر group_only: {e}")
+            try:
+                if isinstance(message_or_query, CallbackQuery):
+                    await message_or_query.message.reply(SYSTEM_MESSAGES["error"])
+                else:
+                    await message_or_query.reply(SYSTEM_MESSAGES["error"])
+            except:
+                pass
+    
+    return wrapper
+
+
 def user_required(func: Callable) -> Callable:
-    """ديكوريتر للتأكد من تسجيل المستخدم"""
+    """ديكوريتر للتأكد من تسجيل المستخدم (مع فحص المجموعة)"""
     @wraps(func)
     async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
         try:
             # تحديد نوع الكائن
             if isinstance(message_or_query, CallbackQuery):
                 user_id = message_or_query.from_user.id
+                chat_type = message_or_query.message.chat.type
                 chat_method = message_or_query.message.reply
                 await message_or_query.answer()
             else:
                 user_id = message_or_query.from_user.id
+                chat_type = message_or_query.chat.type
                 chat_method = message_or_query.reply
+            
+            # التحقق من نوع المحادثة أولاً
+            if chat_type == 'private':
+                await chat_method(
+                    "🚫 **هذا الأمر متاح في المجموعات فقط!**\n\n"
+                    "➕ أضف البوت لمجموعتك واكتب /start لبدء اللعب"
+                )
+                return
             
             # التحقق من حظر المستخدم
             if await is_user_banned(user_id):
@@ -35,7 +82,7 @@ def user_required(func: Callable) -> Callable:
             user = await get_user(user_id)
             if not user:
                 await chat_method(
-                    "❌ يرجى التسجيل أولاً باستخدام /start\n\n"
+                    "❌ يرجى التسجيل أولاً باستخدام /start في المجموعة\n\n"
                     "🎮 ابدأ رحلتك في عالم الألعاب الاقتصادية!"
                 )
                 return

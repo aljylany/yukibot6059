@@ -11,8 +11,7 @@ from aiogram.fsm.context import FSMContext
 
 from database.operations import get_or_create_user, update_user_activity
 from modules import banks, real_estate, theft, stocks, investment, ranking, administration, farm, castle
-from utils.keyboards import get_main_keyboard, get_admin_keyboard
-from utils.decorators import user_required, admin_required
+from utils.decorators import user_required, admin_required, group_only
 from config.settings import SYSTEM_MESSAGES, ADMIN_IDS
 
 router = Router()
@@ -22,14 +21,87 @@ router = Router()
 async def start_command(message: Message, state: FSMContext):
     """أمر البدء /start"""
     try:
-        user = await get_or_create_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
-        await update_user_activity(message.from_user.id)
-        
-        keyboard = get_main_keyboard()
-        await message.reply(
-            SYSTEM_MESSAGES["welcome"],
-            reply_markup=keyboard
-        )
+        # التحقق من نوع المحادثة
+        if message.chat.type == 'private':
+            # رسالة في الخاص - طلب إضافة البوت للمجموعة
+            welcome_text = """
+🎮 **مرحباً بك في بوت الألعاب الاقتصادية!**
+
+👋 أنا Yuki، بوت ألعاب اقتصادية تفاعلي باللغة العربية.
+
+📢 **لاستخدام البوت:**
+1️⃣ أضفني إلى مجموعتك
+2️⃣ امنحني صلاحيات الإدارة
+3️⃣ ابدأ اللعب مع أصدقائك!
+
+🎯 **الميزات المتاحة:**
+• 💰 نظام مصرفي متكامل
+• 🏠 شراء وبيع العقارات
+• 📈 تداول الأسهم والاستثمار
+• 🔓 آليات السرقة والحماية
+• 🌾 نظام المزارع والإنتاج
+• 🏰 بناء وترقية القلاع
+• 🏆 نظام ترتيب اللاعبين
+
+➕ **لإضافتي للمجموعة:**
+اضغط على اسمي واختر "Add to Group" أو انسخ اسم المستخدم: @theyuki_bot
+
+بعد إضافتي للمجموعة، اكتب /start في المجموعة لبدء اللعب! 🚀
+            """
+            await message.reply(welcome_text)
+            
+        else:
+            # في مجموعة - تسجيل المستخدم وبدء اللعبة
+            user = await get_or_create_user(
+                message.from_user.id, 
+                message.from_user.username or "", 
+                message.from_user.first_name or "User"
+            )
+            await update_user_activity(message.from_user.id)
+            
+            group_welcome = """
+🎮 **مرحباً بكم في بوت الألعاب الاقتصادية!**
+
+🌟 تم تفعيل البوت في هذه المجموعة بنجاح!
+
+📋 **الأوامر المتاحة:**
+
+💰 **الاقتصاد:**
+• `/balance` - عرض رصيدك
+• `/daily` - المكافأة اليومية
+• `/transfer [المبلغ] [المعرف]` - تحويل أموال
+
+🏦 **البنك:**
+• `/bank` - معلومات البنك
+• `/deposit [المبلغ]` - إيداع أموال
+• `/withdraw [المبلغ]` - سحب أموال
+
+🏠 **العقارات:**
+• `/property` - عرض العقارات المتاحة
+• `/buy_property [رقم_العقار]` - شراء عقار
+• `/my_properties` - عقاراتي
+
+📈 **الأسهم:**
+• `/stocks` - عرض الأسهم
+• `/buy_stock [اسم_السهم] [العدد]` - شراء أسهم
+• `/sell_stock [اسم_السهم] [العدد]` - بيع أسهم
+
+🔓 **السرقة:**
+• `/steal [@المستخدم]` - محاولة سرقة لاعب
+• `/security` - تحسين الأمان
+
+🌾 **المزرعة:**
+• `/farm` - إدارة المزرعة
+• `/plant [المحصول]` - زراعة
+• `/harvest` - حصاد
+
+🏆 **أخرى:**
+• `/ranking` - عرض الترتيب
+• `/help` - المساعدة الكاملة
+
+استمتعوا باللعب! 🎉
+            """
+            await message.reply(group_welcome)
         
     except Exception as e:
         logging.error(f"خطأ في أمر البدء: {e}")
@@ -85,7 +157,27 @@ async def transfer_command(message: Message, state: FSMContext):
 async def bank_command(message: Message):
     """إدارة البنك /bank"""
     try:
-        await banks.show_bank_menu(message)
+        bank_info = """
+🏦 **معلومات البنك**
+
+💰 **الخدمات المتاحة:**
+• `/deposit [المبلغ]` - إيداع أموال في البنك
+• `/withdraw [المبلغ]` - سحب أموال من البنك
+• `/balance` - عرض رصيدك الحالي
+• `/bank_balance` - عرض رصيد البنك
+• `/transfer [المبلغ] [معرف المستخدم]` - تحويل أموال
+
+📈 **نظام الفوائد:**
+• معدل الفائدة: 5% سنوياً
+• يتم حساب الفوائد يومياً
+• الحد الأدنى للإيداع: 100 وحدة
+
+💡 **نصائح:**
+• احتفظ بأموالك في البنك لتكسب فوائد
+• يمكنك السحب في أي وقت
+• التحويلات فورية بين اللاعبين
+        """
+        await message.reply(bank_info)
     except Exception as e:
         logging.error(f"خطأ في قائمة البنك: {e}")
         await message.reply(SYSTEM_MESSAGES["error"])
@@ -295,11 +387,31 @@ async def defend_command(message: Message):
 async def admin_command(message: Message):
     """لوحة تحكم الإدارة /admin"""
     try:
-        keyboard = get_admin_keyboard()
-        await message.reply(
-            "🔧 **لوحة تحكم الإدارة**\n\nاختر الإجراء المطلوب:",
-            reply_markup=keyboard
-        )
+        admin_menu = """
+🔧 **لوحة تحكم الإدارة**
+
+📋 **الأوامر المتاحة:**
+
+📊 **إحصائيات:**
+• `/stats` - إحصائيات البوت
+• `/bot_info` - معلومات النظام
+
+👥 **إدارة المستخدمين:**
+• `/ban_user [معرف المستخدم]` - حظر مستخدم
+• `/unban_user [معرف المستخدم]` - إلغاء حظر مستخدم
+• `/user_info [معرف المستخدم]` - معلومات المستخدم
+
+📢 **التواصل:**
+• `/broadcast` - بدء رسالة جماعية
+• `/announcement` - إعلان مهم
+
+💾 **النظام:**
+• `/backup` - إنشاء نسخة احتياطية
+• `/maintenance` - وضع الصيانة
+
+استخدم الأوامر أعلاه لإدارة البوت.
+        """
+        await message.reply(admin_menu)
     except Exception as e:
         logging.error(f"خطأ في لوحة الإدارة: {e}")
         await message.reply(SYSTEM_MESSAGES["error"])

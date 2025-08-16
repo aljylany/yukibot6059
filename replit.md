@@ -6,6 +6,13 @@ This is a comprehensive Telegram bot built with aiogram that implements an econo
 
 Preferred communication style: Simple, everyday language.
 
+Bot Configuration:
+- Remove all keyboard buttons (inline keyboards)
+- Bot works only in groups (not private messages except /start)
+- /start in private asks user to add bot to group as admin
+- All functionality integrated into text messages/commands instead of buttons
+- Fixed registration issues with user_required decorator
+
 # System Architecture
 
 ## Framework and Technology Stack
@@ -17,10 +24,11 @@ Preferred communication style: Simple, everyday language.
 ## Core Components
 
 ### Handler System
-The bot uses a three-tier handler system:
+The bot uses a command-focused handler system:
 - **Commands Handler**: Processes slash commands like `/start`, `/help`, `/balance`
-- **Callbacks Handler**: Manages inline keyboard button interactions
+- **Callbacks Handler**: Removed - no longer uses inline keyboards
 - **Messages Handler**: Handles text messages based on FSM states
+- **Group-Only Operation**: Bot only works in groups, private messages redirect to group setup
 
 ### State Management
 Implements aiogram's FSM (Finite State Machine) for managing user interactions across different modules:
@@ -71,4 +79,20 @@ Each game feature is implemented as a separate module:
 - **Python logging**: Comprehensive error tracking and debugging
 - **asyncio**: Async programming support for scalable operations
 
-The architecture prioritizes modularity, allowing easy addition of new game features while maintaining clean separation between bot logic, database operations, and external service integrations.
+## Recent Changes (August 16, 2025)
+
+### Architecture Modifications
+- **Removed Inline Keyboards**: Eliminated all keyboard buttons and inline callbacks
+- **Group-Only Operation**: Bot now works exclusively in group chats
+- **Private Message Handling**: /start in private messages guides users to add bot to groups
+- **Command-Based Interface**: All functionality moved to text commands instead of button interactions
+- **Fixed Registration Issues**: Updated user_required decorator to handle group-only operations
+- **Simplified Callbacks**: Removed all callback handlers since keyboards are no longer used
+
+### User Experience Changes
+- Users must add bot as admin to their groups to use features
+- All game functions accessible via slash commands (e.g., `/balance`, `/bank`, `/deposit`)
+- Informational menus provide command lists instead of clickable buttons
+- Improved error handling for group vs private message contexts
+
+The architecture prioritizes modularity and group-based gaming, allowing easy addition of new game features while maintaining clean separation between bot logic, database operations, and external service integrations.
