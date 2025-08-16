@@ -55,6 +55,105 @@ async def handle_text_messages(message: Message, state: FSMContext):
         await state.clear()
 
 
+async def handle_transfer_command(message: Message):
+    """معالج أمر التحويل عبر الرد على الرسائل"""
+    try:
+        # استخراج المبلغ من النص
+        text_parts = message.text.split()
+        if len(text_parts) < 2:
+            await message.reply(
+                "❌ استخدم الصيغة الصحيحة:\n"
+                "رد على رسالة اللاعب واكتب: تحويل [المبلغ]\n\n"
+                "مثال: تحويل 500"
+            )
+            return
+        
+        try:
+            amount = int(text_parts[1])
+        except ValueError:
+            await message.reply("❌ يرجى كتابة مبلغ صحيح\n\nمثال: تحويل 500")
+            return
+        
+        if amount <= 0:
+            await message.reply("❌ يجب أن يكون المبلغ أكبر من صفر")
+            return
+        
+        # الحصول على معلومات المرسل والمستقبل
+        sender_id = message.from_user.id
+        receiver_id = message.reply_to_message.from_user.id
+        
+        if sender_id == receiver_id:
+            await message.reply("❌ لا يمكنك تحويل المال لنفسك!")
+            return
+        
+        # التحقق من وجود المرسل
+        sender = await get_user(sender_id)
+        if not sender:
+            await message.reply("❌ لم تقم بإنشاء حساب بنكي بعد!\n\nاكتب 'انشاء حساب بنكي' للبدء")
+            return
+        
+        # التحقق من وجود المستقبل
+        receiver = await get_user(receiver_id)
+        if not receiver:
+            await message.reply(
+                f"❌ {message.reply_to_message.from_user.first_name} لم ينشئ حساب بنكي بعد!\n"
+                f"يجب عليه كتابة 'انشاء حساب بنكي' أولاً"
+            )
+            return
+        
+        # التحقق من توفر الرصيد
+        if sender['balance'] < amount:
+            from utils.helpers import format_number
+            await message.reply(
+                f"❌ رصيدك غير كافٍ!\n\n"
+                f"💰 رصيدك الحالي: {format_number(sender['balance'])}$\n"
+                f"💸 المبلغ المطلوب: {format_number(amount)}$"
+            )
+            return
+        
+        # تنفيذ عملية التحويل
+        from database.operations import update_user_balance, add_transaction
+        
+        new_sender_balance = sender['balance'] - amount
+        new_receiver_balance = receiver['balance'] + amount
+        
+        await update_user_balance(sender_id, new_sender_balance)
+        await update_user_balance(receiver_id, new_receiver_balance)
+        
+        # تسجيل المعاملات
+        await add_transaction(
+            sender_id,
+            f"تحويل إلى {message.reply_to_message.from_user.first_name}",
+            -amount,
+            "transfer"
+        )
+        await add_transaction(
+            receiver_id,
+            f"تحويل من {message.from_user.first_name}",
+            amount,
+            "transfer"
+        )
+        
+        # رسالة التأكيد
+        from utils.helpers import format_number
+        success_msg = f"""
+✅ **تم التحويل بنجاح!**
+
+💸 المرسل: {message.from_user.first_name}
+💰 المستقبل: {message.reply_to_message.from_user.first_name}
+📊 المبلغ: {format_number(amount)}$
+
+💵 رصيد {message.from_user.first_name}: {format_number(new_sender_balance)}$
+💵 رصيد {message.reply_to_message.from_user.first_name}: {format_number(new_receiver_balance)}$
+        """
+        
+        await message.reply(success_msg)
+        
+    except Exception as e:
+        logging.error(f"خطأ في تحويل الأموال: {e}")
+        await message.reply("❌ حدث خطأ أثناء التحويل، حاول مرة أخرى")
+
+
 async def handle_general_message(message: Message):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
@@ -67,6 +166,8 @@ async def handle_general_message(message: Message):
     # البحث عن كلمات مفتاحية محددة فقط
     if any(word in text for word in ['راتب', 'مرتب', 'راتبي']):
         await banks.collect_daily_salary(message)
+    elif text.startswith('تحويل') and message.reply_to_message:
+        await handle_transfer_command(message)
     elif any(word in text for word in ['رصيد', 'فلوس', 'مال']):
         await banks.show_balance(message)
     elif any(word in text for word in ['بنك', 'ايداع', 'سحب']):
