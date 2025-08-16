@@ -14,7 +14,6 @@ __all__ = [
     'get_or_create_user',
     'add_transaction',
     'execute_query',
-    'get_db_connection',
-    'is_user_banned',
-    'update_user_activity'
+    'update_user_activity',
+    'is_user_banned'
 ]
