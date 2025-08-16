@@ -1,0 +1,74 @@
+# Overview
+
+This is a comprehensive Telegram bot built with aiogram that implements an economic simulation game in Arabic. The bot features a complex virtual economy where users can engage in banking, real estate, stock trading, farming, theft mechanics, and more. The project follows a modular architecture with separate handlers for different bot functionalities and uses SQLite for data persistence.
+
+# User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+# System Architecture
+
+## Framework and Technology Stack
+- **Bot Framework**: aiogram (Python async Telegram bot framework)
+- **Database**: SQLite with aiosqlite for async operations
+- **Programming Language**: Python with async/await patterns
+- **Architecture Pattern**: Modular design with separation of concerns
+
+## Core Components
+
+### Handler System
+The bot uses a three-tier handler system:
+- **Commands Handler**: Processes slash commands like `/start`, `/help`, `/balance`
+- **Callbacks Handler**: Manages inline keyboard button interactions
+- **Messages Handler**: Handles text messages based on FSM states
+
+### State Management
+Implements aiogram's FSM (Finite State Machine) for managing user interactions across different modules:
+- Banking states for deposits/withdrawals
+- Property states for real estate transactions
+- Theft states for robbery mechanics
+- Investment and farming states for economic activities
+
+### Database Layer
+- **Models**: User data structures with dataclasses
+- **Operations**: Async database operations for CRUD functionality
+- **Connection Management**: Context managers for database connections
+
+### Modular Game Systems
+Each game feature is implemented as a separate module:
+- **Banking System**: Virtual currency management, transfers, daily bonuses
+- **Real Estate**: Property buying/selling with income generation
+- **Stock Market**: Virtual stock trading with fluctuating prices
+- **Theft Mechanics**: Player-vs-player robbery with security levels
+- **Investment System**: Long-term investment options with returns
+- **Farming**: Crop planting and harvesting mechanics
+- **Castle Building**: Construction and upgrade system
+- **Ranking System**: Leaderboards and player statistics
+
+### Security and Access Control
+- Admin privilege system with decorator-based access control
+- User authentication and registration flow
+- Ban system for problematic users
+- Activity tracking and user state management
+
+## External Dependencies
+
+### Core Bot Dependencies
+- **aiogram**: Telegram Bot API framework for Python
+- **aiosqlite**: Async SQLite database adapter
+- **aiohttp**: HTTP client for external API calls
+
+### Database
+- **SQLite**: Local database for user data, transactions, and game state
+- Tables include: users, properties, stocks, bans, levels, investments
+
+### External APIs (Configured but Optional)
+- **Stock APIs**: For real market data integration
+- **Payment Providers**: Telegram payments for premium features
+- **Crypto APIs**: For cryptocurrency price feeds
+
+### Development and Logging
+- **Python logging**: Comprehensive error tracking and debugging
+- **asyncio**: Async programming support for scalable operations
+
+The architecture prioritizes modularity, allowing easy addition of new game features while maintaining clean separation between bot logic, database operations, and external service integrations.

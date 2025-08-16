@@ -1,112 +1,479 @@
-import random
-from database import get_db, format_number
-from config import MIN_GAMBLE
-from modules.leveling import leveling_system  # نظام المستويات الجديد
+"""
+وحدة الاستثمار
+Investment Module
+"""
 
-class InvestmentSystem:
-    def invest_all(self, user_id):
-        conn = get_db()
-        c = conn.cursor()
-        try:
-            # الحصول على الرصيد
-            c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-            balance = c.fetchone()[0]
+import logging
+from datetime import datetime, timedelta
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
+
+from database.operations import get_user, update_user_balance, execute_query, add_transaction
+from utils.states import InvestmentStates
+from utils.helpers import format_number, is_valid_amount
+from config.settings import GAME_SETTINGS
+
+# أنواع الاستثمارات المتاحة
+INVESTMENT_TYPES = {
+    "savings": {
+        "name": "حساب توفير",
+        "min_amount": 1000,
+        "interest_rate": 0.02,  # 2% شهرياً
+        "duration_days": 30,
+        "risk": "منخفض",
+        "emoji": "💰"
+    },
+    "bonds": {
+        "name": "سندات حكومية",
+        "min_amount": 5000,
+        "interest_rate": 0.05,  # 5% شهرياً
+        "duration_days": 60,
+        "risk": "منخفض",
+        "emoji": "📋"
+    },
+    "mutual_funds": {
+        "name": "صناديق استثمار",
+        "min_amount": 10000,
+        "interest_rate": 0.08,  # 8% شهرياً
+        "duration_days": 90,
+        "risk": "متوسط",
+        "emoji": "📊"
+    },
+    "real_estate": {
+        "name": "استثمار عقاري",
+        "min_amount": 50000,
+        "interest_rate": 0.12,  # 12% شهرياً
+        "duration_days": 180,
+        "risk": "متوسط",
+        "emoji": "🏢"
+    },
+    "high_yield": {
+        "name": "استثمار عالي العائد",
+        "min_amount": 100000,
+        "interest_rate": 0.20,  # 20% شهرياً
+        "duration_days": 365,
+        "risk": "عالي",
+        "emoji": "🚀"
+    }
+}
+
+
+async def show_investment_menu(message: Message):
+    """عرض قائمة الاستثمار الرئيسية"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
+        
+        # الحصول على استثمارات المستخدم
+        user_investments = await get_user_investments(message.from_user.id)
+        total_investment = sum(inv['amount'] for inv in user_investments)
+        expected_returns = sum(inv['amount'] * inv['expected_return'] for inv in user_investments)
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="💼 استثمار جديد", callback_data="investment_create"),
+                InlineKeyboardButton(text="📊 محفظتي", callback_data="investment_portfolio")
+            ],
+            [
+                InlineKeyboardButton(text="💰 سحب استثمار", callback_data="investment_withdraw"),
+                InlineKeyboardButton(text="📈 تقرير الأرباح", callback_data="investment_report")
+            ]
+        ])
+        
+        investment_text = f"""
+💼 **مركز الاستثمار**
+
+💰 رصيدك النقدي: {format_number(user['balance'])}$
+📊 إجمالي الاستثمارات: {format_number(total_investment)}$
+📈 العوائد المتوقعة: {format_number(expected_returns)}$
+🎯 عدد الاستثمارات: {len(user_investments)}
+
+💡 تنويع الاستثمارات يقلل المخاطر ويزيد الأرباح!
+اختر العملية المطلوبة:
+        """
+        
+        await message.reply(investment_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        logging.error(f"خطأ في قائمة الاستثمار: {e}")
+        await message.reply("❌ حدث خطأ في عرض قائمة الاستثمار")
+
+
+async def show_investment_options(message: Message):
+    """عرض خيارات الاستثمار المتاحة"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
+        
+        keyboard_buttons = []
+        for inv_type, inv_info in INVESTMENT_TYPES.items():
+            affordable = user['balance'] >= inv_info['min_amount']
+            button_text = f"{inv_info['emoji']} {inv_info['name']}"
+            if not affordable:
+                button_text = f"❌ {button_text}"
             
-            if balance < 200:
-                return False, "الحد الأدنى للاستثمار هو 200 ريال! 💸"
+            keyboard_buttons.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"investment_create_{inv_type}"
+            )])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        
+        options_text = "💼 **خيارات الاستثمار المتاحة:**\n\n"
+        for inv_type, inv_info in INVESTMENT_TYPES.items():
+            affordable = "✅" if user['balance'] >= inv_info['min_amount'] else "❌"
+            duration_months = inv_info['duration_days'] // 30
             
-            # نسبة ربح عشوائية بين 5-25%
-            profit_percent = random.randint(5, 25)
-            profit = int(balance * profit_percent / 100)
-            new_balance = balance + profit
-            
-            # تحديث الرصيد
-            c.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
-            conn.commit()
-            
-            return True, (
-                f"استثمار ناجح! ✅\n"
-                f"نسبة الربح: {profit_percent}%\n"
-                f"مبلغ الربح: {format_number(profit)} ريال\n"
-                f"رصيدك الجديد: {format_number(new_balance)} ريال 💰"
+            options_text += f"{affordable} {inv_info['emoji']} **{inv_info['name']}**\n"
+            options_text += f"   💰 الحد الأدنى: {format_number(inv_info['min_amount'])}$\n"
+            options_text += f"   📈 العائد: {inv_info['interest_rate']*100:.0f}% شهرياً\n"
+            options_text += f"   ⏰ المدة: {duration_months} شهر\n"
+            options_text += f"   ⚠️ المخاطر: {inv_info['risk']}\n\n"
+        
+        options_text += f"💰 رصيدك الحالي: {format_number(user['balance'])}$"
+        
+        await message.reply(options_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض خيارات الاستثمار: {e}")
+        await message.reply("❌ حدث خطأ في عرض خيارات الاستثمار")
+
+
+async def start_investment_process(message: Message, investment_type: str, state: FSMContext):
+    """بدء عملية استثمار جديد"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
+        
+        if investment_type not in INVESTMENT_TYPES:
+            await message.reply("❌ نوع استثمار غير صحيح")
+            return
+        
+        inv_info = INVESTMENT_TYPES[investment_type]
+        
+        if user['balance'] < inv_info['min_amount']:
+            await message.reply(
+                f"❌ رصيد غير كافٍ!\n\n"
+                f"{inv_info['emoji']} {inv_info['name']}\n"
+                f"💰 الحد الأدنى: {format_number(inv_info['min_amount'])}$\n"
+                f"💵 رصيدك: {format_number(user['balance'])}$"
             )
-        except Exception as e:
-            return False, f"حدث خطأ: {e}"
-        finally:
-            conn.close()
+            return
+        
+        await state.update_data(investment_type=investment_type)
+        await state.set_state(InvestmentStates.waiting_investment_amount)
+        
+        duration_months = inv_info['duration_days'] // 30
+        expected_return = inv_info['interest_rate'] * duration_months
+        
+        await message.reply(
+            f"💼 **استثمار جديد - {inv_info['name']}**\n\n"
+            f"{inv_info['emoji']} نوع الاستثمار: {inv_info['name']}\n"
+            f"📈 العائد الشهري: {inv_info['interest_rate']*100:.0f}%\n"
+            f"⏰ مدة الاستثمار: {duration_months} شهر\n"
+            f"📊 العائد الإجمالي: {expected_return*100:.0f}%\n"
+            f"⚠️ مستوى المخاطر: {inv_info['risk']}\n\n"
+            f"💰 الحد الأدنى: {format_number(inv_info['min_amount'])}$\n"
+            f"💵 رصيدك: {format_number(user['balance'])}$\n\n"
+            f"كم تريد أن تستثمر؟\n"
+            f"❌ اكتب 'إلغاء' للإلغاء"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في بدء عملية الاستثمار: {e}")
+        await message.reply("❌ حدث خطأ في عملية الاستثمار")
 
-    def gamble(self, user_id, amount):
-        from config import MIN_GAMBLE
-        conn = get_db()
-        c = conn.cursor()
-        try:
-            # التحقق من الحد الأدنى
-            if amount < MIN_GAMBLE:
-                return False, f"الحد الأدنى للمضاربة هو {format_number(MIN_GAMBLE)} ريال! 💸"
-            
-            # التحقق من الرصيد
-            c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-            balance = c.fetchone()[0]
-            if balance < amount:
-                return False, "رصيدك لا يكفي للمضاربة بهذا المبلغ! ❌"
-            
-            # نسبة ربح/خسارة عشوائية
-            profit_percent = random.randint(-10, 90)  # -10% إلى +90%
-            profit = int(amount * profit_percent / 100)
-            new_balance = balance + profit
-            
-            # تحديث الرصيد
-            c.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
-            conn.commit()
-            
-            status = "ناجحة" if profit_percent >= 0 else "فاشلة"
-            return True, (
-                f"مضاربة {status}! {'🎉' if profit_percent >= 0 else '😢'}\n"
-                f"نسبة الربح: {profit_percent}%\n"
-                f"المبلغ: {format_number(profit)} ريال {'🟢' if profit_percent >= 0 else '🔴'}\n"
-                f"رصيدك الجديد: {format_number(new_balance)} ريال 💰"
-            )
-        except Exception as e:
-            return False, f"حدث خطأ: {e}"
-        finally:
-            conn.close()
 
-    def luck_game(self, user_id, risk_level=50):
-        from config import MIN_GAMBLE
-        conn = get_db()
-        c = conn.cursor()
-        try:
-            # الحصول على الرصيد
-            c.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-            balance = c.fetchone()[0]
+async def process_investment_amount(message: Message, state: FSMContext):
+    """معالجة مبلغ الاستثمار"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await state.clear()
+            return
+        
+        text = message.text.strip()
+        
+        if text.lower() in ['إلغاء', 'cancel']:
+            await state.clear()
+            await message.reply("❌ تم إلغاء عملية الاستثمار")
+            return
+        
+        if not is_valid_amount(text):
+            await message.reply("❌ مبلغ غير صحيح. يرجى إدخال رقم صحيح")
+            return
+        
+        amount = int(text)
+        
+        # الحصول على بيانات الاستثمار
+        data = await state.get_data()
+        investment_type = data['investment_type']
+        inv_info = INVESTMENT_TYPES[investment_type]
+        
+        # التحقق من صحة المبلغ
+        if amount < inv_info['min_amount']:
+            await message.reply(f"❌ المبلغ أقل من الحد الأدنى: {format_number(inv_info['min_amount'])}$")
+            return
+        
+        if amount > user['balance']:
+            await message.reply(f"❌ رصيد غير كافٍ!\nرصيدك: {format_number(user['balance'])}$")
+            return
+        
+        # حساب تفاصيل الاستثمار
+        duration_months = inv_info['duration_days'] // 30
+        expected_return = inv_info['interest_rate'] * duration_months
+        maturity_date = datetime.now() + timedelta(days=inv_info['duration_days'])
+        total_return = amount + (amount * expected_return)
+        
+        # تنفيذ الاستثمار
+        new_balance = user['balance'] - amount
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # إضافة الاستثمار إلى قاعدة البيانات
+        await execute_query(
+            "INSERT INTO investments (user_id, investment_type, amount, expected_return, maturity_date) VALUES (?, ?, ?, ?, ?)",
+            (message.from_user.id, investment_type, amount, expected_return, maturity_date)
+        )
+        
+        # إضافة معاملة
+        await add_transaction(
+            from_user_id=message.from_user.id,
+            to_user_id=0,  # النظام
+            transaction_type="investment",
+            amount=amount,
+            description=f"استثمار في {inv_info['name']}"
+        )
+        
+        await message.reply(
+            f"🎉 **تم إنشاء الاستثمار بنجاح!**\n\n"
+            f"{inv_info['emoji']} نوع الاستثمار: {inv_info['name']}\n"
+            f"💰 المبلغ المستثمر: {format_number(amount)}$\n"
+            f"📈 العائد المتوقع: {expected_return*100:.0f}%\n"
+            f"💎 المبلغ عند النضج: {format_number(total_return)}$\n"
+            f"📅 تاريخ النضج: {maturity_date.strftime('%Y-%m-%d')}\n"
+            f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+            f"🎯 سيتم إضافة الأرباح تلقائياً عند النضج!"
+        )
+        
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالجة مبلغ الاستثمار: {e}")
+        await message.reply("❌ حدث خطأ في عملية الاستثمار")
+        await state.clear()
+
+
+async def show_portfolio(message: Message):
+    """عرض محفظة الاستثمارات"""
+    try:
+        user_investments = await get_user_investments(message.from_user.id)
+        
+        if not user_investments:
+            await message.reply("📊 **محفظة الاستثمارات فارغة**\n\nاستخدم /invest لبدء استثمار جديد")
+            return
+        
+        portfolio_text = "📊 **محفظة الاستثمارات**\n\n"
+        
+        total_investment = 0
+        total_expected_return = 0
+        active_investments = 0
+        
+        for inv in user_investments:
+            inv_info = INVESTMENT_TYPES.get(inv['investment_type'], {})
+            maturity_date = datetime.fromisoformat(inv['maturity_date'])
+            days_remaining = (maturity_date - datetime.now()).days
             
-            if balance < MIN_GAMBLE:
-                return False, f"الحد الأدنى للعب الحظ هو {format_number(MIN_GAMBLE)} ريال! 💸"
-            
-            # فرصة الخسارة بناء على مستوى المخاطرة
-            if random.random() < (risk_level / 100):
-                # خسارة كاملة
-                c.execute("UPDATE users SET balance = 0 WHERE user_id = ?", (user_id,))
-                conn.commit()
-                return False, (
-                    f"للأسف خسرت بالحظ! 😢\n"
-                    f"فلوسك قبل اللعب: {format_number(balance)} ريال\n"
-                    f"فلوسك الآن: 0 ريال"
-                )
+            if inv['status'] == 'active':
+                status_emoji = "🟢"
+                status_text = f"نشط ({days_remaining} يوم متبقي)"
+                active_investments += 1
             else:
-                # ربح
-                multiplier = random.randint(2, 5)
-                win_amount = balance * multiplier
-                new_balance = balance + win_amount
-                c.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
-                conn.commit()
-                return True, (
-                    f"مبروك ربحت بالحظ! 🎉\n"
-                    f"مضاعف الربح: {multiplier}x\n"
-                    f"المبلغ: {format_number(win_amount)} ريال\n"
-                    f"رصيدك الجديد: {format_number(new_balance)} ريال 💰"
-                )
-        except Exception as e:
-            return False, f"حدث خطأ: {e}"
-        finally:
-            conn.close()
+                status_emoji = "✅"
+                status_text = "مكتمل"
+            
+            expected_amount = inv['amount'] + (inv['amount'] * inv['expected_return'])
+            
+            portfolio_text += f"{inv_info.get('emoji', '💼')} **{inv_info.get('name', 'استثمار')}**\n"
+            portfolio_text += f"   💰 المبلغ: {format_number(inv['amount'])}$\n"
+            portfolio_text += f"   📈 العائد: {inv['expected_return']*100:.0f}%\n"
+            portfolio_text += f"   💎 المبلغ المتوقع: {format_number(expected_amount)}$\n"
+            portfolio_text += f"   {status_emoji} الحالة: {status_text}\n"
+            portfolio_text += f"   📅 تاريخ النضج: {maturity_date.strftime('%Y-%m-%d')}\n\n"
+            
+            total_investment += inv['amount']
+            if inv['status'] == 'active':
+                total_expected_return += expected_amount
+        
+        portfolio_text += f"📊 **ملخص المحفظة:**\n"
+        portfolio_text += f"💰 إجمالي الاستثمار: {format_number(total_investment)}$\n"
+        portfolio_text += f"📈 العائد المتوقع: {format_number(total_expected_return)}$\n"
+        portfolio_text += f"🎯 الاستثمارات النشطة: {active_investments}"
+        
+        await message.reply(portfolio_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض محفظة الاستثمارات: {e}")
+        await message.reply("❌ حدث خطأ في عرض محفظة الاستثمارات")
+
+
+async def show_withdrawal_options(message: Message):
+    """عرض خيارات السحب المتاحة"""
+    try:
+        mature_investments = await get_mature_investments(message.from_user.id)
+        
+        if not mature_investments:
+            await message.reply("❌ لا توجد استثمارات جاهزة للسحب حالياً")
+            return
+        
+        keyboard_buttons = []
+        withdrawal_text = "💰 **الاستثمارات المتاحة للسحب:**\n\n"
+        
+        for inv in mature_investments:
+            inv_info = INVESTMENT_TYPES.get(inv['investment_type'], {})
+            expected_amount = inv['amount'] + (inv['amount'] * inv['expected_return'])
+            
+            withdrawal_text += f"{inv_info.get('emoji', '💼')} {inv_info.get('name', 'استثمار')}\n"
+            withdrawal_text += f"   💰 المبلغ الأصلي: {format_number(inv['amount'])}$\n"
+            withdrawal_text += f"   💎 المبلغ الإجمالي: {format_number(expected_amount)}$\n"
+            withdrawal_text += f"   📈 الربح: {format_number(expected_amount - inv['amount'])}$\n\n"
+            
+            keyboard_buttons.append([InlineKeyboardButton(
+                text=f"{inv_info.get('emoji', '💼')} سحب {format_number(expected_amount)}$",
+                callback_data=f"investment_withdraw_{inv['id']}"
+            )])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        await message.reply(withdrawal_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض خيارات السحب: {e}")
+        await message.reply("❌ حدث خطأ في عرض خيارات السحب")
+
+
+async def withdraw_investment(message: Message, investment_id: int):
+    """سحب استثمار مكتمل"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
+        
+        # الحصول على بيانات الاستثمار
+        investment = await execute_query(
+            "SELECT * FROM investments WHERE id = ? AND user_id = ? AND status = 'active'",
+            (investment_id, message.from_user.id),
+            fetch=True
+        )
+        
+        if not investment:
+            await message.reply("❌ الاستثمار غير موجود أو تم سحبه بالفعل")
+            return
+        
+        # التحقق من تاريخ النضج
+        maturity_date = datetime.fromisoformat(investment['maturity_date'])
+        if datetime.now() < maturity_date:
+            await message.reply("❌ الاستثمار لم ينضج بعد، لا يمكن سحبه الآن")
+            return
+        
+        # حساب المبلغ الإجمالي
+        total_amount = investment['amount'] + (investment['amount'] * investment['expected_return'])
+        profit = total_amount - investment['amount']
+        
+        # تحديث الرصيد
+        new_balance = user['balance'] + total_amount
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # تحديث حالة الاستثمار
+        await execute_query(
+            "UPDATE investments SET status = 'completed' WHERE id = ?",
+            (investment_id,)
+        )
+        
+        # إضافة معاملة
+        await add_transaction(
+            from_user_id=0,  # النظام
+            to_user_id=message.from_user.id,
+            transaction_type="investment_return",
+            amount=int(total_amount),
+            description=f"عائد استثمار {investment['investment_type']}"
+        )
+        
+        inv_info = INVESTMENT_TYPES.get(investment['investment_type'], {})
+        
+        await message.reply(
+            f"🎉 **تم سحب الاستثمار بنجاح!**\n\n"
+            f"{inv_info.get('emoji', '💼')} نوع الاستثمار: {inv_info.get('name', 'استثمار')}\n"
+            f"💰 المبلغ الأصلي: {format_number(investment['amount'])}$\n"
+            f"📈 الربح المحقق: {format_number(profit)}$\n"
+            f"💎 المبلغ الإجمالي: {format_number(total_amount)}$\n"
+            f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+            f"🎯 مبروك على الاستثمار الناجح!"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في سحب الاستثمار: {e}")
+        await message.reply("❌ حدث خطأ في عملية السحب")
+
+
+async def get_user_investments(user_id: int):
+    """الحصول على استثمارات المستخدم"""
+    try:
+        investments = await execute_query(
+            "SELECT * FROM investments WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,),
+            fetch=True
+        )
+        return investments if investments else []
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على استثمارات المستخدم: {e}")
+        return []
+
+
+async def get_mature_investments(user_id: int):
+    """الحصول على الاستثمارات المكتملة"""
+    try:
+        now = datetime.now().isoformat()
+        investments = await execute_query(
+            "SELECT * FROM investments WHERE user_id = ? AND status = 'active' AND maturity_date <= ?",
+            (user_id, now),
+            fetch=True
+        )
+        return investments if investments else []
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على الاستثمارات المكتملة: {e}")
+        return []
+
+
+async def check_and_mature_investments():
+    """فحص وإنضاج الاستثمارات (دالة للتشغيل الدوري)"""
+    try:
+        now = datetime.now().isoformat()
+        mature_investments = await execute_query(
+            "SELECT * FROM investments WHERE status = 'active' AND maturity_date <= ?",
+            (now,),
+            fetch=True
+        )
+        
+        for investment in mature_investments:
+            # يمكن إضافة إشعار للمستخدم هنا
+            logging.info(f"استثمار مكتمل للمستخدم {investment['user_id']}: {investment['id']}")
+        
+        return len(mature_investments)
+        
+    except Exception as e:
+        logging.error(f"خطأ في فحص الاستثمارات المكتملة: {e}")
+        return 0
+
+
+# معالجات الحالات
+async def process_investment_duration(message: Message, state: FSMContext):
+    """معالجة مدة الاستثمار"""
+    await message.reply("تم استلام مدة الاستثمار")
+    await state.clear()

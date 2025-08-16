@@ -1,143 +1,577 @@
-import sqlite3
-import json
-import time
-from database import get_db, format_number
-from modules.banking import BankingSystem
+"""
+وحدة المزرعة
+Farm Module
+"""
 
-banking = BankingSystem()
+import logging
+from datetime import datetime, timedelta
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
 
-# أنواع المحاصيل وأسعارها وأوقات نضوجها
+from database.operations import get_user, update_user_balance, execute_query, add_transaction
+from utils.states import FarmStates
+from utils.helpers import format_number, is_valid_amount
+
+# أنواع المحاصيل المتاحة
 CROP_TYPES = {
-    "قمح": {"price": 500, "grow_time": 24 * 3600, "sell_price": 1000},
-    "ذرة": {"price": 300, "grow_time": 12 * 3600, "sell_price": 600},
-    "طماطم": {"price": 200, "grow_time": 8 * 3600, "sell_price": 400},
-    "بطاطس": {"price": 400, "grow_time": 18 * 3600, "sell_price": 800},
-    "فراولة": {"price": 700, "grow_time": 36 * 3600, "sell_price": 1500}
+    "wheat": {
+        "name": "قمح",
+        "cost_per_unit": 50,
+        "grow_time_hours": 2,
+        "yield_per_unit": 80,
+        "min_quantity": 1,
+        "max_quantity": 100,
+        "emoji": "🌾"
+    },
+    "corn": {
+        "name": "ذرة",
+        "cost_per_unit": 75,
+        "grow_time_hours": 4,
+        "yield_per_unit": 120,
+        "min_quantity": 1,
+        "max_quantity": 80,
+        "emoji": "🌽"
+    },
+    "tomato": {
+        "name": "طماطم",
+        "cost_per_unit": 100,
+        "grow_time_hours": 6,
+        "yield_per_unit": 180,
+        "min_quantity": 1,
+        "max_quantity": 60,
+        "emoji": "🍅"
+    },
+    "potato": {
+        "name": "بطاطس",
+        "cost_per_unit": 60,
+        "grow_time_hours": 3,
+        "yield_per_unit": 100,
+        "min_quantity": 1,
+        "max_quantity": 90,
+        "emoji": "🥔"
+    },
+    "carrot": {
+        "name": "جزر",
+        "cost_per_unit": 40,
+        "grow_time_hours": 1,
+        "yield_per_unit": 65,
+        "min_quantity": 1,
+        "max_quantity": 120,
+        "emoji": "🥕"
+    },
+    "strawberry": {
+        "name": "فراولة",
+        "cost_per_unit": 150,
+        "grow_time_hours": 8,
+        "yield_per_unit": 300,
+        "min_quantity": 1,
+        "max_quantity": 40,
+        "emoji": "🍓"
+    }
 }
 
-class FarmSystem:
-    def plant_crop(self, user_id, crop_type):
-        conn = get_db()
-        c = conn.cursor()
+
+async def show_farm_menu(message: Message):
+    """عرض قائمة المزرعة الرئيسية"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
         
-        # التحقق من صحة نوع المحصول
+        # الحصول على محاصيل المستخدم
+        user_crops = await get_user_crops(message.from_user.id)
+        growing_crops = [crop for crop in user_crops if crop['status'] == 'growing']
+        ready_crops = [crop for crop in user_crops if crop['status'] == 'ready']
+        
+        # حساب القيمة الإجمالية للمحاصيل
+        total_investment = sum(
+            CROP_TYPES.get(crop['crop_type'], {}).get('cost_per_unit', 0) * crop['quantity']
+            for crop in growing_crops
+        )
+        
+        potential_income = sum(
+            CROP_TYPES.get(crop['crop_type'], {}).get('yield_per_unit', 0) * crop['quantity']
+            for crop in ready_crops
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🌱 زراعة محاصيل", callback_data="farm_plant"),
+                InlineKeyboardButton(text="🌾 حصاد", callback_data="farm_harvest")
+            ],
+            [
+                InlineKeyboardButton(text="📊 حالة المزرعة", callback_data="farm_status"),
+                InlineKeyboardButton(text="📈 تقرير الأرباح", callback_data="farm_report")
+            ]
+        ])
+        
+        farm_text = f"""
+🌾 **مزرعتك الخاصة**
+
+💰 رصيدك النقدي: {format_number(user['balance'])}$
+
+🌱 **حالة المزرعة:**
+🌾 محاصيل تنمو: {len(growing_crops)}
+✅ محاصيل جاهزة: {len(ready_crops)}
+💰 الاستثمار الحالي: {format_number(total_investment)}$
+💎 الدخل المتوقع: {format_number(potential_income)}$
+
+💡 نصيحة: المحاصيل المختلفة لها أوقات نمو وأرباح مختلفة!
+اختر العملية المطلوبة:
+        """
+        
+        await message.reply(farm_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        logging.error(f"خطأ في قائمة المزرعة: {e}")
+        await message.reply("❌ حدث خطأ في عرض قائمة المزرعة")
+
+
+async def show_planting_options(message: Message):
+    """عرض خيارات الزراعة"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
+        
+        keyboard_buttons = []
+        for crop_type, crop_info in CROP_TYPES.items():
+            affordable = user['balance'] >= crop_info['cost_per_unit']
+            
+            button_text = f"{crop_info['emoji']} {crop_info['name']} - {crop_info['cost_per_unit']}$"
+            if not affordable:
+                button_text = f"❌ {button_text}"
+            
+            keyboard_buttons.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"farm_plant_{crop_type}"
+            )])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        
+        planting_text = "🌱 **خيارات الزراعة المتاحة:**\n\n"
+        
+        for crop_type, crop_info in CROP_TYPES.items():
+            affordable = "✅" if user['balance'] >= crop_info['cost_per_unit'] else "❌"
+            profit = crop_info['yield_per_unit'] - crop_info['cost_per_unit']
+            profit_percentage = (profit / crop_info['cost_per_unit']) * 100
+            
+            planting_text += f"{affordable} {crop_info['emoji']} **{crop_info['name']}**\n"
+            planting_text += f"   💰 التكلفة: {crop_info['cost_per_unit']}$ للوحدة\n"
+            planting_text += f"   ⏰ وقت النمو: {crop_info['grow_time_hours']} ساعة\n"
+            planting_text += f"   💎 العائد: {crop_info['yield_per_unit']}$ للوحدة\n"
+            planting_text += f"   📈 الربح: {profit}$ ({profit_percentage:.0f}%)\n"
+            planting_text += f"   📊 الحد الأقصى: {crop_info['max_quantity']} وحدة\n\n"
+        
+        planting_text += f"💰 رصيدك الحالي: {format_number(user['balance'])}$"
+        
+        await message.reply(planting_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض خيارات الزراعة: {e}")
+        await message.reply("❌ حدث خطأ في عرض خيارات الزراعة")
+
+
+async def start_planting_process(message: Message, crop_type: str, state: FSMContext):
+    """بدء عملية زراعة محصول"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
+        
         if crop_type not in CROP_TYPES:
-            return False, "❌ نوع المحصول غير متاح!"
+            await message.reply("❌ نوع محصول غير صحيح")
+            return
         
-        # التحقق من وجود مزرعة للمستخدم
-        c.execute("SELECT crops FROM farms WHERE user_id = ?", (user_id,))
-        farm = c.fetchone()
+        crop_info = CROP_TYPES[crop_type]
         
-        # التحقق من رصيد المستخدم
-        balance = banking.get_balance(user_id)
-        crop_price = CROP_TYPES[crop_type]["price"]
+        if user['balance'] < crop_info['cost_per_unit']:
+            await message.reply(
+                f"❌ رصيد غير كافٍ!\n\n"
+                f"{crop_info['emoji']} {crop_info['name']}\n"
+                f"💰 التكلفة: {crop_info['cost_per_unit']}$ للوحدة\n"
+                f"💵 رصيدك: {format_number(user['balance'])}$"
+            )
+            return
         
-        if balance < crop_price:
-            return False, f"❌ رصيدك غير كافي! سعر البذور: {format_number(crop_price)} ريال"
+        max_affordable = min(
+            user['balance'] // crop_info['cost_per_unit'],
+            crop_info['max_quantity']
+        )
         
-        # إذا كان هناك محصول موجود
-        if farm and farm[0]:
-            existing_crop = json.loads(farm[0])
-            if existing_crop.get('type') == crop_type:
-                existing_crop['quantity'] = existing_crop.get('quantity', 1) + 1
-                c.execute("UPDATE farms SET crops = ? WHERE user_id = ?", 
-                          (json.dumps(existing_crop), user_id))
-                conn.commit()
-                conn.close()
-                return True, f"🌱 تمت إضافة المزيد من {crop_type} إلى مزرعتك! (الكمية: {existing_crop['quantity']})"
+        await state.update_data(crop_type=crop_type)
+        await state.set_state(FarmStates.waiting_crop_quantity)
+        
+        profit_per_unit = crop_info['yield_per_unit'] - crop_info['cost_per_unit']
+        
+        await message.reply(
+            f"🌱 **زراعة {crop_info['name']}**\n\n"
+            f"{crop_info['emoji']} المحصول: {crop_info['name']}\n"
+            f"💰 التكلفة: {crop_info['cost_per_unit']}$ للوحدة\n"
+            f"⏰ وقت النمو: {crop_info['grow_time_hours']} ساعة\n"
+            f"💎 العائد: {crop_info['yield_per_unit']}$ للوحدة\n"
+            f"📈 الربح: {profit_per_unit}$ للوحدة\n\n"
+            f"💵 رصيدك: {format_number(user['balance'])}$\n"
+            f"📊 أقصى كمية: {max_affordable} وحدة\n\n"
+            f"كم وحدة تريد زراعة؟\n"
+            f"❌ اكتب 'إلغاء' للإلغاء"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في بدء عملية الزراعة: {e}")
+        await message.reply("❌ حدث خطأ في عملية الزراعة")
+
+
+async def process_crop_quantity(message: Message, state: FSMContext):
+    """معالجة كمية المحصول للزراعة"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await state.clear()
+            return
+        
+        text = message.text.strip()
+        
+        if text.lower() in ['إلغاء', 'cancel']:
+            await state.clear()
+            await message.reply("❌ تم إلغاء عملية الزراعة")
+            return
+        
+        if not is_valid_amount(text):
+            await message.reply("❌ كمية غير صحيحة. يرجى إدخال رقم صحيح")
+            return
+        
+        quantity = int(text)
+        
+        # الحصول على بيانات المحصول
+        data = await state.get_data()
+        crop_type = data['crop_type']
+        crop_info = CROP_TYPES[crop_type]
+        
+        # التحقق من صحة الكمية
+        if quantity < crop_info['min_quantity']:
+            await message.reply(f"❌ الكمية أقل من الحد الأدنى: {crop_info['min_quantity']}")
+            return
+        
+        if quantity > crop_info['max_quantity']:
+            await message.reply(f"❌ الكمية أكبر من الحد الأقصى: {crop_info['max_quantity']}")
+            return
+        
+        total_cost = crop_info['cost_per_unit'] * quantity
+        
+        if total_cost > user['balance']:
+            await message.reply(
+                f"❌ رصيد غير كافٍ!\n\n"
+                f"💰 التكلفة الإجمالية: {format_number(total_cost)}$\n"
+                f"💵 رصيدك: {format_number(user['balance'])}$"
+            )
+            return
+        
+        # تنفيذ الزراعة
+        new_balance = user['balance'] - total_cost
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # حساب وقت الحصاد
+        harvest_time = datetime.now() + timedelta(hours=crop_info['grow_time_hours'])
+        
+        # إضافة المحصول إلى قاعدة البيانات
+        await execute_query(
+            "INSERT INTO farm (user_id, crop_type, quantity, harvest_time) VALUES (?, ?, ?, ?)",
+            (message.from_user.id, crop_type, quantity, harvest_time.isoformat())
+        )
+        
+        # إضافة معاملة
+        await add_transaction(
+            from_user_id=message.from_user.id,
+            to_user_id=0,  # النظام
+            transaction_type="crop_purchase",
+            amount=total_cost,
+            description=f"زراعة {quantity} وحدة من {crop_info['name']}"
+        )
+        
+        expected_yield = crop_info['yield_per_unit'] * quantity
+        expected_profit = expected_yield - total_cost
+        
+        await message.reply(
+            f"🎉 **تمت الزراعة بنجاح!**\n\n"
+            f"{crop_info['emoji']} المحصول: {crop_info['name']}\n"
+            f"📊 الكمية: {quantity} وحدة\n"
+            f"💰 التكلفة: {format_number(total_cost)}$\n"
+            f"⏰ وقت الحصاد: {harvest_time.strftime('%Y-%m-%d %H:%M')}\n"
+            f"💎 العائد المتوقع: {format_number(expected_yield)}$\n"
+            f"📈 الربح المتوقع: {format_number(expected_profit)}$\n"
+            f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+            f"🌱 المحصول ينمو الآن... عد بعد {crop_info['grow_time_hours']} ساعة للحصاد!"
+        )
+        
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالجة كمية المحصول: {e}")
+        await message.reply("❌ حدث خطأ في عملية الزراعة")
+        await state.clear()
+
+
+async def harvest_crops(message: Message):
+    """حصاد المحاصيل الجاهزة"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            return
+        
+        # الحصول على المحاصيل الجاهزة للحصاد
+        ready_crops = await get_ready_crops(message.from_user.id)
+        
+        if not ready_crops:
+            await message.reply(
+                "🌱 **لا توجد محاصيل جاهزة للحصاد**\n\n"
+                "تحقق من حالة محاصيلك باستخدام قائمة المزرعة"
+            )
+            return
+        
+        total_yield = 0
+        total_crops = 0
+        harvest_summary = {}
+        
+        # حصاد جميع المحاصيل الجاهزة
+        for crop in ready_crops:
+            crop_info = CROP_TYPES.get(crop['crop_type'], {})
+            yield_amount = crop_info.get('yield_per_unit', 0) * crop['quantity']
+            total_yield += yield_amount
+            total_crops += crop['quantity']
+            
+            # تجميع المحاصيل حسب النوع
+            crop_name = crop_info.get('name', 'محصول مجهول')
+            if crop_name not in harvest_summary:
+                harvest_summary[crop_name] = {
+                    'quantity': 0,
+                    'yield': 0,
+                    'emoji': crop_info.get('emoji', '🌾')
+                }
+            harvest_summary[crop_name]['quantity'] += crop['quantity']
+            harvest_summary[crop_name]['yield'] += yield_amount
+            
+            # تحديث حالة المحصول في قاعدة البيانات
+            await execute_query(
+                "UPDATE farm SET status = 'harvested' WHERE id = ?",
+                (crop['id'],)
+            )
+        
+        # إضافة العائد إلى رصيد المستخدم
+        new_balance = user['balance'] + total_yield
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # إضافة معاملة
+        await add_transaction(
+            from_user_id=0,  # النظام
+            to_user_id=message.from_user.id,
+            transaction_type="crop_harvest",
+            amount=total_yield,
+            description=f"حصاد {total_crops} وحدة محصول"
+        )
+        
+        # إعداد نص الحصاد
+        harvest_text = f"🎉 **تم الحصاد بنجاح!**\n\n"
+        
+        for crop_name, data in harvest_summary.items():
+            harvest_text += f"{data['emoji']} **{crop_name}**: {data['quantity']} وحدة\n"
+            harvest_text += f"   💰 العائد: {format_number(data['yield'])}$\n\n"
+        
+        harvest_text += f"📊 **ملخص الحصاد:**\n"
+        harvest_text += f"🌾 إجمالي المحاصيل: {total_crops} وحدة\n"
+        harvest_text += f"💰 إجمالي العائد: {format_number(total_yield)}$\n"
+        harvest_text += f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+        harvest_text += f"🎯 أحسنت! استمر في الزراعة لزيادة أرباحك!"
+        
+        await message.reply(harvest_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في حصاد المحاصيل: {e}")
+        await message.reply("❌ حدث خطأ في عملية الحصاد")
+
+
+async def show_farm_status(message: Message):
+    """عرض حالة المزرعة التفصيلية"""
+    try:
+        user_crops = await get_user_crops(message.from_user.id)
+        
+        if not user_crops:
+            await message.reply(
+                "🌱 **مزرعتك فارغة**\n\n"
+                "ابدأ بزراعة بعض المحاصيل لتحقيق الأرباح!\n"
+                "استخدم /farm للوصول لقائمة الزراعة"
+            )
+            return
+        
+        status_text = "📊 **حالة المزرعة التفصيلية**\n\n"
+        
+        growing_crops = []
+        ready_crops = []
+        harvested_crops = []
+        
+        now = datetime.now()
+        
+        for crop in user_crops:
+            crop_info = CROP_TYPES.get(crop['crop_type'], {})
+            harvest_time = datetime.fromisoformat(crop['harvest_time'])
+            
+            if crop['status'] == 'harvested':
+                harvested_crops.append(crop)
+            elif now >= harvest_time:
+                ready_crops.append(crop)
+                # تحديث الحالة إلى جاهز
+                await execute_query(
+                    "UPDATE farm SET status = 'ready' WHERE id = ?",
+                    (crop['id'],)
+                )
             else:
-                return False, f"❌ لديك محصول {existing_crop.get('type')} مزروع بالفعل!"
+                growing_crops.append(crop)
         
-        # خصم سعر البذور
-        banking.add_money(user_id, -crop_price)
+        # عرض المحاصيل التي تنمو
+        if growing_crops:
+            status_text += "🌱 **محاصيل تنمو:**\n"
+            for crop in growing_crops:
+                crop_info = CROP_TYPES.get(crop['crop_type'], {})
+                harvest_time = datetime.fromisoformat(crop['harvest_time'])
+                time_remaining = harvest_time - now
+                hours_remaining = int(time_remaining.total_seconds() // 3600)
+                minutes_remaining = int((time_remaining.total_seconds() % 3600) // 60)
+                
+                status_text += f"{crop_info.get('emoji', '🌾')} {crop_info.get('name', 'محصول')} x{crop['quantity']}\n"
+                status_text += f"   ⏰ متبقي: {hours_remaining}س {minutes_remaining}د\n"
+                status_text += f"   💎 عائد متوقع: {format_number(crop_info.get('yield_per_unit', 0) * crop['quantity'])}$\n\n"
         
-        # إنشاء المحصول الجديد
-        new_crop = {
-            "type": crop_type,
-            "quantity": 1,
-            "planted_at": time.time(),
-            "grow_time": CROP_TYPES[crop_type]["grow_time"],
-            "sell_price": CROP_TYPES[crop_type]["sell_price"]
-        }
+        # عرض المحاصيل الجاهزة
+        if ready_crops:
+            status_text += "✅ **محاصيل جاهزة للحصاد:**\n"
+            total_ready_yield = 0
+            for crop in ready_crops:
+                crop_info = CROP_TYPES.get(crop['crop_type'], {})
+                yield_amount = crop_info.get('yield_per_unit', 0) * crop['quantity']
+                total_ready_yield += yield_amount
+                
+                status_text += f"{crop_info.get('emoji', '🌾')} {crop_info.get('name', 'محصول')} x{crop['quantity']}\n"
+                status_text += f"   💰 العائد: {format_number(yield_amount)}$\n\n"
+            
+            status_text += f"💎 **إجمالي العائد الجاهز: {format_number(total_ready_yield)}$**\n\n"
         
-        # حفظ في قاعدة البيانات
-        if farm:
-            c.execute("UPDATE farms SET crops = ? WHERE user_id = ?", 
-                      (json.dumps(new_crop), user_id))
-        else:
-            c.execute("INSERT INTO farms (user_id, crops) VALUES (?, ?)", 
-                      (user_id, json.dumps(new_crop)))
+        # إحصائيات عامة
+        if harvested_crops:
+            total_harvested_yield = sum(
+                CROP_TYPES.get(crop['crop_type'], {}).get('yield_per_unit', 0) * crop['quantity']
+                for crop in harvested_crops
+            )
+            status_text += f"📊 **إحصائيات:**\n"
+            status_text += f"🌾 محاصيل محصودة: {len(harvested_crops)}\n"
+            status_text += f"💰 إجمالي الأرباح السابقة: {format_number(total_harvested_yield)}$\n"
         
-        conn.commit()
-        conn.close()
-        return True, f"✅ تم زرع {crop_type} بنجاح! ستنضج بعد {self.format_time(CROP_TYPES[crop_type]['grow_time'])}"
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🌾 حصاد الآن", callback_data="farm_harvest"),
+                InlineKeyboardButton(text="🌱 زراعة جديدة", callback_data="farm_plant")
+            ]
+        ])
+        
+        await message.reply(status_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض حالة المزرعة: {e}")
+        await message.reply("❌ حدث خطأ في عرض حالة المزرعة")
 
-    def harvest_crops(self, user_id):
-        conn = get_db()
-        c = conn.cursor()
-        
-        c.execute("SELECT crops FROM farms WHERE user_id = ?", (user_id,))
-        farm = c.fetchone()
-        
-        if not farm or not farm[0]:
-            return False, "❌ لا يوجد محصول لحصاده!"
-        
-        crop = json.loads(farm[0])
-        current_time = time.time()
-        elapsed = current_time - crop["planted_at"]
-        
-        if elapsed < crop["grow_time"]:
-            remaining = crop["grow_time"] - elapsed
-            return False, f"⏳ المحصول لم ينضج بعد! متبقي: {self.format_time(remaining)}"
-        
-        # حساب الربح
-        quantity = crop.get('quantity', 1)
-        profit = crop["sell_price"] * quantity
-        banking.add_money(user_id, profit)
-        
-        # حذف المحصول
-        c.execute("UPDATE farms SET crops = NULL WHERE user_id = ?", (user_id,))
-        conn.commit()
-        conn.close()
-        return True, f"💰 تم حصاد المحصول! ربحت {format_number(profit)} ريال"
 
-    def get_farm_info(self, user_id):
-        conn = get_db()
-        c = conn.cursor()
-        
-        c.execute("SELECT crops FROM farms WHERE user_id = ?", (user_id,))
-        farm = c.fetchone()
-        
-        if not farm or not farm[0]:
-            return "🌱 مزرعتك فارغة! استخدم 'زرع' لبدء الزراعة"
-        
-        crop = json.loads(farm[0])
-        current_time = time.time()
-        elapsed = current_time - crop["planted_at"]
-        
-        if elapsed < crop["grow_time"]:
-            remaining = crop["grow_time"] - elapsed
-            status = f"🌱 محصول {crop['type']} في طور النمو\n⏱ متبقي: {self.format_time(remaining)}"
-        else:
-            status = f"✅ محصول {crop['type']} جاهز للحصاد! استخدم 'حصاد'"
-        
-        quantity = crop.get('quantity', 1)
-        return f"🌾 <b>مزرعتك</b>\n\n{status}\n\n" \
-               f"• الكمية: {quantity}\n" \
-               f"💸 أرباحك عند الحصاد: {format_number(crop['sell_price'] * quantity)} ريال"
+async def get_user_crops(user_id: int):
+    """الحصول على محاصيل المستخدم"""
+    try:
+        crops = await execute_query(
+            "SELECT * FROM farm WHERE user_id = ? ORDER BY planted_at DESC",
+            (user_id,),
+            fetch=True
+        )
+        return crops if crops else []
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على محاصيل المستخدم: {e}")
+        return []
 
-    def get_market_items(self):
-        return CROP_TYPES
 
-    def get_active_farms_count(self):
-        conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM farms WHERE crops IS NOT NULL")
-        count = c.fetchone()[0]
-        conn.close()
-        return count
+async def get_ready_crops(user_id: int):
+    """الحصول على المحاصيل الجاهزة للحصاد"""
+    try:
+        now = datetime.now().isoformat()
+        crops = await execute_query(
+            "SELECT * FROM farm WHERE user_id = ? AND harvest_time <= ? AND status = 'growing'",
+            (user_id, now),
+            fetch=True
+        )
+        return crops if crops else []
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على المحاصيل الجاهزة: {e}")
+        return []
 
-    def format_time(self, seconds):
-        hours, remainder = divmod(seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{int(hours)} ساعة {int(minutes)} دقيقة"
+
+async def auto_update_crop_status():
+    """تحديث حالة المحاصيل تلقائياً (للتشغيل الدوري)"""
+    try:
+        now = datetime.now().isoformat()
+        
+        # تحديث المحاصيل التي وصلت لوقت الحصاد
+        result = await execute_query(
+            "UPDATE farm SET status = 'ready' WHERE harvest_time <= ? AND status = 'growing'",
+            (now,)
+        )
+        
+        if result > 0:
+            logging.info(f"تم تحديث {result} محصول إلى حالة جاهز للحصاد")
+        
+        return result
+        
+    except Exception as e:
+        logging.error(f"خطأ في تحديث حالة المحاصيل: {e}")
+        return 0
+
+
+async def get_farm_statistics(user_id: int):
+    """الحصول على إحصائيات المزرعة للمستخدم"""
+    try:
+        stats = {}
+        
+        # إجمالي المحاصيل المزروعة
+        total_planted = await execute_query(
+            "SELECT COUNT(*) as count, SUM(quantity) as total_quantity FROM farm WHERE user_id = ?",
+            (user_id,),
+            fetch=True
+        )
+        
+        stats['total_plantings'] = total_planted['count'] if total_planted else 0
+        stats['total_crops'] = total_planted['total_quantity'] if total_planted and total_planted['total_quantity'] else 0
+        
+        # إجمالي الأرباح من الزراعة
+        harvest_profits = await execute_query(
+            "SELECT SUM(amount) as total FROM transactions WHERE to_user_id = ? AND transaction_type = 'crop_harvest'",
+            (user_id,),
+            fetch=True
+        )
+        
+        stats['total_harvest_income'] = harvest_profits['total'] if harvest_profits and harvest_profits['total'] else 0
+        
+        # إجمالي الاستثمار في الزراعة
+        planting_costs = await execute_query(
+            "SELECT SUM(amount) as total FROM transactions WHERE from_user_id = ? AND transaction_type = 'crop_purchase'",
+            (user_id,),
+            fetch=True
+        )
+        
+        stats['total_investment'] = planting_costs['total'] if planting_costs and planting_costs['total'] else 0
+        
+        # صافي الربح
+        stats['net_profit'] = stats['total_harvest_income'] - stats['total_investment']
+        
+        return stats
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على إحصائيات المزرعة: {e}")
+        return {}
