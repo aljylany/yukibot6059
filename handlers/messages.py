@@ -26,7 +26,7 @@ async def handle_text_messages(message: Message, state: FSMContext):
         
         if current_state is None:
             # رسالة عادية بدون حالة محددة
-            await handle_general_message(message)
+            await handle_general_message(message, state)
             return
         
         # معالجة الرسائل حسب الحالة
@@ -87,6 +87,7 @@ async def handle_transfer_command(message: Message):
             return
         
         # التحقق من وجود المرسل
+        from database.operations import get_user
         sender = await get_user(sender_id)
         if not sender:
             await message.reply("❌ لم تقم بإنشاء حساب بنكي بعد!\n\nاكتب 'انشاء حساب بنكي' للبدء")
