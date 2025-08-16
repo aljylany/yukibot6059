@@ -12,6 +12,7 @@ from database.operations import get_or_create_user, update_user_activity
 from modules import banks, real_estate, theft, stocks, investment, administration, farm, castle
 from utils.states import *
 from utils.decorators import user_required
+from utils.keyboards import get_main_keyboard
 from config.settings import SYSTEM_MESSAGES
 
 router = Router()
@@ -57,7 +58,7 @@ async def handle_text_messages(message: Message, state: FSMContext):
 
 async def handle_general_message(message: Message):
     """معالجة الرسائل العامة"""
-    text = message.text.lower()
+    text = message.text.lower() if message.text else ""
     
     # البحث عن كلمات مفتاحية
     if any(word in text for word in ['رصيد', 'فلوس', 'مال']):
@@ -82,7 +83,7 @@ async def handle_general_message(message: Message):
         await message.reply(
             "🤖 لم أفهم طلبك.\n\n"
             "استخدم /help لعرض الأوامر المتاحة أو اختر من القائمة أدناه:",
-            reply_markup=from utils.keyboards import get_main_keyboard; get_main_keyboard()
+            reply_markup=get_main_keyboard()
         )
 
 
