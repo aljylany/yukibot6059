@@ -8,7 +8,7 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
-from database.operations import get_or_create_user, update_user_activity
+from database.operations import get_or_create_user, update_user_activity, get_user
 from modules import banks, real_estate, theft, stocks, investment, administration, farm, castle
 from utils.states import *
 from utils.decorators import user_required, group_only
@@ -59,8 +59,15 @@ async def handle_general_message(message: Message):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
+    # التحقق من طلب إنشاء حساب بنكي
+    if any(phrase in text for phrase in ['انشاء حساب بنكي', 'إنشاء حساب بنكي', 'انشئ حساب', 'حساب بنكي جديد']):
+        await handle_bank_account_creation(message)
+        return
+    
     # البحث عن كلمات مفتاحية محددة فقط
-    if any(word in text for word in ['رصيد', 'فلوس', 'مال']):
+    if any(word in text for word in ['راتب', 'مرتب', 'راتبي']):
+        await banks.collect_daily_salary(message)
+    elif any(word in text for word in ['رصيد', 'فلوس', 'مال']):
         await banks.show_balance(message)
     elif any(word in text for word in ['بنك', 'ايداع', 'سحب']):
         await banks.show_bank_menu(message)
@@ -80,9 +87,47 @@ async def handle_general_message(message: Message):
     # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
 
 
+async def handle_bank_account_creation(message: Message):
+    """معالج إنشاء الحساب البنكي"""
+    try:
+        # التحقق من أن المحادثة في مجموعة
+        if message.chat.type == 'private':
+            await message.reply(
+                "🚫 يجب إنشاء الحساب البنكي في المجموعة فقط!\n\n"
+                "➕ أضف البوت لمجموعتك واكتب 'انشاء حساب بنكي' هناك"
+            )
+            return
+            
+        # التحقق من وجود المستخدم مسبقاً
+        user = await get_user(message.from_user.id)
+        if user:
+            await message.reply(
+                f"✅ أهلاً بعودتك {message.from_user.first_name}!\n\n"
+                f"لديك حساب بنكي بالفعل برصيد: {user['balance']}$\n"
+                f"اكتب 'رصيد' لعرض تفاصيل حسابك"
+            )
+            return
+        
+        # إنشاء حساب جديد مع نظام اختيار البنك
+        await banks.start_bank_selection(message)
+        
+        # تعيين الحالة لانتظار اختيار البنك من message handler
+        from aiogram.fsm.context import FSMContext
+        state_storage = message.bot.storage if hasattr(message.bot, 'storage') else None
+        if state_storage:
+            state = FSMContext(storage=state_storage, key=f"user:{message.from_user.id}")
+            await state.set_state(BanksStates.waiting_bank_selection)
+        
+    except Exception as e:
+        logging.error(f"خطأ في إنشاء الحساب البنكي: {e}")
+        await message.reply("❌ حدث خطأ أثناء إنشاء حسابك، حاول مرة أخرى")
+
+
 async def handle_banks_message(message: Message, state: FSMContext, current_state: str):
     """معالجة رسائل البنوك"""
-    if current_state == BanksStates.waiting_deposit_amount.state:
+    if current_state == BanksStates.waiting_bank_selection.state:
+        await banks.process_bank_selection(message, state)
+    elif current_state == BanksStates.waiting_deposit_amount.state:
         await banks.process_deposit_amount(message, state)
     elif current_state == BanksStates.waiting_withdraw_amount.state:
         await banks.process_withdraw_amount(message, state)

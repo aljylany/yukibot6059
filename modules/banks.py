@@ -4,14 +4,146 @@ Banks and Banking Services Module
 """
 
 import logging
+import random
 from datetime import datetime, date
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
-from database.operations import get_user, update_user_balance, update_user_bank_balance, add_transaction
+from database.operations import get_user, get_or_create_user, update_user_balance, update_user_bank_balance, add_transaction, update_user_activity
 from utils.states import BanksStates
 from utils.helpers import format_number, is_valid_amount, parse_user_mention
 from config.settings import GAME_SETTINGS
+
+# أنواع البنوك المختلفة
+BANK_TYPES = {
+    "الأهلي": {
+        "name": "بنك الأهلي",
+        "description": "البنك الأكثر أماناً وموثوقية",
+        "initial_bonus": 2000,
+        "daily_salary": (200, 400),
+        "interest_rate": 0.03,
+        "emoji": "🏛️"
+    },
+    "الراجحي": {
+        "name": "مصرف الراجحي",
+        "description": "البنك الإسلامي الرائد",
+        "initial_bonus": 1500,
+        "daily_salary": (150, 350),
+        "interest_rate": 0.025,
+        "emoji": "🕌"
+    },
+    "سامبا": {
+        "name": "بنك سامبا",
+        "description": "البنك العالمي للاستثمار",
+        "initial_bonus": 2500,
+        "daily_salary": (250, 500),
+        "interest_rate": 0.035,
+        "emoji": "🌍"
+    },
+    "الرياض": {
+        "name": "بنك الرياض",
+        "description": "بنك الاستثمار والتطوير",
+        "initial_bonus": 1800,
+        "daily_salary": (180, 380),
+        "interest_rate": 0.028,
+        "emoji": "🏙️"
+    }
+}
+
+
+async def start_bank_selection(message: Message):
+    """بدء عملية اختيار البنك للمستخدمين الجدد"""
+    try:
+        banks_list = "🏦 **اختر البنك المناسب لك:**\n\n"
+        
+        for key, bank in BANK_TYPES.items():
+            banks_list += f"{bank['emoji']} **{bank['name']}**\n"
+            banks_list += f"📄 {bank['description']}\n"
+            banks_list += f"💰 مكافأة التسجيل: {format_number(bank['initial_bonus'])}$\n"
+            banks_list += f"💼 الراتب اليومي: {bank['daily_salary'][0]}-{bank['daily_salary'][1]}$\n"
+            banks_list += f"📈 معدل الفائدة: {bank['interest_rate']*100:.1f}%\n\n"
+            banks_list += f"اكتب '{key}' لاختيار هذا البنك\n\n"
+        
+        banks_list += "💡 **نصائح:**\n"
+        banks_list += "• كل بنك له مميزات مختلفة\n"
+        banks_list += "• ستحصل على راتب يومي عشوائي\n"
+        banks_list += "• يمكنك استثمار أموالك لزيادة الأرباح\n"
+        
+        await message.reply(banks_list)
+        
+        # إعداد المعرف للحالة - سيتم تطبيقه في معالج الرسائل
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض قائمة البنوك: {e}")
+        await message.reply("❌ حدث خطأ في عرض البنوك")
+
+
+async def process_bank_selection(message: Message, state: FSMContext):
+    """معالجة اختيار البنك"""
+    try:
+        selected_bank = message.text.strip()
+        
+        if selected_bank not in BANK_TYPES:
+            available_banks = ", ".join(BANK_TYPES.keys())
+            await message.reply(f"❌ اختيار غير صحيح!\n\nالبنوك المتاحة: {available_banks}")
+            return
+        
+        bank_info = BANK_TYPES[selected_bank]
+        
+        # إنشاء المستخدم مع البنك المختار
+        user = await get_or_create_user(
+            message.from_user.id,
+            message.from_user.username or "",
+            message.from_user.first_name or "لاعب"
+        )
+        
+        # إضافة مكافأة التسجيل
+        initial_balance = bank_info["initial_bonus"]
+        await update_user_balance(message.from_user.id, initial_balance)
+        
+        # تسجيل معاملة المكافأة
+        await add_transaction(
+            message.from_user.id,
+            "مكافأة التسجيل",
+            initial_balance,
+            "bonus"
+        )
+        
+        # رسالة الترحيب مع تفاصيل البنك
+        welcome_msg = f"""
+🎉 **مبروك! تم إنشاء حسابك بنجاح!**
+
+{bank_info['emoji']} **{bank_info['name']}**
+💰 رصيدك الحالي: {format_number(initial_balance)}$
+💼 راتبك اليومي: {bank_info['daily_salary'][0]}-{bank_info['daily_salary'][1]}$
+📈 معدل الفائدة: {bank_info['interest_rate']*100:.1f}%
+
+🎮 **الآن يمكنك:**
+• كتابة 'راتب' لجمع راتبك اليومي
+• كتابة 'رصيد' لعرض رصيدك
+• كتابة 'استثمار' للاستثمار وزيادة أموالك
+• كتابة 'اسهم' للتداول في البورصة
+
+💡 **نصيحة:** اجمع راتبك يومياً واستثمر أموالك لتصبح الأغنى في المجموعة!
+        """
+        
+        await message.reply(welcome_msg)
+        await state.clear()
+        
+        # إضافة راتب يومي فوري كهدية
+        daily_salary = random.randint(*bank_info["daily_salary"])
+        new_balance = initial_balance + daily_salary
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        await message.reply(
+            f"🎁 **هدية ترحيبية!**\n"
+            f"حصلت على راتبك الأول: {format_number(daily_salary)}$\n"
+            f"💰 رصيدك الجديد: {format_number(new_balance)}$"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في اختيار البنك: {e}")
+        await message.reply("❌ حدث خطأ أثناء إنشاء حسابك")
 
 
 async def show_balance(message: Message):
@@ -19,17 +151,10 @@ async def show_balance(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ لم تقم بإنشاء حساب بنكي بعد!\n\nاكتب 'انشاء حساب بنكي' للبدء")
             return
         
         total_balance = user['balance'] + user['bank_balance']
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🏦 البنك", callback_data="bank_balance"),
-                InlineKeyboardButton(text="💳 تحويل", callback_data="bank_transfer")
-            ]
-        ])
         
         balance_text = f"""
 💰 **رصيدك الحالي:**
@@ -38,58 +163,101 @@ async def show_balance(message: Message):
 🏦 رصيد البنك: {format_number(user['bank_balance'])}$
 📊 إجمالي الثروة: {format_number(total_balance)}$
 
+🎮 **الأوامر المتاحة:**
+• 'راتب' - اجمع راتبك اليومي
+• 'استثمار' - استثمر أموالك
+• 'اسهم' - تداول في البورصة
+• 'عقار' - اشتري عقارات
+
 💡 نصيحة: احتفظ بأموالك في البنك لحمايتها من السرقة!
         """
         
-        await message.reply(balance_text, reply_markup=keyboard)
+        await message.reply(balance_text)
         
     except Exception as e:
         logging.error(f"خطأ في عرض الرصيد: {e}")
         await message.reply("❌ حدث خطأ في عرض الرصيد")
 
 
-async def daily_bonus(message: Message):
-    """المكافأة اليومية"""
+async def collect_daily_salary(message: Message):
+    """جمع الراتب اليومي العشوائي"""
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ لم تقم بإنشاء حساب بنكي بعد!\n\nاكتب 'انشاء حساب بنكي' للبدء")
             return
         
         today = date.today()
-        last_daily = user.get('last_daily')
+        last_salary = user.get('last_daily')
         
-        # التحقق من آخر مكافأة يومية
-        if last_daily and str(last_daily) == str(today):
-            await message.reply("⏰ لقد حصلت على مكافأتك اليومية بالفعل!\n\nعد غداً للحصول على مكافأة جديدة.")
+        # التحقق من آخر راتب
+        if last_salary and str(last_salary) == str(today):
+            await message.reply("⏰ لقد جمعت راتبك اليومي بالفعل!\n\nعد غداً لجمع راتب جديد.")
             return
         
-        # إعطاء المكافأة اليومية
-        bonus_amount = GAME_SETTINGS["daily_bonus"]
-        new_balance = user['balance'] + bonus_amount
+        # تحديد نوع البنك المختار (افتراضي سامبا للمستخدمين القدامى)
+        bank_type = user.get('bank_type', 'سامبا')
+        if bank_type not in BANK_TYPES:
+            bank_type = 'سامبا'
         
-        # تحديث الرصيد وتاريخ آخر مكافأة
+        bank_info = BANK_TYPES[bank_type]
+        
+        # حساب راتب عشوائي حسب نوع البنك
+        min_salary, max_salary = bank_info["daily_salary"]
+        daily_salary = random.randint(min_salary, max_salary)
+        
+        # إضافة مكافآت عشوائية أحياناً
+        bonus_chance = random.randint(1, 100)
+        bonus = 0
+        bonus_msg = ""
+        
+        if bonus_chance <= 10:  # 10% احتمال مكافأة كبيرة
+            bonus = random.randint(500, 1500)
+            bonus_msg = f"\n🎉 **مكافأة خاصة:** +{format_number(bonus)}$"
+        elif bonus_chance <= 25:  # 15% احتمال مكافأة صغيرة  
+            bonus = random.randint(100, 400)
+            bonus_msg = f"\n🎁 **مكافأة إضافية:** +{format_number(bonus)}$"
+        
+        total_earned = daily_salary + bonus
+        new_balance = user['balance'] + total_earned
+        
+        # تحديث الرصيد وتاريخ آخر راتب
         await update_user_balance(message.from_user.id, new_balance)
         
         # إضافة معاملة
         await add_transaction(
-            from_user_id=0,  # النظام
-            to_user_id=message.from_user.id,
-            transaction_type="daily_bonus",
-            amount=bonus_amount,
-            description="مكافأة يومية"
+            message.from_user.id,
+            f"راتب يومي - {bank_info['name']}",
+            total_earned,
+            "salary"
         )
         
-        await message.reply(
-            f"🎁 **مكافأة يومية!**\n\n"
-            f"تم إضافة {format_number(bonus_amount)}$ إلى رصيدك!\n"
-            f"💰 رصيدك الجديد: {format_number(new_balance)}$\n\n"
-            f"📅 عد غداً للحصول على مكافأة جديدة!"
-        )
+        # رسالة النجاح
+        salary_msg = f"""
+💼 **راتبك اليومي من {bank_info['emoji']} {bank_info['name']}**
+
+💰 الراتب: {format_number(daily_salary)}${bonus_msg}
+📊 إجمالي المبلغ: {format_number(total_earned)}$
+💵 رصيدك الجديد: {format_number(new_balance)}$
+
+💡 **نصائح للربح أكثر:**
+• استثمر أموالك في الأسهم والعقارات
+• اجمع راتبك يومياً بانتظام
+• شارك في الأنشطة التجارية للحصول على مكافآت إضافية
+
+عد غداً لجمع راتب جديد! 🎯
+        """
+        
+        await message.reply(salary_msg)
         
     except Exception as e:
-        logging.error(f"خطأ في المكافأة اليومية: {e}")
-        await message.reply("❌ حدث خطأ في المكافأة اليومية")
+        logging.error(f"خطأ في جمع الراتب: {e}")
+        await message.reply("❌ حدث خطأ أثناء جمع راتبك")
+
+
+async def daily_bonus(message: Message):
+    """المكافأة اليومية - استخدام النظام الجديد"""
+    await collect_daily_salary(message)
 
 
 async def show_bank_menu(message: Message):

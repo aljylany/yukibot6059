@@ -89,10 +89,19 @@ Each game feature is implemented as a separate module:
 - **Fixed Registration Issues**: Updated user_required decorator to handle group-only operations
 - **Simplified Callbacks**: Removed all callback handlers since keyboards are no longer used
 
+### New Bank Account System
+- **"انشاء حساب بنكي" Registration**: Users now type "انشاء حساب بنكي" instead of /start to begin
+- **Bank Selection System**: Players choose from 4 different banks (الأهلي، الراجحي، سامبا، الرياض)
+- **Random Daily Salary**: Each bank offers different salary ranges and bonuses
+- **Bank-Specific Features**: Each bank has unique initial bonuses, daily salary ranges, and interest rates
+- **Keyword-Based Commands**: Players use Arabic keywords like "راتب" for salary, "رصيد" for balance
+
 ### User Experience Changes
 - Users must add bot as admin to their groups to use features
-- All game functions accessible via slash commands (e.g., `/balance`, `/bank`, `/deposit`)
-- Informational menus provide command lists instead of clickable buttons
+- Registration starts with "انشاء حساب بنكي" in groups only
+- Bank selection process with detailed comparison
+- Daily salary collection with random bonuses
+- Text-based interactions using Arabic keywords
 - Improved error handling for group vs private message contexts
 
 The architecture prioritizes modularity and group-based gaming, allowing easy addition of new game features while maintaining clean separation between bot logic, database operations, and external service integrations.

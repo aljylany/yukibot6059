@@ -8,6 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 class BanksStates(StatesGroup):
     """حالات البنوك"""
+    waiting_bank_selection = State()
     waiting_deposit_amount = State()
     waiting_withdraw_amount = State()
     waiting_transfer_user = State()
