@@ -24,8 +24,8 @@ async def get_user(user_id: int) -> Optional[Dict[str, Any]]:
             result = await cursor.fetchone()
             
             if result:
-                # تحويل النتيجة إلى قاموس
-                return dict(result)
+                # النتيجة تأتي كقاموس مباشرة الآن
+                return result
             return None
             
     except Exception as e:
@@ -178,7 +178,7 @@ async def get_user_transactions(user_id: int, limit: int = 10) -> List[Dict[str,
                 (user_id, user_id, limit)
             )
             results = await cursor.fetchall()
-            return [dict(row) for row in results] if results else []
+            return results if results else []
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على معاملات المستخدم {user_id}: {e}")
@@ -249,7 +249,7 @@ async def get_all_users(limit: int = None, offset: int = 0) -> List[Dict[str, An
             
             cursor = await db.execute(query, params)
             results = await cursor.fetchall()
-            return [dict(row) for row in results] if results else []
+            return results if results else []
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على جميع المستخدمين: {e}")
@@ -315,7 +315,7 @@ async def get_user_properties(user_id: int) -> List[Dict[str, Any]]:
                 (user_id,)
             )
             results = await cursor.fetchall()
-            return [dict(row) for row in results] if results else []
+            return results if results else []
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على عقارات المستخدم {user_id}: {e}")
@@ -373,7 +373,7 @@ async def get_user_investments(user_id: int, status: str = None) -> List[Dict[st
                 )
             
             results = await cursor.fetchall()
-            return [dict(row) for row in results] if results else []
+            return results if results else []
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على استثمارات المستخدم {user_id}: {e}")
@@ -431,7 +431,7 @@ async def get_user_stocks(user_id: int, symbol: str = None) -> List[Dict[str, An
                 )
             
             results = await cursor.fetchall()
-            return [dict(row) for row in results] if results else []
+            return results if results else []
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على أسهم المستخدم {user_id}: {e}")
@@ -495,7 +495,7 @@ async def get_user_crops(user_id: int, status: str = None) -> List[Dict[str, Any
                 )
             
             results = await cursor.fetchall()
-            return [dict(row) for row in results] if results else []
+            return results if results else []
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على محاصيل المستخدم {user_id}: {e}")
@@ -530,7 +530,7 @@ async def get_or_create_castle(user_id: int) -> Optional[Dict[str, Any]]:
             result = await cursor.fetchone()
             
             if result:
-                return dict(result)
+                return result
             
             # إنشاء قلعة جديدة
             await db.execute(
@@ -548,7 +548,7 @@ async def get_or_create_castle(user_id: int) -> Optional[Dict[str, Any]]:
                 (user_id,)
             )
             result = await cursor.fetchone()
-            return dict(result) if result else None
+            return result if result else None
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على/إنشاء قلعة المستخدم {user_id}: {e}")
@@ -632,7 +632,7 @@ async def get_user_stats(user_id: int, action_type: str = None, limit: int = 100
                 )
             
             results = await cursor.fetchall()
-            return [dict(row) for row in results] if results else []
+            return results if results else []
             
     except Exception as e:
         logging.error(f"خطأ في الحصول على إحصائيات المستخدم {user_id}: {e}")

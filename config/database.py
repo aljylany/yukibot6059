@@ -152,7 +152,9 @@ async def get_db_connection():
     conn = None
     try:
         conn = await aiosqlite.connect(DB_PATH)
-        conn.row_factory = aiosqlite.Row  # لإرجاع النتائج كقاموس
+        def dict_factory(cursor, row):
+            return dict((cursor.description[idx][0], value) for idx, value in enumerate(row))
+        conn.row_factory = dict_factory  # لإرجاع النتائج كقاموس
         yield conn
     except Exception as e:
         logging.error(f"❌ خطأ في الاتصال بقاعدة البيانات: {e}")

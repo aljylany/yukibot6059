@@ -57,10 +57,10 @@ async def handle_text_messages(message: Message, state: FSMContext):
 
 
 async def handle_general_message(message: Message):
-    """معالجة الرسائل العامة"""
+    """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
-    # البحث عن كلمات مفتاحية
+    # البحث عن كلمات مفتاحية محددة فقط
     if any(word in text for word in ['رصيد', 'فلوس', 'مال']):
         await banks.show_balance(message)
     elif any(word in text for word in ['بنك', 'ايداع', 'سحب']):
@@ -78,13 +78,7 @@ async def handle_general_message(message: Message):
     elif any(word in text for word in ['ترتيب', 'متصدرين', 'رانكنغ']):
         from modules import ranking
         await ranking.show_leaderboard(message)
-    else:
-        # رسالة افتراضية للمساعدة
-        await message.reply(
-            "🤖 لم أفهم طلبك.\n\n"
-            "استخدم /help لعرض الأوامر المتاحة أو اختر من القائمة أدناه:",
-            reply_markup=get_main_keyboard()
-        )
+    # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
 
 
 async def handle_banks_message(message: Message, state: FSMContext, current_state: str):
