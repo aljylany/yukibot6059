@@ -18,7 +18,7 @@ from config.settings import SYSTEM_MESSAGES
 router = Router()
 
 
-@router.message(F.text, FSMContext)
+@router.message(F.text)
 @user_required
 async def handle_text_messages(message: Message, state: FSMContext):
     """معالج الرسائل النصية العامة حسب الحالة"""
