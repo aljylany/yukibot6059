@@ -565,7 +565,15 @@ async def handle_general_message(message: Message, state: FSMContext):
         await banks.show_bank_menu(message)
     elif any(word in words for word in ['عقار', 'بيت']) and not any(castle_word in words for castle_word in ['قلعة', 'موارد']):
         await real_estate.show_property_menu(message)
-    elif any(word in words for word in ['سرقة', 'سرق', 'امان']):
+    elif text.startswith('ترقية امان تأكيد'):
+        await theft.upgrade_security_level(message)
+    elif text.startswith('ترقية امان') or text.startswith('ترقية الامان'):
+        await theft.show_security_upgrade(message)
+    elif text in ['احصائيات سرقة', 'إحصائيات سرقة', 'احصائياتي سرقة']:
+        await theft.show_theft_stats(message)
+    elif text in ['افضل لصوص', 'أفضل لصوص', 'افضل اللصوص', 'أفضل اللصوص', 'ترتيب لصوص']:
+        await theft.show_top_thieves(message)
+    elif any(word in words for word in ['سرقة', 'سرق']) or text == 'امان':
         await theft.show_security_menu(message)
     elif any(word in words for word in ['اسهم', 'استثمار', 'محفظة']):
         await stocks.show_stocks_menu(message)

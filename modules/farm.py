@@ -490,7 +490,7 @@ async def get_user_crops(user_id: int):
         crops = await execute_query(
             "SELECT * FROM farm WHERE user_id = ? ORDER BY planted_at DESC",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         return crops if crops else []
     except Exception as e:
@@ -505,7 +505,7 @@ async def get_ready_crops(user_id: int):
         crops = await execute_query(
             "SELECT * FROM farm WHERE user_id = ? AND harvest_time <= ? AND status = 'growing'",
             (user_id, now),
-            fetch=True
+            fetch_one=True
         )
         return crops if crops else []
     except Exception as e:
@@ -543,7 +543,7 @@ async def get_farm_statistics(user_id: int):
         total_planted = await execute_query(
             "SELECT COUNT(*) as count, SUM(quantity) as total_quantity FROM farm WHERE user_id = ?",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         
         stats['total_plantings'] = total_planted['count'] if total_planted else 0
@@ -553,7 +553,7 @@ async def get_farm_statistics(user_id: int):
         harvest_profits = await execute_query(
             "SELECT SUM(amount) as total FROM transactions WHERE to_user_id = ? AND transaction_type = 'crop_harvest'",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         
         stats['total_harvest_income'] = harvest_profits['total'] if harvest_profits and harvest_profits['total'] else 0
@@ -562,7 +562,7 @@ async def get_farm_statistics(user_id: int):
         planting_costs = await execute_query(
             "SELECT SUM(amount) as total FROM transactions WHERE from_user_id = ? AND transaction_type = 'crop_purchase'",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         
         stats['total_investment'] = planting_costs['total'] if planting_costs and planting_costs['total'] else 0

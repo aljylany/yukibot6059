@@ -369,7 +369,7 @@ async def withdraw_investment(message: Message, investment_id: int):
         investment = await execute_query(
             "SELECT * FROM investments WHERE id = ? AND user_id = ? AND status = 'active'",
             (investment_id, message.from_user.id),
-            fetch=True
+            fetch_one=True
         )
         
         if not investment:
@@ -428,7 +428,7 @@ async def get_user_investments(user_id: int):
         investments = await execute_query(
             "SELECT * FROM investments WHERE user_id = ? ORDER BY created_at DESC",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         return investments if investments else []
     except Exception as e:
@@ -443,7 +443,7 @@ async def get_mature_investments(user_id: int):
         investments = await execute_query(
             "SELECT * FROM investments WHERE user_id = ? AND status = 'active' AND maturity_date <= ?",
             (user_id, now),
-            fetch=True
+            fetch_one=True
         )
         return investments if investments else []
     except Exception as e:
@@ -458,7 +458,7 @@ async def check_and_mature_investments():
         mature_investments = await execute_query(
             "SELECT * FROM investments WHERE status = 'active' AND maturity_date <= ?",
             (now,),
-            fetch=True
+            fetch_one=True
         )
         
         for investment in mature_investments:

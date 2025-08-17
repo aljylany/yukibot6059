@@ -376,23 +376,23 @@ async def get_theft_stats(user_id: int):
     try:
         # حساب السرقات الناجحة
         successful = await execute_query(
-            "SELECT COUNT(*) as count FROM transactions WHERE from_user_id = ? AND transaction_type = 'theft_success'",
+            "SELECT COUNT(*) as count FROM transactions WHERE user_id = ? AND transaction_type = 'theft_success'",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         
         # حساب السرقات الفاشلة
         failed = await execute_query(
-            "SELECT COUNT(*) as count FROM transactions WHERE from_user_id = ? AND transaction_type = 'theft_failed'",
+            "SELECT COUNT(*) as count FROM transactions WHERE user_id = ? AND transaction_type = 'theft_failed'",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         
-        # حساب مرات التعرض للسرقة
+        # حساب مرات التعرض للسرقة (عندما يكون هذا المستخدم ضحية)
         stolen = await execute_query(
-            "SELECT COUNT(*) as count FROM transactions WHERE from_user_id = ? AND transaction_type = 'theft_success'",
-            (user_id,),
-            fetch=True
+            "SELECT COUNT(*) as count FROM transactions WHERE description LIKE ? AND transaction_type = 'theft_success'",
+            (f'%سرقة من {user_id}%',),
+            fetch_one=True
         )
         
         return {
@@ -419,3 +419,197 @@ async def update_theft_stats(user_id: int, stat_type: str):
         )
     except Exception as e:
         logging.error(f"خطأ في تحديث إحصائيات السرقة: {e}")
+
+
+async def show_security_upgrade(message: Message):
+    """عرض خيارات ترقية الأمان (نسخة نصية)"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        current_level = user.get('security_level', 1)
+        
+        # التحقق من أن المستخدم لا يملك أقصى مستوى
+        if current_level >= 5:
+            await message.reply("🏆 لديك أقصى مستوى أمان! أنت محمي بالكامل.")
+            return
+        
+        upgrade_text = f"""
+🛡 **ترقية نظام الأمان**
+
+🔒 **مستواك الحالي:** {SECURITY_LEVELS[current_level]['name']} ({current_level}/5)
+🛡 نسبة الحماية: {SECURITY_LEVELS[current_level]['protection']}%
+
+💰 **رصيدك الحالي:** {format_number(user['balance'])}$
+
+🔧 **الترقيات المتاحة:**
+"""
+        
+        # إضافة خيارات الترقية
+        next_level = current_level + 1
+        if next_level <= 5:
+            info = SECURITY_LEVELS[next_level]
+            upgrade_text += f"\n{info['emoji']} **المستوى التالي:** {info['name']}"
+            upgrade_text += f"\n💵 **التكلفة:** {format_number(info['cost'])}$"
+            upgrade_text += f"\n🛡 **الحماية:** {info['protection']}%"
+            
+            if user['balance'] >= info['cost']:
+                upgrade_text += f"\n\n✅ **يمكنك الترقية!**"
+                upgrade_text += f"\n📝 **للترقية:** اكتب 'ترقية امان تأكيد'"
+            else:
+                needed = info['cost'] - user['balance']
+                upgrade_text += f"\n\n❌ **رصيد غير كافٍ**"
+                upgrade_text += f"\n💸 **تحتاج:** {format_number(needed)}$ إضافية"
+        
+        # عرض كل المستويات للمراجعة
+        upgrade_text += f"\n\n📊 **جميع المستويات:**"
+        for level in range(1, 6):
+            info = SECURITY_LEVELS[level]
+            status = "✅ (حالي)" if level == current_level else "🔒" if level > current_level else "✅"
+            upgrade_text += f"\n{info['emoji']} {info['name']} - {format_number(info['cost'])}$ - {info['protection']}% {status}"
+        
+        await message.reply(upgrade_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض خيارات الترقية: {e}")
+        await message.reply("❌ حدث خطأ في عرض خيارات الترقية")
+
+
+async def upgrade_security_level(message: Message):
+    """ترقية مستوى الأمان للمستخدم"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        current_level = user.get('security_level', 1)
+        
+        if current_level >= 5:
+            await message.reply("🏆 لديك أقصى مستوى أمان بالفعل!")
+            return
+        
+        next_level = current_level + 1
+        upgrade_info = SECURITY_LEVELS[next_level]
+        upgrade_cost = upgrade_info['cost']
+        
+        # التحقق من توفر الرصيد
+        if user['balance'] < upgrade_cost:
+            needed = upgrade_cost - user['balance']
+            await message.reply(
+                f"❌ رصيد غير كافٍ لترقية الأمان!\n\n"
+                f"💵 التكلفة: {format_number(upgrade_cost)}$\n"
+                f"💰 رصيدك: {format_number(user['balance'])}$\n"
+                f"💸 تحتاج: {format_number(needed)}$ إضافية"
+            )
+            return
+        
+        # تنفيذ الترقية
+        new_balance = user['balance'] - upgrade_cost
+        
+        await execute_query(
+            "UPDATE users SET security_level = ?, balance = ? WHERE user_id = ?",
+            (next_level, new_balance, message.from_user.id)
+        )
+        
+        # إضافة معاملة
+        await add_transaction(
+            message.from_user.id,
+            f"ترقية الأمان إلى {upgrade_info['name']}",
+            -upgrade_cost,
+            "security_upgrade"
+        )
+        
+        await message.reply(
+            f"🎉 **تم ترقية الأمان بنجاح!**\n\n"
+            f"🔒 **المستوى الجديد:** {upgrade_info['emoji']} {upgrade_info['name']} ({next_level}/5)\n"
+            f"🛡 **نسبة الحماية:** {upgrade_info['protection']}%\n"
+            f"💵 **التكلفة:** {format_number(upgrade_cost)}$\n"
+            f"💰 **رصيدك الجديد:** {format_number(new_balance)}$\n\n"
+            f"🔐 أنت الآن محمي أكثر من السرقة!"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في ترقية الأمان: {e}")
+        await message.reply("❌ حدث خطأ في ترقية الأمان")
+
+
+async def show_theft_stats(message: Message):
+    """عرض إحصائيات السرقة المفصلة"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        stats = await get_theft_stats(message.from_user.id)
+        
+        stats_text = f"""
+📊 **إحصائياتك في السرقة**
+
+👤 **اللاعب:** {message.from_user.first_name}
+
+🔓 **كلص:**
+✅ سرقات ناجحة: {stats['successful_thefts']}
+❌ سرقات فاشلة: {stats['failed_thefts']}
+📈 معدل النجاح: {(stats['successful_thefts'] / max(1, stats['successful_thefts'] + stats['failed_thefts']) * 100):.1f}%
+
+🎯 **كضحية:**
+🔒 مرات تم سرقتك: {stats['times_stolen']}
+
+🛡 **الأمان:**
+🔒 مستوى الأمان: {user.get('security_level', 1)}/5
+🛡 نسبة الحماية: {SECURITY_LEVELS[user.get('security_level', 1)]['protection']}%
+
+💡 **نصائح:**
+• ضع أموالك في البنك لحمايتها
+• ارفع مستوى الأمان لتقليل السرقة
+• اسرق بذكاء واحذر من الفشل
+        """
+        
+        await message.reply(stats_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض إحصائيات السرقة: {e}")
+        await message.reply("❌ حدث خطأ في عرض الإحصائيات")
+
+
+async def show_top_thieves(message: Message):
+    """عرض أفضل اللصوص"""
+    try:
+        # الحصول على أفضل اللصوص من المعاملات
+        top_thieves = await execute_query(
+            """
+            SELECT users.username, users.first_name, COUNT(*) as thefts
+            FROM transactions 
+            JOIN users ON transactions.user_id = users.user_id
+            WHERE transactions.transaction_type = 'theft_success'
+            GROUP BY transactions.user_id
+            ORDER BY thefts DESC
+            LIMIT 10
+            """,
+            (),
+            fetch_all=True
+        )
+        
+        leaderboard_text = "🏆 **أفضل اللصوص**\n\n"
+        
+        if not top_thieves:
+            leaderboard_text += "🤷‍♂️ لا توجد سرقات ناجحة بعد!\n\nكن أول لص محترف!"
+        else:
+            medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+            
+            for i, thief in enumerate(top_thieves):
+                medal = medals[i] if i < len(medals) else f"{i+1}️⃣"
+                name = thief['first_name'] or thief['username'] or "مجهول"
+                leaderboard_text += f"{medal} **{name}** - {thief['thefts']} سرقة ناجحة\n"
+            
+        leaderboard_text += f"\n💡 **تلميح:** كلما زادت سرقاتك الناجحة، كلما ارتفعت في التصنيف!"
+        
+        await message.reply(leaderboard_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض أفضل اللصوص: {e}")
+        await message.reply("❌ حدث خطأ في عرض قائمة أفضل اللصوص")

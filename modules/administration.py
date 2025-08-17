@@ -117,7 +117,7 @@ async def process_broadcast_message(message: Message, state: FSMContext):
         all_users = await execute_query(
             "SELECT user_id FROM users",
             (),
-            fetch=True
+            fetch_one=True
         )
         
         if not all_users:
@@ -380,7 +380,7 @@ async def get_daily_statistics():
         new_users = await execute_query(
             "SELECT COUNT(*) as count FROM users WHERE DATE(created_at) = ?",
             (today,),
-            fetch=True
+            fetch_one=True
         )
         stats['new_users'] = new_users['count'] if new_users else 0
         
@@ -388,7 +388,7 @@ async def get_daily_statistics():
         transactions = await execute_query(
             "SELECT COUNT(*) as count FROM transactions WHERE DATE(created_at) = ?",
             (today,),
-            fetch=True
+            fetch_one=True
         )
         stats['transactions_today'] = transactions['count'] if transactions else 0
         
@@ -396,7 +396,7 @@ async def get_daily_statistics():
         bank_money = await execute_query(
             "SELECT SUM(bank_balance) as total FROM users",
             (),
-            fetch=True
+            fetch_one=True
         )
         stats['bank_money'] = bank_money['total'] if bank_money and bank_money['total'] else 0
         
@@ -404,7 +404,7 @@ async def get_daily_statistics():
         properties = await execute_query(
             "SELECT COUNT(*) as count FROM properties WHERE DATE(purchased_at) = ?",
             (today,),
-            fetch=True
+            fetch_one=True
         )
         stats['properties_today'] = properties['count'] if properties else 0
         
@@ -412,7 +412,7 @@ async def get_daily_statistics():
         investments = await execute_query(
             "SELECT SUM(amount) as total FROM investments WHERE status = 'active'",
             (),
-            fetch=True
+            fetch_one=True
         )
         stats['investments_value'] = investments['total'] if investments and investments['total'] else 0
         
@@ -440,7 +440,7 @@ async def get_weekly_statistics():
         new_users = await execute_query(
             "SELECT COUNT(*) as count FROM users WHERE created_at >= ?",
             (week_start.isoformat(),),
-            fetch=True
+            fetch_one=True
         )
         stats['new_users'] = new_users['count'] if new_users else 0
         
@@ -457,7 +457,7 @@ async def get_recent_users():
         users = await execute_query(
             "SELECT user_id, username, first_name, created_at FROM users ORDER BY created_at DESC LIMIT 10",
             (),
-            fetch=True
+            fetch_one=True
         )
         return users if users else []
     except Exception as e:
@@ -478,7 +478,7 @@ async def get_top_users_by_activity():
             LIMIT 10
             """,
             (),
-            fetch=True
+            fetch_one=True
         )
         return users if users else []
     except Exception as e:
@@ -496,7 +496,7 @@ async def create_database_backup():
         
         for table in tables:
             try:
-                data = await execute_query(f"SELECT * FROM {table}", (), fetch=True)
+                data = await execute_query(f"SELECT * FROM {table}", (), fetch_one=True)
                 backup_data[table] = data if data else []
             except Exception as e:
                 logging.warning(f"تعذر نسخ جدول {table}: {e}")

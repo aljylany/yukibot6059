@@ -491,7 +491,7 @@ async def get_user_stocks(user_id: int, symbol: str = None):
             query = "SELECT * FROM stocks WHERE user_id = ? ORDER BY purchased_at DESC"
             params = (user_id,)
         
-        stocks = await execute_query(query, params, fetch=True)
+        stocks = await execute_query(query, params, fetch_one=True)
         return stocks if stocks else []
         
     except Exception as e:
@@ -506,7 +506,7 @@ async def add_user_stocks(user_id: int, symbol: str, quantity: int, price: float
         existing = await execute_query(
             "SELECT * FROM stocks WHERE user_id = ? AND symbol = ?",
             (user_id, symbol),
-            fetch=True
+            fetch_one=True
         )
         
         if existing:
@@ -539,7 +539,7 @@ async def remove_user_stocks(user_id: int, symbol: str, quantity: int):
         existing = await execute_query(
             "SELECT * FROM stocks WHERE user_id = ? AND symbol = ?",
             (user_id, symbol),
-            fetch=True
+            fetch_one=True
         )
         
         if not existing:

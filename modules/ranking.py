@@ -208,7 +208,7 @@ async def get_top_players_by_wealth():
         players = await execute_query(
             "SELECT user_id, username, first_name, balance, bank_balance, (balance + bank_balance) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 20",
             (),
-            fetch=True
+            fetch_one=True
         )
         return players if players else []
     except Exception as e:
@@ -222,7 +222,7 @@ async def get_top_players_by_bank():
         players = await execute_query(
             "SELECT user_id, username, first_name, bank_balance FROM users WHERE bank_balance > 0 ORDER BY bank_balance DESC LIMIT 20",
             (),
-            fetch=True
+            fetch_one=True
         )
         return players if players else []
     except Exception as e:
@@ -244,7 +244,7 @@ async def get_top_property_owners():
             LIMIT 20
             """,
             (),
-            fetch=True
+            fetch_one=True
         )
         return owners if owners else []
     except Exception as e:
@@ -268,7 +268,7 @@ async def get_top_investors():
             LIMIT 20
             """,
             (),
-            fetch=True
+            fetch_one=True
         )
         return investors if investors else []
     except Exception as e:
@@ -330,7 +330,7 @@ async def get_user_rank(user_id: int, category: str):
         else:
             return None
         
-        result = await execute_query(query, (user_id,), fetch=True)
+        result = await execute_query(query, (user_id,), fetch_one=True)
         return result['rank'] if result else None
         
     except Exception as e:
@@ -344,7 +344,7 @@ async def get_user_properties_count(user_id: int):
         result = await execute_query(
             "SELECT COUNT(*) as count FROM properties WHERE user_id = ?",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         return result['count'] if result else 0
     except Exception as e:
@@ -358,7 +358,7 @@ async def get_user_investments_value(user_id: int):
         result = await execute_query(
             "SELECT SUM(amount) as total FROM investments WHERE user_id = ? AND status = 'active'",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         return result['total'] if result and result['total'] else 0
     except Exception as e:
@@ -383,7 +383,7 @@ async def get_weekly_active_users(week_start: datetime):
             LIMIT 20
             """,
             (week_start.isoformat(),),
-            fetch=True
+            fetch_one=True
         )
         return users if users else []
     except Exception as e:
@@ -408,7 +408,7 @@ async def get_monthly_top_investors(month_start: datetime):
             LIMIT 20
             """,
             (month_start.isoformat(),),
-            fetch=True
+            fetch_one=True
         )
         return investors if investors else []
     except Exception as e:
@@ -436,7 +436,7 @@ async def get_global_statistics():
         total_users = await execute_query(
             "SELECT COUNT(*) as count FROM users",
             (),
-            fetch=True
+            fetch_one=True
         )
         stats['total_users'] = total_users['count'] if total_users else 0
         
@@ -444,7 +444,7 @@ async def get_global_statistics():
         total_money = await execute_query(
             "SELECT SUM(balance + bank_balance) as total FROM users",
             (),
-            fetch=True
+            fetch_one=True
         )
         stats['total_money'] = total_money['total'] if total_money and total_money['total'] else 0
         
@@ -452,7 +452,7 @@ async def get_global_statistics():
         total_transactions = await execute_query(
             "SELECT COUNT(*) as count FROM transactions",
             (),
-            fetch=True
+            fetch_one=True
         )
         stats['total_transactions'] = total_transactions['count'] if total_transactions else 0
         
@@ -460,7 +460,7 @@ async def get_global_statistics():
         total_properties = await execute_query(
             "SELECT COUNT(*) as count FROM properties",
             (),
-            fetch=True
+            fetch_one=True
         )
         stats['total_properties'] = total_properties['count'] if total_properties else 0
         
@@ -468,7 +468,7 @@ async def get_global_statistics():
         total_investments = await execute_query(
             "SELECT COUNT(*) as count FROM investments WHERE status = 'active'",
             (),
-            fetch=True
+            fetch_one=True
         )
         stats['total_investments'] = total_investments['count'] if total_investments else 0
         

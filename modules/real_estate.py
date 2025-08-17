@@ -206,7 +206,7 @@ async def sell_property(message: Message, property_id: int):
         property_data = await execute_query(
             "SELECT * FROM properties WHERE id = ? AND user_id = ?",
             (property_id, message.from_user.id),
-            fetch=True
+            fetch_one=True
         )
         
         if not property_data:
@@ -283,7 +283,7 @@ async def get_user_properties(user_id: int):
         properties = await execute_query(
             "SELECT * FROM properties WHERE user_id = ? ORDER BY purchased_at DESC",
             (user_id,),
-            fetch=True
+            fetch_one=True
         )
         return properties if properties else []
     except Exception as e:
