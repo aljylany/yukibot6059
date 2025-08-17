@@ -250,6 +250,10 @@ async def handle_general_message(message: Message, state: FSMContext):
         await castle.upgrade_castle_command(message)
     elif any(word in text for word in ['احصائيات القلعة', 'إحصائيات القلعة', 'احصائيات قلعة']):
         await castle.castle_stats_command(message)
+    elif text.startswith('هجوم '):
+        await castle.attack_castle_command(message)
+    elif any(word in text for word in ['سجل المعارك', 'معارك القلعة', 'سجل الحروب']):
+        await castle.castle_battles_log_command(message)
     elif any(word in text for word in ['ترتيب', 'متصدرين', 'رانكنغ']):
         from modules import ranking
         await ranking.show_leaderboard(message)

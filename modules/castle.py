@@ -110,15 +110,23 @@ async def get_user_castle(user_id: int):
         return None
 
 
+def generate_castle_id() -> str:
+    """توليد معرف فريد للقلعة"""
+    import random
+    import string
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+
 async def create_user_castle(user_id: int, castle_name: str) -> bool:
     """إنشاء قلعة جديدة للمستخدم"""
     try:
+        castle_id = generate_castle_id()
         await execute_query(
             """
-            INSERT INTO user_castles (user_id, name, level, created_at)
+            INSERT INTO user_castles (user_id, name, castle_id, created_at)
             VALUES (?, ?, ?, ?)
             """,
-            (user_id, castle_name, 1, datetime.now().isoformat())
+            (user_id, castle_name, castle_id, datetime.now().isoformat())
         )
         return True
     except Exception as e:
@@ -588,10 +596,16 @@ async def castle_stats_command(message: Message):
 🏰 **إحصائيات قلعة {castle['name']}**
 
 👑 **معلومات القلعة:**
+🆔 معرف القلعة: `{castle.get('castle_id', 'غير محدد')}`
 📊 مستوى اللاعب: {user_level}/{max_level}
 🏗️ مستوى القلعة: {castle['level']}/10
 🏛️ المرحلة الحالية: {current_stage['name']}
 📅 تاريخ الإنشاء: {castle['created_at'][:10]}
+
+⚔️ **سجل المعارك:**
+🏆 انتصارات: {castle.get('wins', 0)}
+💔 هزائم: {castle.get('losses', 0)}
+📊 إجمالي المعارك: {castle.get('total_battles', 0)}
 
 📊 **الموارد المتاحة:**
 💰 المال: {format_number(user['balance'])}$
@@ -644,15 +658,22 @@ async def handle_castle_name_input(message: Message, state: FSMContext):
         success = await create_user_castle(message.from_user.id, castle_name)
         if success:
             await update_user_balance(message.from_user.id, user['balance'] - castle_cost)
+            # الحصول على معرف القلعة الجديدة
+            new_castle = await get_user_castle(message.from_user.id)
+            castle_id = new_castle.get('castle_id', 'غير محدد') if new_castle else 'غير محدد'
+            
             await message.reply(
                 f"🎉 **تم إنشاء القلعة بنجاح!**\n\n"
                 f"🏰 اسم القلعة: **{castle_name}**\n"
+                f"🆔 معرف القلعة: `{castle_id}`\n"
                 f"💰 تم خصم: {format_number(castle_cost)}$\n"
                 f"👑 مستوى القلعة: 1/10\n\n"
                 f"💡 الآن يمكنك:\n"
                 f"• **بحث عن كنز** - للحصول على موارد\n"
                 f"• **طور القلعة** - لتطوير القلعة\n"
-                f"• **احصائيات القلعة** - لعرض التفاصيل"
+                f"• **احصائيات القلعة** - لعرض التفاصيل\n"
+                f"• **هجوم [معرف القلعة]** - لمهاجمة قلعة أخرى\n"
+                f"• **سجل المعارك** - لعرض تاريخ المعارك"
             )
             await state.clear()  # مسح الحالة بعد النجاح
         else:
@@ -662,3 +683,200 @@ async def handle_castle_name_input(message: Message, state: FSMContext):
     except Exception as e:
         logging.error(f"خطأ في معالجة اسم القلعة: {e}")
         await message.reply("❌ حدث خطأ في إنشاء القلعة")
+
+
+# ===== نظام الحروب والهجمات =====
+
+async def get_castle_by_id(castle_id: str):
+    """الحصول على قلعة بالمعرف"""
+    try:
+        return await execute_query(
+            "SELECT * FROM user_castles WHERE castle_id = ?",
+            (castle_id,),
+            fetch_one=True
+        )
+    except Exception as e:
+        logging.error(f"خطأ في البحث عن القلعة {castle_id}: {e}")
+        return None
+
+
+async def calculate_battle_power(castle_data: dict) -> int:
+    """حساب قوة القتال للقلعة"""
+    base_power = castle_data.get('attack_points', 50)
+    walls_bonus = castle_data.get('walls_level', 1) * 20
+    towers_bonus = castle_data.get('towers_level', 1) * 15
+    warriors_bonus = castle_data.get('warriors_count', 10) * 5
+    level_bonus = castle_data.get('level', 1) * 10
+    
+    return base_power + walls_bonus + towers_bonus + warriors_bonus + level_bonus
+
+
+async def calculate_defense_power(castle_data: dict) -> int:
+    """حساب قوة الدفاع للقلعة"""
+    base_defense = castle_data.get('defense_points', 100)
+    walls_bonus = castle_data.get('walls_level', 1) * 25
+    towers_bonus = castle_data.get('towers_level', 1) * 20
+    moats_bonus = castle_data.get('moats_level', 1) * 15
+    level_bonus = castle_data.get('level', 1) * 15
+    
+    return base_defense + walls_bonus + towers_bonus + moats_bonus + level_bonus
+
+
+async def attack_castle_command(message: Message):
+    """أمر مهاجمة قلعة"""
+    try:
+        # استخراج معرف القلعة المستهدفة
+        text_parts = message.text.split()
+        if len(text_parts) < 2:
+            await message.reply(
+                "❌ **استخدم الصيغة الصحيحة:**\n\n"
+                "📝 `هجوم [معرف القلعة]`\n"
+                "🔍 مثال: `هجوم ABC123DE`\n\n"
+                "💡 للحصول على معرف قلعتك اكتب: **احصائيات القلعة**"
+            )
+            return
+        
+        target_castle_id = text_parts[1].upper()
+        
+        # التحقق من وجود قلعة للمهاجم
+        attacker_castle = await get_user_castle(message.from_user.id)
+        if not attacker_castle:
+            await message.reply("❌ يجب أن تملك قلعة لتتمكن من الهجوم!")
+            return
+        
+        # التحقق من وجود القلعة المستهدفة
+        target_castle = await get_castle_by_id(target_castle_id)
+        if not target_castle:
+            await message.reply(f"❌ لم يتم العثور على قلعة بالمعرف: `{target_castle_id}`")
+            return
+        
+        # منع مهاجمة القلعة الخاصة
+        if target_castle['user_id'] == message.from_user.id:
+            await message.reply("❌ لا يمكنك مهاجمة قلعتك الخاصة!")
+            return
+        
+        # حساب قوة الطرفين
+        attacker_power = await calculate_battle_power(attacker_castle)
+        defender_power = await calculate_defense_power(target_castle)
+        
+        # محاكاة المعركة (مع عنصر العشوائية)
+        import random
+        attacker_final = attacker_power + random.randint(-20, 30)
+        defender_final = defender_power + random.randint(-15, 25)
+        
+        # تحديد النتيجة
+        attacker_wins = attacker_final > defender_final
+        
+        # حساب الذهب المسروق
+        gold_stolen = 0
+        if attacker_wins:
+            max_gold = target_castle.get('gold_storage', 0)
+            gold_stolen = min(max_gold * 0.3, attacker_final * 2)  # حد أقصى 30% من ذهب العدو
+        
+        # تحديث الإحصائيات
+        if attacker_wins:
+            await execute_query(
+                "UPDATE user_castles SET wins = wins + 1, total_battles = total_battles + 1, gold_storage = gold_storage + ? WHERE user_id = ?",
+                (gold_stolen, message.from_user.id)
+            )
+            await execute_query(
+                "UPDATE user_castles SET losses = losses + 1, total_battles = total_battles + 1, gold_storage = gold_storage - ? WHERE user_id = ?",
+                (gold_stolen, target_castle['user_id'])
+            )
+        else:
+            await execute_query(
+                "UPDATE user_castles SET losses = losses + 1, total_battles = total_battles + 1 WHERE user_id = ?",
+                (message.from_user.id,)
+            )
+            await execute_query(
+                "UPDATE user_castles SET wins = wins + 1, total_battles = total_battles + 1 WHERE user_id = ?",
+                (target_castle['user_id'],)
+            )
+        
+        # تسجيل المعركة
+        await execute_query(
+            """
+            INSERT INTO castle_battles (
+                attacker_castle_id, defender_castle_id, attacker_user_id, defender_user_id,
+                attacker_power, defender_power, winner, gold_stolen, battle_log, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                attacker_castle['castle_id'], target_castle_id, message.from_user.id, target_castle['user_id'],
+                attacker_final, defender_final, 'attacker' if attacker_wins else 'defender',
+                gold_stolen, f"المهاجم: {attacker_final} vs المدافع: {defender_final}",
+                datetime.now().isoformat()
+            )
+        )
+        
+        # عرض نتيجة المعركة
+        result_icon = "🎉" if attacker_wins else "💔"
+        result_text = "**انتصار!**" if attacker_wins else "**هزيمة!**"
+        
+        battle_report = f"""
+{result_icon} **تقرير المعركة** {result_icon}
+
+⚔️ **النتيجة:** {result_text}
+
+🏰 **قلعتك:** {attacker_castle['name']}
+🎯 **القلعة المستهدفة:** {target_castle['name']}
+
+📊 **قوة القتال:**
+   • قوتك: {attacker_final}
+   • قوة العدو: {defender_final}
+
+💰 **الغنائم:** {format_number(gold_stolen)} ذهب
+
+📈 **إحصائيات محدثة:**
+   • الانتصارات: {attacker_castle.get('wins', 0) + (1 if attacker_wins else 0)}
+   • الهزائم: {attacker_castle.get('losses', 0) + (0 if attacker_wins else 1)}
+        """
+        
+        await message.reply(battle_report)
+        
+    except Exception as e:
+        logging.error(f"خطأ في هجوم القلعة: {e}")
+        await message.reply("❌ حدث خطأ أثناء الهجوم")
+
+
+async def castle_battles_log_command(message: Message):
+    """عرض سجل معارك القلعة"""
+    try:
+        castle = await get_user_castle(message.from_user.id)
+        if not castle:
+            await message.reply("❌ لا تملك قلعة!")
+            return
+        
+        # الحصول على آخر 10 معارك
+        battles = await execute_query(
+            """
+            SELECT * FROM castle_battles 
+            WHERE attacker_user_id = ? OR defender_user_id = ?
+            ORDER BY created_at DESC LIMIT 10
+            """,
+            (message.from_user.id, message.from_user.id),
+            fetch_all=True
+        )
+        
+        if not battles:
+            await message.reply("📜 لا توجد معارك في سجلك!")
+            return
+        
+        battles_text = "⚔️ **سجل المعارك** ⚔️\n\n"
+        
+        for battle in battles:
+            is_attacker = battle['attacker_user_id'] == message.from_user.id
+            role = "مهاجم" if is_attacker else "مدافع"
+            won = (battle['winner'] == 'attacker' and is_attacker) or (battle['winner'] == 'defender' and not is_attacker)
+            result = "🏆 انتصار" if won else "💔 هزيمة"
+            
+            battles_text += f"• {role} - {result}\n"
+            battles_text += f"  💰 ذهب: {format_number(battle['gold_stolen'])}\n"
+            battles_text += f"  📅 {battle['created_at'][:10]}\n\n"
+        
+        await message.reply(battles_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض سجل المعارك: {e}")
+        await message.reply("❌ حدث خطأ في عرض سجل المعارك")

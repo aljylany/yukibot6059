@@ -119,16 +119,24 @@ async def init_database():
                 )
             ''')
             
-            # إنشاء جدول القلاع المحدث
+            # إنشاء جدول القلاع المحدث مع نظام الحروب
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS user_castles (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER,
                     name TEXT,
+                    castle_id TEXT UNIQUE,
                     level INTEGER DEFAULT 1,
                     defense_points INTEGER DEFAULT 100,
                     attack_points INTEGER DEFAULT 50,
                     gold_storage REAL DEFAULT 0,
+                    walls_level INTEGER DEFAULT 1,
+                    towers_level INTEGER DEFAULT 1,
+                    moats_level INTEGER DEFAULT 1,
+                    warriors_count INTEGER DEFAULT 10,
+                    wins INTEGER DEFAULT 0,
+                    losses INTEGER DEFAULT 0,
+                    total_battles INTEGER DEFAULT 0,
                     last_treasure_hunt TIMESTAMP,
                     treasure_hunt_stats TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -136,11 +144,50 @@ async def init_database():
                 )
             ''')
             
-            # إضافة عمود الاسم إذا لم يكن موجوداً
-            try:
-                await db.execute("ALTER TABLE user_castles ADD COLUMN name TEXT")
-            except Exception:
-                pass  # العمود موجود بالفعل
+            # إنشاء جدول معارك القلاع
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS castle_battles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    attacker_castle_id TEXT,
+                    defender_castle_id TEXT,
+                    attacker_user_id INTEGER,
+                    defender_user_id INTEGER,
+                    battle_type TEXT DEFAULT 'raid',
+                    attacker_power INTEGER,
+                    defender_power INTEGER,
+                    winner TEXT,
+                    gold_stolen REAL DEFAULT 0,
+                    battle_log TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (attacker_user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (defender_user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
+            # إضافة الأعمدة المفقودة إذا لم تكن موجودة
+            columns_to_add = [
+                "name TEXT",
+                "level INTEGER DEFAULT 1",
+                "defense_points INTEGER DEFAULT 100",
+                "attack_points INTEGER DEFAULT 50",
+                "gold_storage REAL DEFAULT 0",
+                "last_treasure_hunt TIMESTAMP",
+                "treasure_hunt_stats TEXT",
+                "castle_id TEXT UNIQUE",
+                "walls_level INTEGER DEFAULT 1",
+                "towers_level INTEGER DEFAULT 1",
+                "moats_level INTEGER DEFAULT 1",
+                "warriors_count INTEGER DEFAULT 10",
+                "wins INTEGER DEFAULT 0",
+                "losses INTEGER DEFAULT 0",
+                "total_battles INTEGER DEFAULT 0"
+            ]
+            
+            for column in columns_to_add:
+                try:
+                    await db.execute(f"ALTER TABLE user_castles ADD COLUMN {column}")
+                except Exception:
+                    pass  # العمود موجود بالفعل
             
             # إنشاء جدول موارد المستخدمين
             await db.execute('''
