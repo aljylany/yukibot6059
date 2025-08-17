@@ -742,6 +742,26 @@ async def handle_general_message(message: Message, state: FSMContext):
         question = text.replace('مايكي السحري', '').strip()
         await fun_commands.magic_yuki(message, question)
     
+    # === أوامر معلومات المستخدم ===
+    elif text == 'رتبتي':
+        from modules import user_info
+        await user_info.show_my_rank(message)
+    elif text == 'رتبته' and message.reply_to_message:
+        from modules import user_info
+        await user_info.show_user_rank(message)
+    elif text == 'فلوسي':
+        from modules import user_info
+        await user_info.show_my_balance(message)
+    elif text == 'فلوسه' and message.reply_to_message:
+        from modules import user_info
+        await user_info.show_user_balance(message)
+    elif text == 'مستواي':
+        from modules import user_info
+        await user_info.show_my_level(message)
+    elif text == 'مستواه' and message.reply_to_message:
+        from modules import user_info
+        await user_info.show_user_level(message)
+    
     # === أوامر خدمية ===
     elif text == 'من ضافني':
         await utility_commands.who_added_me(message)
