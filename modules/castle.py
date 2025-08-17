@@ -647,7 +647,8 @@ async def upgrade_castle_command(message: Message):
         
         # تنفيذ التطوير
         await upgrade_castle_level(message.from_user.id, next_level)
-        await update_user_balance(message.from_user.id, user_money - required_cost)
+        new_balance = user_money - required_cost
+        await update_user_balance(message.from_user.id, new_balance)
         await subtract_resources_from_user(message.from_user.id, {
             'gold': required_gold,
             'stones': required_stones,
@@ -764,7 +765,8 @@ async def handle_castle_name_input(message: Message, state: FSMContext):
         # إنشاء القلعة
         success = await create_user_castle(message.from_user.id, castle_name)
         if success:
-            await update_user_balance(message.from_user.id, user['balance'] - castle_cost)
+            new_balance = user['balance'] - castle_cost
+            await update_user_balance(message.from_user.id, new_balance)
             # الحصول على معرف القلعة الجديدة
             new_castle = await get_user_castle(message.from_user.id)
             castle_id = new_castle.get('castle_id', 'غير محدد') if new_castle else 'غير محدد'
@@ -1145,7 +1147,8 @@ async def purchase_item_command(message: Message):
             return
         
         # تنفيذ الشراء
-        await update_user_balance(message.from_user.id, -total_cost)
+        new_balance = user['balance'] - total_cost
+        await update_user_balance(message.from_user.id, new_balance)
         await add_resource_to_user(message.from_user.id, item_key, quantity)
         
         # تسجيل المعاملة

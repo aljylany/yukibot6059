@@ -30,6 +30,7 @@ Bot Configuration:
 - Enhanced treasure hunt system with multi-resource discovery: single (45%), double (25%), triple (15%), quadruple (8%), nothing (7%)
 - Fixed castle resource purchase commands: added support for "حجار" alternative to "حجارة" spelling
 - Added missing properties database table to fix real estate module database errors
+- Fixed critical balance bug in castle module causing negative balances (update_user_balance function misuse)
 
 # System Architecture
 
