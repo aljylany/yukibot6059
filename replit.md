@@ -154,3 +154,35 @@ Bot Configuration:
   - Fixed parameter order for `add_transaction()` function to match current database schema
 - **Banking System**: 4 different banks with unique benefits, bonuses (1500-2500$), daily salaries, and interest rates
 - **Master Privileges**: Ultimate financial control with ability to gift money to any registered user
+
+## August 17, 2025 - Update 5: Enhanced Castle System with Shop & Player Profile
+- **Fixed Castle System**: Completely overhauled castle module to fix database access issues and improve functionality
+- **Castle Shop System**: Added comprehensive marketplace for purchasing castle resources with different currencies
+- **Player Profile System**: Added detailed account view showing complete player statistics and achievements
+- **Enhanced Castle Features**:
+  - **Shop Items**: Gold (100$/unit), Stones (50$/unit), Workers (200$/unit), Money Upgrade (10 gold/unit)
+  - **Smart Pricing**: Different items use different currencies (money vs gold)
+  - **Purchase Limits**: Maximum purchase quantities to prevent abuse
+  - **Upgrade Requirements**: Balanced castle upgrade costs (1 gold + 5 stones + 6 workers per level)
+- **New Commands Added**:
+  - "متجر القلعة" - Show castle marketplace
+  - "شراء [item] [quantity]" - Purchase resources (e.g., "شراء ذهب 10")
+  - "حذف قلعتي" - Delete castle with confirmation
+  - "تأكيد حذف القلعة" - Confirm castle deletion
+  - "حسابي" / "معلوماتي" - Show complete player profile
+- **Player Profile Features**:
+  - Complete financial overview (balance, bank, earnings, spending)
+  - Castle information and battle statistics
+  - Activity statistics (transactions, activities, registration date)
+  - Achievement system with unlock conditions
+  - Security level and theft statistics
+  - Total account value calculation
+- **Technical Implementation**:
+  - **Fixed Database Issues**: Resolved all dictionary access problems in castle operations
+  - **Resource Management**: Improved resource tracking and validation
+  - **Error Handling**: Enhanced error messages and validation
+  - **Command Integration**: Added all new commands to `handlers/messages.py`
+  - **Shop Validation**: Purchase limits, currency validation, insufficient funds handling
+  - **Profile Analytics**: Comprehensive user data aggregation and display
+- **Castle Upgrade System**: Rebalanced requirements to use shop-purchased resources effectively
+- **Enhanced User Experience**: Clear error messages, purchase confirmations, and detailed information displays

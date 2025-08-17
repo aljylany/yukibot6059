@@ -249,7 +249,17 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif any(word in text for word in ['طور القلعة', 'تطوير القلعة', 'ترقية القلعة']):
         await castle.upgrade_castle_command(message)
     elif any(word in text for word in ['احصائيات القلعة', 'إحصائيات القلعة', 'احصائيات قلعة']):
-        await castle.castle_stats_command(message)
+        await castle.show_castle_stats(message)
+    elif any(phrase in text for phrase in ['متجر القلعة', 'متجر قلعة', 'شراء موارد']):
+        await castle.show_castle_shop(message)
+    elif text.startswith('شراء '):
+        await castle.purchase_item_command(message)
+    elif any(phrase in text for phrase in ['حذف قلعتي', 'حذف القلعة', 'احذف قلعتي']):
+        await castle.delete_castle_command(message)
+    elif text == 'تأكيد حذف القلعة':
+        await castle.confirm_delete_castle_command(message)
+    elif any(phrase in text for phrase in ['حسابي', 'حساب اللاعب', 'معلوماتي', 'تفاصيلي']):
+        await castle.show_player_profile(message)
     elif text.startswith('هجوم '):
         await castle.attack_castle_command(message)
     elif any(word in text for word in ['سجل المعارك', 'معارك القلعة', 'سجل الحروب']):
