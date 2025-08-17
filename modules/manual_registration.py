@@ -111,12 +111,12 @@ async def create_user_with_bank(user_id: int, username: str, first_name: str, ba
                 """
                 INSERT INTO users (
                     user_id, username, first_name, balance, bank_balance, 
-                    bank_name, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    bank_name, bank_type, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     user_id, username, first_name, 
-                    bank_info['initial_bonus'], 0, bank_info['name'],
+                    bank_info['initial_bonus'], 0, bank_info['name'], bank_key,
                     datetime.now().isoformat(), datetime.now().isoformat()
                 )
             )
