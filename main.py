@@ -71,6 +71,10 @@ async def main():
     from config.hierarchy import load_ranks_from_database
     await load_ranks_from_database()
     
+    # تحميل الأوامر المخصصة
+    from modules.custom_commands import load_custom_commands
+    await load_custom_commands()
+    
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)
     

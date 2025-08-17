@@ -1,6 +1,6 @@
 # Overview
 
-This project is an economic simulation game implemented as a Telegram bot using `aiogram`, designed specifically for the Arabic-speaking community. It offers a comprehensive virtual economy where users can engage in banking, real estate, stock trading, farming, and player-vs-player theft. The bot aims to provide an immersive gaming experience within Telegram groups, fostering a dynamic in-game economy. The architecture is modular for scalability and maintainability, with data persistence managed by SQLite. The overarching ambition is to create a captivating virtual world supporting a large Arabic-speaking user base.
+This project is an advanced Arabic-language Telegram economic simulation bot named "يوكي" (Yuki) with enhanced interactive features. The bot includes a comprehensive virtual economy with banking, real estate, stock trading, farming, and player-vs-player systems. Recent enhancements focus on bot personality protection, custom command systems for authorized users, music search functionality across multiple platforms, and automated responses to specific triggers. The architecture remains modular with new security and entertainment systems integrated.
 
 # User Preferences
 
@@ -71,6 +71,11 @@ Bot Configuration:
 - **Analytics Dashboard**: Provides administrators with real-time insights into group performance, financial data, user activity, and moderation metrics through text-based visual analytics and a health score system.
 - **Special Response System**: Personalized greeting system for specific users and a comprehensive response system for all users, with automatic keyword detection and smart response selection.
 - **Master Commands**: Ultimate control commands for Masters, including bot restart, shutdown, self-destruct, and financial control (adding money to any user).
+- **Bot Protection System**: Anti-insult mechanism that responds mockingly to attempts to insult or demean the bot, protecting Yuki's personality and dignity.
+- **Custom Commands System**: Authorized admins and moderators can create custom bot commands with keywords and responses using "اضافة امر" command.
+- **Music Search Feature**: Users can search for and play songs from YouTube, Instagram, and TikTok through the bot with commands like "ابحث عن اغنية".
+- **Special Trigger Responses**: Automated responses to specific phrases like "جاب العيد" which triggers a special YouTube music link.
+- **Anti-Zarf Protection**: Special protection against "زرف"/"سرف" commands targeted at the bot itself with humorous responses.
 
 # External Dependencies
 
@@ -81,3 +86,23 @@ Bot Configuration:
 - **Python logging**: Utilized for error tracking, debugging, and operational monitoring.
 - **asyncio**: Python's built-in library for writing concurrent code, essential for the bot's asynchronous operations.
 - **External APIs (Configured but Optional)**: Architecture supports integration with external services like Stock APIs, Payment Providers, and Crypto APIs.
+
+# Recent Changes (2025-08-17)
+
+## New Features Implemented:
+- ✅ **Bot Insult Protection System**: Yuki now responds with sarcastic and defensive messages when users attempt to insult or demean the bot
+- ✅ **Custom Commands System**: Authorized users (moderators+) can add custom commands with "اضافة امر [keyword] [response]" format
+- ✅ **Music Search Integration**: Users can search for music across YouTube, SoundCloud, and Spotify platforms with commands like "ابحث عن اغنية [song name]"
+- ✅ **"جاب العيد" Special Response**: Automatically responds with a specific YouTube music link when this phrase is mentioned
+- ✅ **Anti-Zarf Protection**: Bot refuses to be "zarfed" and responds humorously when targeted with زرف/سرف commands
+- ✅ **Enhanced Database Schema**: Updated custom_commands table with proper keyword/responses columns
+- ✅ **State Management**: Integrated CustomCommandsStates for multi-step command creation
+- ✅ **Permission-Based Access**: Custom command creation restricted to moderators and above
+- ✅ **Database Integration**: All new features fully integrated with SQLite database and async operations
+
+## Technical Updates:
+- Added new modules: `custom_commands.py`, `music_search.py`, `message_handlers.py`
+- Enhanced `special_responses.py` with comprehensive bot protection responses  
+- Updated database schema for custom commands support
+- Integrated new features into main message handling pipeline
+- Added proper error handling and logging for all new features

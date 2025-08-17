@@ -229,3 +229,9 @@ class AnalyticsStates(StatesGroup):
     waiting_analytics_period = State()
     waiting_metric_selection = State()
     waiting_chart_type = State()
+
+
+class CustomCommandsStates(StatesGroup):
+    """حالات الأوامر المخصصة"""
+    waiting_keyword = State()
+    waiting_response = State()

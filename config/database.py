@@ -438,10 +438,11 @@ async def init_database():
                 CREATE TABLE IF NOT EXISTS custom_commands (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     chat_id INTEGER NOT NULL,
-                    old_command TEXT NOT NULL,
-                    new_command TEXT NOT NULL,
+                    keyword TEXT NOT NULL,
+                    responses TEXT NOT NULL,
                     created_by INTEGER NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(chat_id, keyword)
                 )
             ''')
             

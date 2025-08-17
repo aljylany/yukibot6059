@@ -12,6 +12,15 @@ from database.operations import get_or_create_user, update_user_activity, get_us
 from modules import banks, real_estate, theft, stocks, investment, administration, farm, castle
 from modules import admin_management, group_settings, entertainment, clear_commands, fun_commands, utility_commands
 from modules.special_responses import get_special_response
+from modules.custom_commands import handle_add_command, handle_delete_command, handle_list_commands, handle_custom_commands_message, handle_custom_commands_states, load_custom_commands
+from modules.music_search import handle_eid_music_trigger, handle_music_search, handle_add_music_command
+from modules.message_handlers import (
+    handle_banks_message, handle_property_message, handle_theft_message,
+    handle_stocks_message, handle_investment_message, handle_farm_message,
+    handle_castle_message, handle_admin_message, handle_admin_command,
+    handle_clear_command, handle_lock_command, handle_unlock_command,
+    handle_toggle_command
+)
 from modules.special_admin import handle_special_admin_commands
 from modules.response_tester import handle_response_tester_commands
 from modules.master_commands import handle_master_commands
@@ -100,6 +109,8 @@ async def handle_text_messages(message: Message, state: FSMContext):
             await handle_castle_message(message, state, current_state)
         elif current_state.startswith("Admin"):
             await handle_admin_message(message, state, current_state)
+        elif current_state.startswith("CustomCommands"):
+            await handle_custom_commands_states(message, state, current_state)
         else:
             await handle_general_message(message, state)
             
@@ -516,6 +527,33 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await handle_master_commands(message):
         return
     
+    # فحص موسيقى العيد
+    if await handle_eid_music_trigger(message):
+        return
+    
+    # فحص البحث عن الموسيقى
+    if await handle_music_search(message):
+        return
+    
+    # فحص إضافة موسيقى (للمديرين)
+    if await handle_add_music_command(message):
+        return
+    
+    # فحص الأوامر المخصصة قبل الردود الخاصة
+    if await handle_custom_commands_message(message):
+        return
+    
+    # فحص أوامر إدارة الأوامر المخصصة
+    if await handle_add_command(message, state):
+        return
+    
+    if await handle_delete_command(message):
+        return
+        
+    if message.text and (message.text.strip() == 'الأوامر المخصصة' or message.text.strip() == 'الاوامر المخصصة'):
+        await handle_list_commands(message)
+        return
+    
     # فحص الردود (خاصة أو عامة) بعد الأوامر المهمة
     if message.from_user:
         response = get_special_response(message.from_user.id, text)
@@ -554,8 +592,23 @@ async def handle_general_message(message: Message, state: FSMContext):
         await banks.collect_daily_salary(message)
     elif text.startswith('تحويل') and message.reply_to_message:
         await handle_transfer_command(message)
-    elif (text in ['سرقة', 'سرف', 'زرف'] or text.startswith('سرقة') or text.startswith('سرف')) and message.reply_to_message:
+    elif (text in ['سرقة'] or text.startswith('سرقة')) and message.reply_to_message:
         await handle_theft_command(message)
+    elif (text in ['سرف', 'زرف'] or text.startswith('سرف') or text.startswith('زرف')) and message.reply_to_message:
+        # فحص إذا كان الرد على البوت نفسه
+        if message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
+            sarcastic_responses = [
+                "😂 تحاول تزرفني؟ أنا يوكي الذكي لا أُزرف!",
+                "🙄 زرف؟ أنا بوت محترم، جرب مع إنسان!",
+                "😏 أظن أنك تخلط الأوراق، البوتات لا تُزرف!",
+                "🤭 ههههه محاولة لطيفة، لكني يوكي المقاوم للزرف!",
+                "😎 زرف البوت؟ هذه فكرة مضحكة جداً!",
+                "🎭 تمثيلية حلوة، لكن أنا لست قابلاً للزرف!",
+                "⚡ أنا يوكي، البوت الوحيد المضاد للزرف!"
+            ]
+            await message.reply(random.choice(sarcastic_responses))
+        else:
+            await handle_theft_command(message)
     elif any(word in words for word in ['رصيد', 'فلوس', 'مال']):
         await banks.show_balance(message)
     elif text.startswith('ايداع') and len(words) > 1:
