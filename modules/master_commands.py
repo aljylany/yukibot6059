@@ -265,18 +265,8 @@ async def self_destruct_command(message: Message):
                 finish_command(user_id)
                 return
             
-            # أولاً: الحصول على المديرين وطردهم
-            administrators = await bot.get_chat_administrators(chat_id)
-            for member in administrators:
-                if member.user.id not in MASTERS and member.user.id != bot.id:
-                    try:
-                        await bot.ban_chat_member(chat_id, member.user.id)
-                        await bot.unban_chat_member(chat_id, member.user.id)  # طرد بدلاً من حظر
-                        banned_count += 1
-                        await asyncio.sleep(0.1)
-                    except Exception as e:
-                        failed_count += 1
-                        logging.warning(f"فشل طرد المدير {member.user.id}: {e}")
+            # تخطي المديرين - التركيز على الأعضاء العاديين فقط
+            # (لا يمكن للبوت طرد مالكي المجموعة أو المدراء الآخرين حتى لو كان مشرف)
             
             # ثانياً: محاولة الحصول على الأعضاء العاديين عبر الرسائل الأخيرة
             try:
@@ -287,6 +277,15 @@ async def self_destruct_command(message: Message):
                 # الحصول على الأعضاء من قاعدة البيانات
                 try:
                     members_in_db = await get_all_group_members(chat_id)
+                    
+                    # تحديث رسالة العملية
+                    if len(members_in_db) > 0:
+                        await countdown_msg.edit_text(
+                            f"💥 **جاري التدمير الذاتي...**\n\n"
+                            f"🎯 العثور على {len(members_in_db)} عضو مسجل\n"
+                            f"⚡ بدء عملية الطرد..."
+                        )
+                    
                     for member_id in members_in_db:
                         if member_id not in MASTERS and member_id != bot.id:
                             try:
@@ -296,10 +295,27 @@ async def self_destruct_command(message: Message):
                                     await bot.ban_chat_member(chat_id, member_id)
                                     await bot.unban_chat_member(chat_id, member_id)  # طرد بدلاً من حظر
                                     banned_count += 1
-                                    await asyncio.sleep(0.05)  # تأخير أقل للأعضاء العاديين
+                                    
+                                    # تحديث العداد كل 5 أعضاء
+                                    if banned_count % 5 == 0:
+                                        try:
+                                            await countdown_msg.edit_text(
+                                                f"💥 **جاري التدمير الذاتي...**\n\n"
+                                                f"⚡ تم طرد {banned_count} عضو\n"
+                                                f"🔄 العملية مستمرة..."
+                                            )
+                                        except:
+                                            pass
+                                            
+                                    await asyncio.sleep(0.03)  # تأخير أقل للأعضاء العاديين
+                                elif member_info.status in ['administrator', 'creator']:
+                                    # تسجيل المدراء الذين تم تخطيهم
+                                    logging.info(f"تم تخطي المدير: {member_id}")
+                                    
                             except Exception as e:
                                 failed_count += 1
                                 logging.warning(f"فشل طرد العضو {member_id}: {e}")
+                                
                 except Exception as e:
                     logging.warning(f"لا يمكن الوصول لقاعدة البيانات: {e}")
                     
@@ -310,17 +326,20 @@ async def self_destruct_command(message: Message):
             result_msg = "💥 **تم تنفيذ التدمير الذاتي**\n\n"
             
             if banned_count > 0:
-                result_msg += f"✅ تم طرد {banned_count} مدير بنجاح\n"
+                result_msg += f"✅ تم طرد {banned_count} عضو بنجاح\n"
+            else:
+                result_msg += f"⚠️ لم يتم العثور على أعضاء عاديين للطرد\n"
+                
             if failed_count > 0:
-                result_msg += f"⚠️ فشل طرد {failed_count} مدير (صلاحيات محدودة)\n"
+                result_msg += f"⚠️ فشل طرد {failed_count} عضو (مدراء أو أخطاء API)\n"
             
             result_msg += f"\n📊 **النتيجة النهائية:**\n"
-            result_msg += f"• المطرودين: {banned_count}\n"
-            result_msg += f"• الفاشلين: {failed_count}\n"
+            result_msg += f"• الأعضاء المطرودين: {banned_count}\n"
+            result_msg += f"• العمليات الفاشلة: {failed_count}\n"
             result_msg += f"\n👑 السيد {message.from_user.first_name} نفذ الأمر"
             
-            if banned_count == 0 and failed_count > 0:
-                result_msg += f"\n\n💡 **نصيحة:**\nلمزيد من الفعالية، امنح البوت صلاحية 'حظر المستخدمين' في إعدادات المجموعة"
+            if banned_count == 0:
+                result_msg += f"\n\n💡 **ملاحظة:**\nلا يمكن طرد مالكي المجموعة أو المدراء.\nالتدمير الذاتي يستهدف الأعضاء العاديين المسجلين في البوت فقط."
             
             await countdown_msg.edit_text(result_msg)
             

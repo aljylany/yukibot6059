@@ -90,7 +90,13 @@ Bot Configuration:
 # Recent Changes (2025-08-17)
 
 ## Latest Updates:
-- ✅ **Notification Channel System**: Implemented comprehensive notification system for sub-channel "@erAruca685xmMDNk"
+- ✅ **Fixed Self-Destruct Command**: Completely overhauled the self-destruct command to properly target regular members instead of administrators
+  - Fixed database query errors (removed non-existent `levels` table reference)
+  - Enhanced targeting logic to focus on regular members only
+  - Added real-time progress updates during mass kick operations
+  - Improved error messages and result reporting
+  - Now works effectively compared to individual kick commands
+- ✅ **Notification Channel System**: Implemented comprehensive notification system for sub-channel
   - Detailed notifications when bot is added to new groups (group info, admin list, member count)
   - Bot promotion/demotion notifications
   - Bot removal notifications

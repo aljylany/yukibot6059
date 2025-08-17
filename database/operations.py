@@ -225,15 +225,10 @@ async def get_all_group_members(group_id: int) -> list:
             cursor = await db.execute(
                 """
                 SELECT DISTINCT user_id FROM users 
-                WHERE user_id IN (
-                    SELECT DISTINCT user_id FROM users WHERE user_id IS NOT NULL
-                    UNION
-                    SELECT DISTINCT user_id FROM bank_accounts WHERE user_id IS NOT NULL
-                    UNION 
-                    SELECT DISTINCT user_id FROM levels WHERE user_id IS NOT NULL
-                )
+                WHERE user_id IS NOT NULL
+                AND user_id NOT IN (SELECT user_id FROM users WHERE is_banned = 1)
                 ORDER BY updated_at DESC
-                LIMIT 1000
+                LIMIT 500
                 """,
             )
             results = await cursor.fetchall()
