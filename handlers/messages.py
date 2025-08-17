@@ -219,6 +219,118 @@ async def handle_transfer_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء التحويل، حاول مرة أخرى")
 
 
+async def handle_deposit_with_amount(message: Message, amount_text: str):
+    """معالجة أمر الإيداع مع المبلغ مباشرة"""
+    try:
+        from database.operations import get_user, update_user_balance, update_user_bank_balance, add_transaction
+        from utils.helpers import format_number, is_valid_amount
+        
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        # تحديد المبلغ
+        if amount_text.lower() in ['الكل', 'كل', 'all']:
+            amount = user['balance']
+        else:
+            if not is_valid_amount(amount_text):
+                await message.reply("❌ مبلغ غير صحيح. يرجى إدخال رقم صحيح أو 'الكل'")
+                return
+            amount = int(amount_text)
+        
+        # التحقق من صحة المبلغ
+        if amount <= 0:
+            await message.reply("❌ المبلغ يجب أن يكون أكبر من صفر")
+            return
+        
+        if amount > user['balance']:
+            await message.reply(f"❌ ليس لديك رصيد كافٍ!\n💰 رصيدك الحالي: {format_number(user['balance'])}$")
+            return
+        
+        # تنفيذ الإيداع
+        new_cash_balance = user['balance'] - amount
+        new_bank_balance = user['bank_balance'] + amount
+        
+        await update_user_balance(message.from_user.id, new_cash_balance)
+        await update_user_bank_balance(message.from_user.id, new_bank_balance)
+        
+        # إضافة معاملة
+        await add_transaction(
+            message.from_user.id,
+            "إيداع في البنك",
+            amount,
+            "bank_deposit"
+        )
+        
+        await message.reply(
+            f"✅ **تم الإيداع بنجاح!**\n\n"
+            f"💵 المبلغ المودع: {format_number(amount)}$\n"
+            f"💰 رصيدك النقدي: {format_number(new_cash_balance)}$\n"
+            f"🏦 رصيد البنك: {format_number(new_bank_balance)}$"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في الإيداع المباشر: {e}")
+        await message.reply("❌ حدث خطأ في عملية الإيداع")
+
+
+async def handle_withdraw_with_amount(message: Message, amount_text: str):
+    """معالجة أمر السحب مع المبلغ مباشرة"""
+    try:
+        from database.operations import get_user, update_user_balance, update_user_bank_balance, add_transaction
+        from utils.helpers import format_number, is_valid_amount
+        
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        # تحديد المبلغ
+        if amount_text.lower() in ['الكل', 'كل', 'all']:
+            amount = user['bank_balance']
+        else:
+            if not is_valid_amount(amount_text):
+                await message.reply("❌ مبلغ غير صحيح. يرجى إدخال رقم صحيح أو 'الكل'")
+                return
+            amount = int(amount_text)
+        
+        # التحقق من صحة المبلغ
+        if amount <= 0:
+            await message.reply("❌ المبلغ يجب أن يكون أكبر من صفر")
+            return
+        
+        if amount > user['bank_balance']:
+            await message.reply(f"❌ ليس لديك رصيد كافٍ في البنك!\n🏦 رصيد البنك: {format_number(user['bank_balance'])}$")
+            return
+        
+        # تنفيذ السحب
+        new_cash_balance = user['balance'] + amount
+        new_bank_balance = user['bank_balance'] - amount
+        
+        await update_user_balance(message.from_user.id, new_cash_balance)
+        await update_user_bank_balance(message.from_user.id, new_bank_balance)
+        
+        # إضافة معاملة
+        await add_transaction(
+            message.from_user.id,
+            "سحب من البنك",
+            amount,
+            "bank_withdraw"
+        )
+        
+        await message.reply(
+            f"✅ **تم السحب بنجاح!**\n\n"
+            f"💵 المبلغ المسحوب: {format_number(amount)}$\n"
+            f"💰 رصيدك النقدي: {format_number(new_cash_balance)}$\n"
+            f"🏦 رصيد البنك: {format_number(new_bank_balance)}$"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في السحب المباشر: {e}")
+        await message.reply("❌ حدث خطأ في عملية السحب")
+
+
 async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
@@ -272,6 +384,12 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_transfer_command(message)
     elif any(word in words for word in ['رصيد', 'فلوس', 'مال']):
         await banks.show_balance(message)
+    elif text.startswith('ايداع') and len(words) > 1:
+        # معالجة أمر الإيداع مع المبلغ مثل "ايداع 100"
+        await handle_deposit_with_amount(message, words[1])
+    elif text.startswith('سحب') and len(words) > 1:
+        # معالجة أمر السحب مع المبلغ مثل "سحب 100"
+        await handle_withdraw_with_amount(message, words[1])
     elif any(word in words for word in ['بنك', 'ايداع', 'سحب']):
         await banks.show_bank_menu(message)
     elif any(word in words for word in ['عقار', 'بيت']) and not any(castle_word in words for castle_word in ['قلعة', 'موارد']):
