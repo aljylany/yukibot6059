@@ -331,7 +331,7 @@ async def process_deposit_amount(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             await state.clear()
             return
         
@@ -396,7 +396,7 @@ async def start_withdraw(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         if user['bank_balance'] <= 0:
@@ -422,7 +422,7 @@ async def process_withdraw_amount(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             await state.clear()
             return
         
@@ -550,7 +550,7 @@ async def process_transfer_amount(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             await state.clear()
             return
         
@@ -635,7 +635,7 @@ async def show_bank_balance(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         await message.reply(

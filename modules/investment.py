@@ -63,7 +63,7 @@ async def show_investment_menu(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         # الحصول على استثمارات المستخدم
@@ -106,7 +106,7 @@ async def show_investment_options(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         keyboard_buttons = []
@@ -148,7 +148,7 @@ async def start_investment_process(message: Message, investment_type: str, state
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         if investment_type not in INVESTMENT_TYPES:
@@ -195,7 +195,7 @@ async def process_investment_amount(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             await state.clear()
             return
         
@@ -362,7 +362,7 @@ async def withdraw_investment(message: Message, investment_id: int):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         # الحصول على بيانات الاستثمار

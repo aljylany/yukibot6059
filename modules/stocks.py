@@ -32,7 +32,7 @@ async def show_stocks_menu(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         # الحصول على محفظة المستخدم
@@ -75,7 +75,7 @@ async def show_buy_stocks(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         current_prices = await get_current_stock_prices()
@@ -174,7 +174,7 @@ async def start_buy_process(message: Message, symbol: str, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         if symbol not in GAME_STOCKS:
@@ -256,7 +256,7 @@ async def process_buy_quantity(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             await state.clear()
             return
         
@@ -332,7 +332,7 @@ async def process_sell_quantity(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             await state.clear()
             return
         

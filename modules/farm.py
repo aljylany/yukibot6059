@@ -76,7 +76,7 @@ async def show_farm_menu(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         # الحصول على محاصيل المستخدم
@@ -133,7 +133,7 @@ async def show_planting_options(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         keyboard_buttons = []
@@ -179,7 +179,7 @@ async def start_planting_process(message: Message, crop_type: str, state: FSMCon
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         if crop_type not in CROP_TYPES:
@@ -230,7 +230,7 @@ async def process_crop_quantity(message: Message, state: FSMContext):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             await state.clear()
             return
         
@@ -321,7 +321,7 @@ async def harvest_crops(message: Message):
     try:
         user = await get_user(message.from_user.id)
         if not user:
-            await message.reply("❌ يرجى التسجيل أولاً باستخدام /start")
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         # الحصول على المحاصيل الجاهزة للحصاد
