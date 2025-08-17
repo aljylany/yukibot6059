@@ -15,7 +15,7 @@ class AdminLevel(Enum):
     MASTER = 3          # السيد - صلاحيات مطلقة
 
 # الأسياد - صلاحيات مطلقة في جميع المجموعات
-MASTERS = [6524680126, 8278493069]
+MASTERS = [6524680126, 8278493060]
 
 # مالكي المجموعات (يتم إدارتهم ديناميكياً)
 GROUP_OWNERS: Dict[int, List[int]] = {}  # {group_id: [owner_ids]}
