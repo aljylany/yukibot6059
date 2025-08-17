@@ -1183,7 +1183,7 @@ async def delete_castle_command(message: Message):
             f"💎 جميع الموارد والإحصائيات\\n\\n"
             f"❓ هل أنت متأكد من الحذف؟\\n"
             f"✅ للتأكيد اكتب: **تأكيد** أو **نعم**\\n"
-            f"❌ لإلغاء العملية اكتب: **إلغاء**"
+            f"❌ لإلغاء العملية اكتب: **لا**"
         )
         
     except Exception as e:
@@ -1225,6 +1225,20 @@ async def confirm_delete_castle_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في تأكيد حذف القلعة: {e}")
         await message.reply("❌ حدث خطأ أثناء حذف القلعة")
+
+
+async def cancel_delete_castle_command(message: Message):
+    """إلغاء حذف القلعة"""
+    try:
+        await message.reply(
+            "✅ **تم إلغاء حذف القلعة**\n\n"
+            "🏰 قلعتك آمنة ولم يتم حذف أي شيء!\n"
+            "💪 استمر في بناء إمبراطوريتك"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في إلغاء حذف القلعة: {e}")
+        await message.reply("❌ حدث خطأ، لكن لم يتم حذف القلعة")
 
 # دالة مطابقة للاستدعاء من messages.py
 async def show_castle_stats(message: Message):

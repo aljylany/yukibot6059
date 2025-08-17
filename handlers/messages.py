@@ -599,6 +599,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         await castle.delete_castle_command(message)
     elif text.strip() in ['تأكيد', 'نعم']:
         await castle.confirm_delete_castle_command(message)
+    elif text.strip() == 'لا':
+        await castle.cancel_delete_castle_command(message)
     elif any(phrase in text for phrase in ['حسابي', 'حساب اللاعب', 'معلوماتي', 'تفاصيلي']):
         await castle.show_player_profile(message)
     elif any(phrase in text for phrase in ['اخفاء قلعتي', 'إخفاء قلعتي', 'اخفي قلعتي']):

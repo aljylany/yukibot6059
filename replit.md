@@ -25,7 +25,7 @@ Bot Configuration:
 - Separated security upgrade command: "ترقية الامان" now distinct from security menu "امان"
 - Added comprehensive theft statistics and leaderboard functionality with text commands
 - Enhanced security upgrade system with detailed cost/benefit display
-- Updated castle deletion commands: "حذف قلعتي" (removed "حذف القلعة"), confirmation now accepts "تأكيد" or "نعم"
+- Updated castle deletion commands: "حذف قلعتي" (removed "حذف القلعة"), confirmation now accepts "تأكيد" or "نعم", cancellation with "لا"
 - Enhanced banking system with immediate command recognition for better user experience
 
 # System Architecture
