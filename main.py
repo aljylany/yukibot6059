@@ -64,6 +64,10 @@ async def main():
     dp.include_router(callbacks.router)
     dp.include_router(messages.router)
     
+    # تسجيل معالج أحداث المجموعات
+    from handlers import group_events
+    dp.include_router(group_events.router)
+    
     # تهيئة قاعدة البيانات
     await init_database()
     
@@ -90,6 +94,14 @@ async def main():
         
         # إضافة تأخير قصير للتأكد من تطبيق التغييرات
         await asyncio.sleep(2)
+        
+        # إرسال إشعار بدء التشغيل للقناة الفرعية
+        try:
+            from modules.notification_manager import NotificationManager
+            notification_manager = NotificationManager(bot)
+            await notification_manager.send_startup_notification("2.0")
+        except Exception as startup_error:
+            logging.warning(f"⚠️ تحذير: لم يتم إرسال إشعار بدء التشغيل: {startup_error}")
         
         # بدء التصويت
         await dp.start_polling(bot)

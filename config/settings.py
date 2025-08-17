@@ -169,6 +169,15 @@ PAYMENT_SETTINGS = {
     "api_key": None
 }
 
+# إعدادات قناة الإشعارات
+NOTIFICATION_CHANNEL = {
+    "enabled": True,
+    "chat_id": "-1002549788763",  # معرف القناة الفرعية (يجب الحصول على الـ Chat ID الصحيح)
+    "send_new_group_notifications": True,
+    "send_bot_updates": True,
+    "send_admin_alerts": True
+}
+
 # إعدادات API الخارجية
 API_SETTINGS = {
     "stock_api": {

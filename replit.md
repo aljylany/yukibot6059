@@ -89,7 +89,21 @@ Bot Configuration:
 
 # Recent Changes (2025-08-17)
 
-## New Features Implemented:
+## Latest Updates:
+- ✅ **Notification Channel System**: Implemented comprehensive notification system for sub-channel "@erAruca685xmMDNk"
+  - Detailed notifications when bot is added to new groups (group info, admin list, member count)
+  - Bot promotion/demotion notifications
+  - Bot removal notifications
+  - Startup and maintenance notifications
+  - Error alerts for administrators
+  - Daily statistics reporting capability
+- ✅ **Group Events Handler**: New `handlers/group_events.py` module for handling my_chat_member events
+- ✅ **Notification Manager**: Advanced `modules/notification_manager.py` for structured notification handling
+- ✅ **Admin Test Command**: `/test_channel` command for administrators to test notification channel connectivity
+- ✅ **Enhanced Configuration**: Added NOTIFICATION_CHANNEL settings in `config/settings.py`
+- ✅ **Automatic Startup Notifications**: Bot sends startup notification to channel when launched
+
+## Previous Features:
 - ✅ **Bot Insult Protection System**: Yuki now responds with sarcastic and defensive messages when users attempt to insult or demean the bot
 - ✅ **Custom Commands System**: Authorized users (moderators+) can add custom commands with "اضافة امر [keyword] [response]" format
 - ✅ **Music Search Integration**: Users can search for music across YouTube, SoundCloud, and Spotify platforms with commands like "ابحث عن اغنية [song name]"
@@ -101,7 +115,7 @@ Bot Configuration:
 - ✅ **Database Integration**: All new features fully integrated with SQLite database and async operations
 
 ## Technical Updates:
-- Added new modules: `custom_commands.py`, `music_search.py`, `message_handlers.py`
+- Added new modules: `custom_commands.py`, `music_search.py`, `message_handlers.py`, `group_events.py`, `notification_manager.py`
 - Enhanced `special_responses.py` with comprehensive bot protection responses  
 - Updated database schema for custom commands support
 - Integrated new features into main message handling pipeline
@@ -112,3 +126,5 @@ Bot Configuration:
 - Fixed "جاب العيد" response to send audio file instead of showing YouTube link
 - Added comprehensive debugging for download settings persistence issues
 - Adjusted permission level for download toggle to MEMBER level for better accessibility
+- Integrated group events monitoring with my_chat_member handler
+- Enhanced main.py with automatic startup notifications

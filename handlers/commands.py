@@ -317,6 +317,61 @@ async def castle_command(message: Message):
         await message.reply(SYSTEM_MESSAGES["error"])
 
 
+# أمر اختبار القناة الفرعية - للمديرين فقط
+@router.message(Command("test_channel"))
+async def test_channel_command(message: Message):
+    """اختبار القناة الفرعية /test_channel - للمديرين فقط"""
+    try:
+        # التحقق من أن المستخدم مدير
+        if message.from_user.id not in ADMIN_IDS:
+            await message.reply("❌ هذا الأمر متاح للمديرين فقط!")
+            return
+        
+        # استيراد مدير الإشعارات واختبار القناة
+        from modules.notification_manager import NotificationManager
+        notification_manager = NotificationManager(message.bot)
+        
+        # تشغيل اختبار القناة
+        success = await notification_manager.test_notification_channel()
+        
+        if success:
+            await message.reply("✅ تم اختبار القناة الفرعية بنجاح! تحقق من القناة لرؤية رسالة الاختبار.")
+        else:
+            await message.reply("❌ فشل في اختبار القناة الفرعية. تحقق من إعدادات القناة وصلاحيات البوت.")
+            
+    except Exception as e:
+        logging.error(f"خطأ في اختبار القناة الفرعية: {e}")
+        await message.reply("❌ حدث خطأ أثناء اختبار القناة الفرعية")
+
+
+# أمر للحصول على Chat ID للمحادثة الحالية - للمديرين فقط
+@router.message(Command("get_chat_id"))
+async def get_chat_id_command(message: Message):
+    """الحصول على Chat ID للمحادثة الحالية /get_chat_id - للمديرين فقط"""
+    try:
+        # التحقق من أن المستخدم مدير
+        if message.from_user.id not in ADMIN_IDS:
+            await message.reply("❌ هذا الأمر متاح للمديرين فقط!")
+            return
+        
+        chat_info = f"""
+🆔 **معلومات المحادثة:**
+
+**Chat ID:** `{message.chat.id}`
+**نوع المحادثة:** {message.chat.type}
+**عنوان المحادثة:** {message.chat.title or "لا يوجد"}
+**اسم المستخدم:** @{message.chat.username or "لا يوجد"}
+
+استخدم هذا الـ Chat ID في إعدادات قناة الإشعارات.
+        """
+        
+        await message.reply(chat_info)
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على Chat ID: {e}")
+        await message.reply("❌ حدث خطأ أثناء جلب معلومات المحادثة")
+
+
 @router.message(Command("upgrade"))
 @user_required
 async def upgrade_command(message: Message):
