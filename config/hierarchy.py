@@ -210,34 +210,30 @@ async def load_ranks_from_database():
     try:
         from database.operations import execute_query
 
-        # تحميل المالكين
+        # تحميل المالكين (مالك، مالك اساسي، ادمن)
         owners = await execute_query(
-            "SELECT user_id, chat_id FROM group_ranks WHERE rank_type = 'مالك'",
+            "SELECT user_id, chat_id FROM group_ranks WHERE rank_type IN ('مالك', 'مالك اساسي', 'ادمن')",
             fetch_all=True)
 
         if owners:
             for owner in owners:
-                user_id = owner[0] if isinstance(owner,
-                                                 tuple) else owner['user_id']
-                chat_id = owner[1] if isinstance(owner,
-                                                 tuple) else owner['chat_id']
+                user_id = owner[0] if isinstance(owner, tuple) else owner['user_id']
+                chat_id = owner[1] if isinstance(owner, tuple) else owner['chat_id']
 
                 if chat_id not in GROUP_OWNERS:
                     GROUP_OWNERS[chat_id] = []
                 if user_id not in GROUP_OWNERS[chat_id]:
                     GROUP_OWNERS[chat_id].append(user_id)
 
-        # تحميل المشرفين
+        # تحميل المشرفين (مشرف، مميز)
         moderators = await execute_query(
-            "SELECT user_id, chat_id FROM group_ranks WHERE rank_type = 'مشرف'",
+            "SELECT user_id, chat_id FROM group_ranks WHERE rank_type IN ('مشرف', 'مميز')",
             fetch_all=True)
 
         if moderators:
             for moderator in moderators:
-                user_id = moderator[0] if isinstance(
-                    moderator, tuple) else moderator['user_id']
-                chat_id = moderator[1] if isinstance(
-                    moderator, tuple) else moderator['chat_id']
+                user_id = moderator[0] if isinstance(moderator, tuple) else moderator['user_id']
+                chat_id = moderator[1] if isinstance(moderator, tuple) else moderator['chat_id']
 
                 if chat_id not in MODERATORS:
                     MODERATORS[chat_id] = []
@@ -245,6 +241,8 @@ async def load_ranks_from_database():
                     MODERATORS[chat_id].append(user_id)
 
         logging.info("تم تحميل الرتب من قاعدة البيانات بنجاح")
+        logging.info(f"المالكين المحملين: {GROUP_OWNERS}")
+        logging.info(f"المشرفين المحملين: {MODERATORS}")
     except Exception as e:
         logging.error(f"خطأ في تحميل الرتب من قاعدة البيانات: {e}")
 
