@@ -42,6 +42,28 @@ async def handle_bank_creation_only(message: Message, state: FSMContext):
         await message.reply("❌ حدث خطأ أثناء إنشاء الحساب البنكي")
 
 
+# معالج خاص لاختيار البنك أثناء التسجيل بدون فحص user_required
+@router.message(F.text.in_({"الأهلي", "الراجحي", "سامبا", "الرياض"}))
+async def handle_bank_selection_state(message: Message, state: FSMContext):
+    """معالج خاص لاختيار البنك أثناء عملية التسجيل"""
+    try:
+        current_state = await state.get_state()
+        
+        # التحقق من أن المستخدم في حالة اختيار البنك
+        if current_state == "BanksStates:waiting_bank_selection":
+            # التحقق من أن الرسالة في مجموعة وليس في الخاص
+            if message.chat.type == 'private':
+                await message.reply("🚫 **هذا الأمر متاح في المجموعات فقط!**")
+                return
+                
+            from modules.manual_registration import handle_bank_selection
+            await handle_bank_selection(message, state)
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج اختيار البنك: {e}")
+        await message.reply("❌ حدث خطأ أثناء اختيار البنك")
+
+
 @router.message(F.text)
 @user_required
 async def handle_text_messages(message: Message, state: FSMContext):
