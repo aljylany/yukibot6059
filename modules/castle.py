@@ -44,13 +44,60 @@ REQUIRED_RESOURCES = {
     "moats": "الخنادق"
 }
 
-# كنوز البحث
-TREASURE_TYPES = {
-    "money": {"min": 500, "max": 2000, "chance": 40, "emoji": "💰"},
-    "gold": {"min": 100, "max": 800, "chance": 25, "emoji": "🏆"},
-    "stones": {"min": 50, "max": 300, "chance": 20, "emoji": "🪨"},
-    "workers": {"min": 10, "max": 50, "chance": 10, "emoji": "👷"},
-    "nothing": {"chance": 5, "emoji": "❌"}
+# كنوز البحث المحسن - نظام متدرج للموارد
+TREASURE_HUNT_TYPES = {
+    # العثور على نوع واحد من الموارد
+    "single_resource": {
+        "chance": 45,
+        "resources": {
+            "money": {"min": 800, "max": 2500, "chance": 40, "emoji": "💰"},
+            "gold": {"min": 150, "max": 900, "chance": 30, "emoji": "🏆"},
+            "stones": {"min": 80, "max": 400, "chance": 20, "emoji": "🪨"},
+            "workers": {"min": 15, "max": 70, "chance": 10, "emoji": "👷"}
+        }
+    },
+    # العثور على نوعين من الموارد
+    "double_resource": {
+        "chance": 25,
+        "combinations": [
+            {"resources": ["money", "gold"], "multiplier": 0.7},
+            {"resources": ["money", "stones"], "multiplier": 0.8},
+            {"resources": ["money", "workers"], "multiplier": 0.8},
+            {"resources": ["gold", "stones"], "multiplier": 0.6},
+            {"resources": ["gold", "workers"], "multiplier": 0.7},
+            {"resources": ["stones", "workers"], "multiplier": 0.9}
+        ]
+    },
+    # العثور على ثلاثة أنواع من الموارد
+    "triple_resource": {
+        "chance": 15,
+        "combinations": [
+            {"resources": ["money", "gold", "stones"], "multiplier": 0.5},
+            {"resources": ["money", "gold", "workers"], "multiplier": 0.6},
+            {"resources": ["money", "stones", "workers"], "multiplier": 0.7},
+            {"resources": ["gold", "stones", "workers"], "multiplier": 0.5}
+        ]
+    },
+    # العثور على أربعة أنواع من الموارد
+    "quadruple_resource": {
+        "chance": 8,
+        "combinations": [
+            {"resources": ["money", "gold", "stones", "workers"], "multiplier": 0.4}
+        ]
+    },
+    # عدم العثور على شيء
+    "nothing": {
+        "chance": 7,
+        "emoji": "❌"
+    }
+}
+
+# معلومات الموارد الأساسية
+RESOURCE_INFO = {
+    "money": {"min": 800, "max": 2500, "emoji": "💰", "name": "المال"},
+    "gold": {"min": 150, "max": 900, "emoji": "🏆", "name": "الذهب"},
+    "stones": {"min": 80, "max": 400, "emoji": "🪨", "name": "الحجارة"},
+    "workers": {"min": 15, "max": 70, "emoji": "👷", "name": "العمال"}
 }
 
 
@@ -234,26 +281,58 @@ async def update_last_treasure_hunt(user_id: int) -> bool:
 
 
 async def perform_treasure_hunt(user_id: int) -> dict:
-    """تنفيذ البحث عن الكنز"""
+    """تنفيذ البحث عن الكنز المحسن"""
     try:
-        # حساب فرص العثور على كنز
-        total_chance = sum(treasure['chance'] for treasure in TREASURE_TYPES.values())
+        # حساب إجمالي الاحتمالات
+        total_chance = sum(hunt_type['chance'] for hunt_type in TREASURE_HUNT_TYPES.values())
         random_num = random.randint(1, total_chance)
         
         cumulative_chance = 0
-        for treasure_type, treasure_info in TREASURE_TYPES.items():
-            cumulative_chance += treasure_info['chance']
+        for hunt_type, hunt_info in TREASURE_HUNT_TYPES.items():
+            cumulative_chance += hunt_info['chance']
             if random_num <= cumulative_chance:
-                if treasure_type == 'nothing':
-                    return {"found": False, "type": None, "amount": 0}
+                if hunt_type == 'nothing':
+                    return {"found": False, "resources": {}, "hunt_type": "nothing"}
+                elif hunt_type == 'single_resource':
+                    # اختيار مورد واحد
+                    resource_chance = sum(res['chance'] for res in hunt_info['resources'].values())
+                    resource_random = random.randint(1, resource_chance)
+                    
+                    resource_cumulative = 0
+                    for resource_type, resource_info in hunt_info['resources'].items():
+                        resource_cumulative += resource_info['chance']
+                        if resource_random <= resource_cumulative:
+                            amount = random.randint(resource_info['min'], resource_info['max'])
+                            return {
+                                "found": True, 
+                                "resources": {resource_type: amount}, 
+                                "hunt_type": "single"
+                            }
                 else:
-                    amount = random.randint(treasure_info['min'], treasure_info['max'])
-                    return {"found": True, "type": treasure_type, "amount": amount}
+                    # اختيار تركيبة عشوائية للموارد المتعددة
+                    combinations = hunt_info['combinations']
+                    selected_combo = random.choice(combinations)
+                    resources_found = {}
+                    
+                    for resource_type in selected_combo['resources']:
+                        base_info = RESOURCE_INFO[resource_type]
+                        multiplier = selected_combo['multiplier']
+                        
+                        min_amount = int(base_info['min'] * multiplier)
+                        max_amount = int(base_info['max'] * multiplier)
+                        amount = random.randint(min_amount, max_amount)
+                        resources_found[resource_type] = amount
+                    
+                    return {
+                        "found": True,
+                        "resources": resources_found,
+                        "hunt_type": hunt_type.replace('_resource', '')
+                    }
         
-        return {"found": False, "type": None, "amount": 0}
+        return {"found": False, "resources": {}, "hunt_type": "nothing"}
     except Exception as e:
         logging.error(f"خطأ في البحث عن الكنز للمستخدم {user_id}: {e}")
-        return {"found": False, "type": None, "amount": 0}
+        return {"found": False, "resources": {}, "hunt_type": "error"}
 
 
 async def upgrade_castle_level(user_id: int, new_level: int) -> bool:
@@ -450,17 +529,45 @@ async def treasure_hunt_command(message: Message):
         treasure_result = await perform_treasure_hunt(message.from_user.id)
         
         if treasure_result["found"]:
-            treasure_type = treasure_result["type"]
-            amount = treasure_result["amount"]
-            emoji = TREASURE_TYPES[treasure_type]["emoji"]
+            resources_found = treasure_result["resources"]
+            hunt_type = treasure_result["hunt_type"]
             
-            # إضافة الكنز للمستخدم
-            await add_resource_to_user(message.from_user.id, treasure_type, amount)
+            # إضافة الموارد للمستخدم
+            total_value = 0
+            resource_text = ""
+            
+            for resource_type, amount in resources_found.items():
+                await add_resource_to_user(message.from_user.id, resource_type, amount)
+                emoji = RESOURCE_INFO[resource_type]["emoji"]
+                name = REQUIRED_RESOURCES.get(resource_type, RESOURCE_INFO[resource_type]["name"])
+                resource_text += f"{emoji} **{name}**: {format_number(amount)}\n"
+                
+                # حساب القيمة التقديرية
+                if resource_type == "money":
+                    total_value += amount
+                elif resource_type == "gold":
+                    total_value += amount * 2
+                elif resource_type == "stones":
+                    total_value += amount * 3
+                elif resource_type == "workers":
+                    total_value += amount * 50
+            
+            # رسالة متدرجة حسب نوع الاكتشاف
+            hunt_messages = {
+                "single": "🎉 **عثرت على كنز رائع!**",
+                "double": "🎊 **اكتشاف مذهل! عثرت على كنزين!**",
+                "triple": "💫 **إنجاز عظيم! ثلاثة كنوز في مرة واحدة!**",
+                "quadruple": "🏆 **اكتشاف أسطوري! جميع أنواع الموارد!**"
+            }
+            
+            hunt_message = hunt_messages.get(hunt_type, "🎉 **عثرت على كنز!**")
             
             await message.reply(
-                f"🎉 **عثرت على كنز!**\n\n"
-                f"{emoji} **{REQUIRED_RESOURCES.get(treasure_type, treasure_type)}**: {format_number(amount)}\n\n"
-                f"💡 تم إضافة الكنز لمواردك بنجاح!\n"
+                f"{hunt_message}\n\n"
+                f"💎 **الموارد المكتشفة:**\n"
+                f"{resource_text}\n"
+                f"💰 **القيمة التقديرية:** {format_number(total_value)}$\n\n"
+                f"✅ تم إضافة جميع الموارد بنجاح!\n"
                 f"⏰ البحث التالي خلال: 10 دقائق"
             )
         else:

@@ -27,6 +27,7 @@ Bot Configuration:
 - Enhanced security upgrade system with detailed cost/benefit display
 - Updated castle deletion commands: "حذف قلعتي" (removed "حذف القلعة"), confirmation now accepts "تأكيد" or "نعم", cancellation with "لا"
 - Enhanced banking system with immediate command recognition for better user experience
+- Enhanced treasure hunt system with multi-resource discovery: single (45%), double (25%), triple (15%), quadruple (8%), nothing (7%)
 
 # System Architecture
 
