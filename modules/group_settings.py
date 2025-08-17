@@ -115,7 +115,13 @@ async def handle_toggle_command(message: Message, setting: str, action: str):
             await message.reply("❌ إعداد غير صحيح")
             return
 
-        # تطبيق الإعداد
+        # معالجة خاصة لإعداد التحميل
+        if setting_key == "download":
+            from modules.media_download import toggle_download
+            await toggle_download(message, action == "تفعيل")
+            return
+
+        # تطبيق الإعداد العام
         is_enabled = action == "تفعيل"
         
         await execute_query(
