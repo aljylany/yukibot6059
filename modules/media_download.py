@@ -16,6 +16,28 @@ from utils.helpers import format_user_mention
 download_settings = {}
 
 
+async def load_download_settings():
+    """تحميل إعدادات التحميل من قاعدة البيانات"""
+    try:
+        from database.operations import execute_query
+        
+        settings = await execute_query(
+            "SELECT chat_id, setting_value FROM group_settings WHERE setting_key = 'enable_download'",
+            fetch_all=True
+        )
+        
+        if settings:
+            for setting in settings:
+                chat_id = setting[0] if isinstance(setting, tuple) else setting['chat_id']
+                value = setting[1] if isinstance(setting, tuple) else setting['setting_value']
+                download_settings[chat_id] = value == "True"
+        
+        logging.info(f"تم تحميل إعدادات التحميل: {download_settings}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في تحميل إعدادات التحميل: {e}")
+
+
 @group_only
 async def toggle_download(message: Message, enable: bool = True):
     """تفعيل أو تعطيل التحميل"""
@@ -32,6 +54,15 @@ async def toggle_download(message: Message, enable: bool = True):
         
         chat_id = message.chat.id
         download_settings[chat_id] = enable
+        
+        # حفظ في قاعدة البيانات
+        from database.operations import execute_query
+        from datetime import datetime
+        
+        await execute_query(
+            "INSERT OR REPLACE INTO group_settings (chat_id, setting_key, setting_value, updated_at) VALUES (?, ?, ?, ?)",
+            (chat_id, "enable_download", str(enable), datetime.now().isoformat())
+        )
         
         # إضافة تسجيل للتصحيح
         logging.info(f"تم {'تفعيل' if enable else 'تعطيل'} التحميل للمجموعة {chat_id}. الإعدادات الحالية: {download_settings}")
@@ -240,18 +271,28 @@ async def simulate_download(loading_msg: Message, platform: str, url: str):
 
 
 async def simulate_youtube_search(search_msg: Message, query: str):
-    """محاكاة البحث في يوتيوب"""
+    """البحث في يوتيوب باستخدام YouTube API"""
     try:
-        import asyncio
-        await asyncio.sleep(2)  # محاكاة وقت البحث
+        from modules.music_search import search_youtube_api
         
-        # في التطبيق الحقيقي، هنا سيتم استخدام YouTube API
-        await search_msg.edit_text(
-            f"❌ **البحث في يوتيوب غير متاح حالياً**\n\n"
-            f"🔍 البحث عن: '{query}'\n"
-            f"💡 هذه الميزة تحتاج لـ YouTube API key"
-        )
+        # البحث باستخدام YouTube API الحقيقي
+        video_info = await search_youtube_api(query)
+        
+        if video_info:
+            await search_msg.edit_text(
+                f"🎵 **تم العثور على الأغنية!**\n\n"
+                f"🎤 **العنوان:** {video_info['title']}\n"
+                f"📺 **القناة:** {video_info['channel']}\n"
+                f"📝 **الوصف:** {video_info['description']}\n"
+                f"\n🔗 **الرابط:** {video_info['url']}"
+            )
+        else:
+            await search_msg.edit_text(
+                f"❌ **لم يتم العثور على نتائج**\n\n"
+                f"🔍 البحث عن: '{query}'\n"
+                f"💡 جرب كتابة اسم الأغنية بطريقة مختلفة"
+            )
         
     except Exception as e:
-        logging.error(f"خطأ في محاكاة البحث: {e}")
+        logging.error(f"خطأ في البحث في يوتيوب: {e}")
         await search_msg.edit_text("❌ حدث خطأ في عملية البحث")

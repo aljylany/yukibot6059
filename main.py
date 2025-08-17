@@ -79,6 +79,10 @@ async def main():
     from modules.custom_commands import load_custom_commands
     await load_custom_commands()
     
+    # تحميل إعدادات التحميل
+    from modules.media_download import load_download_settings
+    await load_download_settings()
+    
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)
     
