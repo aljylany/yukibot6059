@@ -259,7 +259,7 @@ async def get_user_treasure_hunt_stats(user_id: int) -> dict:
 
 # ===== دوال واجهة القلعة =====
 
-async def create_castle_command(message: Message):
+async def create_castle_command(message: Message, state: FSMContext = None):
     """أمر إنشاء قلعة جديدة"""
     try:
         user = await get_user(message.from_user.id)
@@ -304,7 +304,8 @@ async def create_castle_command(message: Message):
         )
         
         # إعداد حالة انتظار اسم القلعة
-        # يمكن إضافة FSM state هنا
+        from utils.states import CastleStates
+        await state.set_state(CastleStates.entering_castle_name)
         
     except Exception as e:
         logging.error(f"خطأ في أمر إنشاء القلعة: {e}")
@@ -588,7 +589,7 @@ async def castle_stats_command(message: Message):
 
 
 # دالة لمعالجة أوامر إنشاء القلعة مع الاسم
-async def handle_castle_name_input(message: Message):
+async def handle_castle_name_input(message: Message, state: FSMContext):
     """معالجة إدخال اسم القلعة"""
     try:
         user = await get_user(message.from_user.id)
@@ -627,8 +628,10 @@ async def handle_castle_name_input(message: Message):
                 f"• **طور القلعة** - لتطوير القلعة\n"
                 f"• **احصائيات القلعة** - لعرض التفاصيل"
             )
+            await state.clear()  # مسح الحالة بعد النجاح
         else:
             await message.reply("❌ حدث خطأ في إنشاء القلعة")
+            await state.clear()  # مسح الحالة حتى في حالة الخطأ
     
     except Exception as e:
         logging.error(f"خطأ في معالجة اسم القلعة: {e}")

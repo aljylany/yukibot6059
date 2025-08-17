@@ -240,10 +240,10 @@ async def handle_general_message(message: Message, state: FSMContext):
         await stocks.show_stocks_menu(message)
     elif any(word in text for word in ['مزرعة', 'زراعة', 'حصاد']):
         await farm.show_farm_menu(message)
+    elif any(phrase in text for phrase in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
+        await castle.create_castle_command(message, state)
     elif any(word in text for word in ['قلعة']):
         await castle.show_castle_menu(message)
-    elif any(word in text for word in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
-        await castle.create_castle_command(message)
     elif any(word in text for word in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز']):
         await castle.treasure_hunt_command(message)
     elif any(word in text for word in ['طور القلعة', 'تطوير القلعة', 'ترقية القلعة']):
@@ -653,7 +653,11 @@ async def handle_farm_message(message: Message, state: FSMContext, current_state
 
 async def handle_castle_message(message: Message, state: FSMContext, current_state: str):
     """معالجة رسائل القلعة"""
-    if current_state == CastleStates.waiting_upgrade_confirmation.state:
+    from utils.states import CastleStates
+    
+    if current_state == CastleStates.entering_castle_name.state:
+        await castle.handle_castle_name_input(message, state)
+    elif current_state == CastleStates.waiting_upgrade_confirmation.state:
         await castle.process_upgrade_confirmation(message, state)
 
 

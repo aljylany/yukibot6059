@@ -56,6 +56,7 @@ class FarmStates(StatesGroup):
 
 class CastleStates(StatesGroup):
     """حالات القلعة"""
+    entering_castle_name = State()
     waiting_building_choice = State()
     waiting_upgrade_confirmation = State()
     waiting_attack_target = State()
