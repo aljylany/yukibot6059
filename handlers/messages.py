@@ -240,8 +240,16 @@ async def handle_general_message(message: Message, state: FSMContext):
         await stocks.show_stocks_menu(message)
     elif any(word in text for word in ['مزرعة', 'زراعة', 'حصاد']):
         await farm.show_farm_menu(message)
-    elif any(word in text for word in ['قلعة', 'ترقية', 'دفاع']):
+    elif any(word in text for word in ['قلعة']):
         await castle.show_castle_menu(message)
+    elif any(word in text for word in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
+        await castle.create_castle_command(message)
+    elif any(word in text for word in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز']):
+        await castle.treasure_hunt_command(message)
+    elif any(word in text for word in ['طور القلعة', 'تطوير القلعة', 'ترقية القلعة']):
+        await castle.upgrade_castle_command(message)
+    elif any(word in text for word in ['احصائيات القلعة', 'إحصائيات القلعة', 'احصائيات قلعة']):
+        await castle.castle_stats_command(message)
     elif any(word in text for word in ['ترتيب', 'متصدرين', 'رانكنغ']):
         from modules import ranking
         await ranking.show_leaderboard(message)

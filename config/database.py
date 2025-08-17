@@ -119,18 +119,34 @@ async def init_database():
                 )
             ''')
             
-            # إنشاء جدول القلاع
+            # إنشاء جدول القلاع المحدث
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS user_castles (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER,
-                    castle_level INTEGER DEFAULT 1,
+                    name TEXT,
+                    level INTEGER DEFAULT 1,
                     defense_points INTEGER DEFAULT 100,
                     attack_points INTEGER DEFAULT 50,
                     gold_storage REAL DEFAULT 0,
-                    last_collection TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    upgrade_cost REAL,
+                    last_treasure_hunt TIMESTAMP,
+                    treasure_hunt_stats TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
+            # إنشاء جدول موارد المستخدمين
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS user_resources (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    money REAL DEFAULT 0,
+                    gold REAL DEFAULT 0,
+                    stones REAL DEFAULT 0,
+                    workers REAL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (user_id)
                 )
             ''')
