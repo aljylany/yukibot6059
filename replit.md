@@ -14,6 +14,7 @@ Bot Configuration:
 - /start in private asks user to add bot to group as admin
 - All functionality integrated into text messages/commands instead of buttons
 - Fixed registration issues with user_required decorator
+- Added special response system for specific users with personalized greetings
 
 # System Architecture
 
@@ -43,6 +44,7 @@ Bot Configuration:
 - **User Management**: Registration, user profiles, ranking system, and ban system.
 - **Group Management**: Comprehensive moderation tools (ban, kick, mute), lock/unlock features for group settings, and entertainment commands.
 - **Analytics Dashboard**: Provides administrators with real-time insights into group performance, financial data, user activity, and moderation metrics through text-based visual analytics and a health score system.
+- **Special Response System**: Personalized greeting system for specific users with custom responses triggered by keywords like greetings and user mentions.
 
 # External Dependencies
 
@@ -53,3 +55,24 @@ Bot Configuration:
 - **Python logging**: Utilized for error tracking, debugging, and operational monitoring.
 - **asyncio**: Python's built-in library for writing concurrent code, essential for the bot's asynchronous operations.
 - **External APIs (Configured but Optional)**: The architecture supports integration with external services such as Stock APIs for real market data, Payment Providers for premium features, and Crypto APIs for cryptocurrency price feeds, though these are not core mandatory integrations for basic bot functionality.
+
+# Recent Changes
+
+## August 17, 2025
+- **Added Special Response System**: Implemented personalized response system for specific users (ID: 8278493069) with custom Arabic greetings
+- **Features Added**:
+  - Automatic detection of greeting keywords (مرحبا، اهلا، السلام عليكم، etc.)
+  - Randomized special responses from predefined list
+  - Admin management commands for adding/removing special users
+  - Configurable trigger keywords system
+- **Admin Commands Added**:
+  - "إضافة مستخدم خاص [ID]" - Add special user with custom responses
+  - "إزالة مستخدم خاص [ID]" - Remove special user
+  - "قائمة المستخدمين الخاصين" - List all special users
+  - "تحديث ردود خاصة [ID]" - Update user's special responses
+  - "إضافة كلمة مفتاحية [keyword]" - Add trigger keyword
+  - "الكلمات المفتاحية" - List all trigger keywords
+- **Technical Implementation**:
+  - New module: `modules/special_responses.py` - Core response logic
+  - New module: `modules/special_admin.py` - Admin management interface
+  - Integration with `handlers/messages.py` for automatic response detection

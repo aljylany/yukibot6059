@@ -11,6 +11,8 @@ from aiogram.fsm.context import FSMContext
 from database.operations import get_or_create_user, update_user_activity, get_user
 from modules import banks, real_estate, theft, stocks, investment, administration, farm, castle
 from modules import admin_management, group_settings, entertainment, clear_commands, fun_commands, utility_commands
+from modules.special_responses import get_special_response
+from modules.special_admin import handle_special_admin_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -59,6 +61,11 @@ async def handle_text_messages(message: Message, state: FSMContext):
 async def handle_transfer_command(message: Message):
     """معالج أمر التحويل عبر الرد على الرسائل"""
     try:
+        # التحقق من وجود الرد والرسالة
+        if not message.reply_to_message or not message.text:
+            await message.reply("❌ يرجى الرد على رسالة اللاعب مع كتابة المبلغ")
+            return
+            
         # استخراج المبلغ من النص
         text_parts = message.text.split()
         if len(text_parts) < 2:
@@ -80,6 +87,10 @@ async def handle_transfer_command(message: Message):
             return
         
         # الحصول على معلومات المرسل والمستقبل
+        if not message.from_user or not message.reply_to_message.from_user:
+            await message.reply("❌ لا يمكن الحصول على معلومات المستخدمين")
+            return
+            
         sender_id = message.from_user.id
         receiver_id = message.reply_to_message.from_user.id
         
@@ -97,8 +108,9 @@ async def handle_transfer_command(message: Message):
         # التحقق من وجود المستقبل
         receiver = await get_user(receiver_id)
         if not receiver:
+            receiver_name = message.reply_to_message.from_user.first_name or "المستخدم"
             await message.reply(
-                f"❌ {message.reply_to_message.from_user.first_name} لم ينشئ حساب بنكي بعد!\n"
+                f"❌ {receiver_name} لم ينشئ حساب بنكي بعد!\n"
                 f"يجب عليه كتابة 'انشاء حساب بنكي' أولاً"
             )
             return
@@ -123,15 +135,18 @@ async def handle_transfer_command(message: Message):
         await update_user_balance(receiver_id, new_receiver_balance)
         
         # تسجيل المعاملات
+        receiver_name = message.reply_to_message.from_user.first_name or "مستخدم"
+        sender_name = message.from_user.first_name or "مستخدم"
+        
         await add_transaction(
             sender_id,
-            f"تحويل إلى {message.reply_to_message.from_user.first_name}",
+            f"تحويل إلى {receiver_name}",
             -amount,
             "transfer"
         )
         await add_transaction(
             receiver_id,
-            f"تحويل من {message.from_user.first_name}",
+            f"تحويل من {sender_name}",
             amount,
             "transfer"
         )
@@ -141,12 +156,12 @@ async def handle_transfer_command(message: Message):
         success_msg = f"""
 ✅ **تم التحويل بنجاح!**
 
-💸 المرسل: {message.from_user.first_name}
-💰 المستقبل: {message.reply_to_message.from_user.first_name}
+💸 المرسل: {sender_name}
+💰 المستقبل: {receiver_name}
 📊 المبلغ: {format_number(amount)}$
 
-💵 رصيد {message.from_user.first_name}: {format_number(new_sender_balance)}$
-💵 رصيد {message.reply_to_message.from_user.first_name}: {format_number(new_receiver_balance)}$
+💵 رصيد {sender_name}: {format_number(new_sender_balance)}$
+💵 رصيد {receiver_name}: {format_number(new_receiver_balance)}$
         """
         
         await message.reply(success_msg)
@@ -160,9 +175,20 @@ async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
+    # فحص الردود الخاصة أولاً
+    if message.from_user:
+        special_response = get_special_response(message.from_user.id, text)
+        if special_response:
+            await message.reply(special_response)
+            return
+    
     # التحقق من طلب إنشاء حساب بنكي
     if any(phrase in text for phrase in ['انشاء حساب بنكي', 'إنشاء حساب بنكي', 'انشئ حساب', 'حساب بنكي جديد']):
         await handle_bank_account_creation(message, state)
+        return
+    
+    # فحص أوامر إدارة الردود الخاصة للمديرين
+    if await handle_special_admin_commands(message):
         return
     
     # البحث عن كلمات مفتاحية محددة فقط
