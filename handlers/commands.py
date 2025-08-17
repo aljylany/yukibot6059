@@ -5,7 +5,7 @@ Bot Commands Handler
 
 import logging
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 
@@ -23,7 +23,7 @@ async def start_command(message: Message, state: FSMContext):
     try:
         # التحقق من نوع المحادثة
         if message.chat.type == 'private':
-            # رسالة في الخاص - طلب إضافة البوت للمجموعة
+            # رسالة في الخاص - طلب إضافة البوت للمجموعة مع زر
             welcome_text = """
 🎮 **مرحباً بك في بوت الألعاب الاقتصادية!**
 
@@ -43,12 +43,17 @@ async def start_command(message: Message, state: FSMContext):
 • 🏰 بناء وترقية القلاع
 • 🏆 نظام ترتيب اللاعبين
 
-➕ **لإضافتي للمجموعة:**
-اضغط على اسمي واختر "Add to Group" أو انسخ اسم المستخدم: @theyuki_bot
-
 بعد إضافتي للمجموعة، اكتب /start في المجموعة لبدء اللعب! 🚀
             """
-            await message.reply(welcome_text)
+            # إنشاء زر لإضافة البوت كمشرف
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(
+                    text="➕ إضافة البوت كمشرف في المجموعة",
+                    url="https://telegram.me/theyuki_bot?startgroup=admin&admin=delete_messages+restrict_members+pin_messages+invite_users"
+                )]
+            ])
+            
+            await message.reply(welcome_text, reply_markup=keyboard)
             
         else:
             # في مجموعة - تسجيل المستخدم وبدء اللعبة

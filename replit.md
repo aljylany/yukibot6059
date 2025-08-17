@@ -126,3 +126,15 @@ Bot Configuration:
   - Owner commands: promote/demote moderators, manage ranks, group settings, raise admins
   - Moderator commands: ban, kick, mute, warn, lock/unlock, settings access
 - **Technical Implementation**: Integrated into main message handler with highest priority before command processing
+
+## August 17, 2025 - Update 3: Private Messages and Start Command Enhancement
+- **Enhanced /start Command**: Modified to work properly in private messages with action button
+- **Add Bot as Admin Button**: Added inline keyboard button that directs users to add bot with required admin permissions
+- **Group-Only Enforcement**: All commands except /start now work only in groups, not private messages
+- **Private Message Guidance**: Clear instructions for users to add bot to group and grant admin permissions
+- **Technical Changes**:
+  - Modified `handlers/commands.py` `/start` command to include InlineKeyboard with direct link
+  - Enhanced `utils/decorators.py` `user_required` decorator already enforces group-only operation
+  - Added proper URL with admin permissions: `delete_messages+restrict_members+pin_messages+invite_users`
+  - Private message responses redirect users to add bot to groups
+  - All game functionality restricted to group chats only
