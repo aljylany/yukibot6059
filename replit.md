@@ -41,7 +41,7 @@ Bot Configuration:
     - **Theft Mechanics**: Player-vs-player robbery with security levels.
     - **Investment System**: Long-term investment options.
     - **Farming**: Crop planting and harvesting.
-    - **Castle System**: Comprehensive system for managing and upgrading virtual castles, including resource management, a dedicated shop, and smart pricing.
+    - **Castle System**: Comprehensive system for managing and upgrading virtual castles, including resource management, a dedicated shop, smart pricing, castle visibility controls (hide/show), attack/war system with unique castle IDs, and battle history tracking.
 - **User Management**: Registration, user profiles, ranking system, ban system, and a detailed player profile system showing statistics and achievements.
 - **Group Management**: Comprehensive moderation tools (ban, kick, mute), lock/unlock features, and entertainment commands.
 - **Analytics Dashboard**: Provides administrators with real-time insights into group performance, financial data, user activity, and moderation metrics through text-based visual analytics and a health score system.
