@@ -14,6 +14,9 @@ Bot Configuration:
 - All functionality integrated into text messages/commands instead of buttons
 - Fixed registration issues with user_required decorator
 - Added special response system for specific users with personalized greetings
+- Fixed bank account creation with dedicated handlers bypassing user_required decorator
+- Changed salary collection cooldown from 3 minutes to 5 minutes
+- Added missing last_salary_time column to database schema
 
 # System Architecture
 

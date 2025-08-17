@@ -191,12 +191,12 @@ async def collect_daily_salary(message: Message):
         now = datetime.now()
         last_salary_time = user.get('last_salary_time')
         
-        # التحقق من آخر راتب - كل 3 دقائق
+        # التحقق من آخر راتب - كل 5 دقائق
         if last_salary_time:
             last_time = datetime.fromisoformat(last_salary_time) if isinstance(last_salary_time, str) else last_salary_time
-            if now - last_time < timedelta(minutes=3):
-                remaining_time = 3 - int((now - last_time).total_seconds() / 60)
-                await message.reply(f"⏰ يجب انتظار {remaining_time} دقيقة أخرى لجمع راتبك!\n\nالراتب متاح كل 3 دقائق.")
+            if now - last_time < timedelta(minutes=5):
+                remaining_time = 5 - int((now - last_time).total_seconds() / 60)
+                await message.reply(f"⏰ يجب انتظار {remaining_time} دقيقة أخرى لجمع راتبك!\n\nالراتب متاح كل 5 دقائق.")
                 return
         
         # تحديد نوع البنك المختار (افتراضي سامبا للمستخدمين القدامى)
