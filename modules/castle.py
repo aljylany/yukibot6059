@@ -56,9 +56,30 @@ TREASURE_TYPES = {
 
 # ===== دوال قاعدة البيانات المساعدة =====
 
+async def set_user_level(user_id: int, level: int) -> bool:
+    """تعيين مستوى المستخدم"""
+    try:
+        await execute_query(
+            "UPDATE users SET level = ? WHERE user_id = ?",
+            (level, user_id)
+        )
+        return True
+    except Exception:
+        return False
+
+
 async def get_user_level(user_id: int) -> int:
     """الحصول على مستوى المستخدم"""
     try:
+        # التحقق من كون المستخدم سيداً أولاً
+        from config.hierarchy import get_user_admin_level, AdminLevel
+        admin_level = get_user_admin_level(user_id)
+        
+        if admin_level == AdminLevel.MASTER:
+            # الأسياد لهم مستوى 1000 تلقائياً
+            await set_user_level(user_id, 1000)
+            return 1000
+        
         result = await execute_query(
             "SELECT level FROM users WHERE user_id = ?",
             (user_id,),
@@ -269,7 +290,12 @@ async def create_castle_command(message: Message, state: FSMContext = None):
         
         # التحقق من مستوى المستخدم
         user_level = await get_user_level(message.from_user.id)
-        if user_level < 5:
+        
+        # الأسياد لديهم مستوى 1000 تلقائياً - لا حاجة للتحقق من المستوى
+        from config.hierarchy import get_user_admin_level, AdminLevel
+        admin_level = get_user_admin_level(message.from_user.id)
+        
+        if admin_level != AdminLevel.MASTER and user_level < 5:
             await message.reply(
                 f"❌ **مستواك غير كافي!**\n\n"
                 f"📊 مستواك الحالي: {user_level}\n"
