@@ -331,6 +331,175 @@ async def handle_withdraw_with_amount(message: Message, amount_text: str):
         await message.reply("❌ حدث خطأ في عملية السحب")
 
 
+async def handle_theft_command(message: Message):
+    """معالجة أمر السرقة عبر الرد على الرسائل"""
+    try:
+        # التحقق من وجود الرد والمستخدم
+        if not message.reply_to_message or not message.from_user:
+            await message.reply("❌ يرجى الرد على رسالة اللاعب الذي تريد سرقته")
+            return
+            
+        # التحقق من أن المستخدم مسجل
+        from database.operations import get_user
+        thief = await get_user(message.from_user.id)
+        if not thief:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+            
+        # الحصول على معرف الضحية
+        target_user_id = message.reply_to_message.from_user.id
+        target_username = message.reply_to_message.from_user.username or "مجهول"
+        target_name = message.reply_to_message.from_user.first_name or "مستخدم"
+        
+        # التحقق من عدم سرقة النفس
+        if target_user_id == message.from_user.id:
+            await message.reply("❌ لا يمكنك سرقة نفسك! 🤔")
+            return
+            
+        # التحقق من أن الضحية مسجلة
+        target = await get_user(target_user_id)
+        if not target:
+            await message.reply(f"❌ المستخدم {target_name} غير مسجل في البوت")
+            return
+            
+        # التحقق من أن الضحية لديها أموال
+        if target['balance'] <= 0:
+            await message.reply(f"😅 المستخدم {target_name} لا يملك أموال نقدية للسرقة!")
+            return
+            
+        # إجراء محاولة السرقة
+        await attempt_theft_on_target(message, thief, target, target_user_id, target_name)
+        
+    except Exception as e:
+        logging.error(f"خطأ في سرقة الرد: {e}")
+        await message.reply("❌ حدث خطأ أثناء محاولة السرقة")
+
+
+async def attempt_theft_on_target(message: Message, thief: dict, target: dict, target_user_id: int, target_name: str):
+    """محاولة سرقة المستخدم المستهدف"""
+    try:
+        from database.operations import update_user_balance, add_transaction
+        from utils.helpers import format_number
+        import random
+        
+        # حساب احتمالية النجاح بناءً على مستوى الأمان
+        SECURITY_LEVELS = {
+            1: {"name": "أساسي", "protection": 10},
+            2: {"name": "متوسط", "protection": 30},
+            3: {"name": "قوي", "protection": 50},
+            4: {"name": "فائق", "protection": 70},
+            5: {"name": "أسطوري", "protection": 90}
+        }
+        
+        target_security_level = target.get('security_level', 1)
+        target_protection = SECURITY_LEVELS.get(target_security_level, SECURITY_LEVELS[1])['protection']
+        
+        # احتمالية النجاح (كلما زاد الأمان، قل احتمال النجاح)
+        thief_skill = random.randint(1, 100)
+        success_chance = max(10, 80 - target_protection)
+        
+        if thief_skill <= success_chance:
+            # السرقة نجحت!
+            max_steal_amount = min(target['balance'], 10000)  # الحد الأقصى للسرقة
+            stolen_amount = random.randint(int(max_steal_amount * 0.1), int(max_steal_amount * 0.3))
+            stolen_amount = max(1, stolen_amount)  # على الأقل 1$
+            
+            # تحديث الأرصدة
+            new_thief_balance = thief['balance'] + stolen_amount
+            new_target_balance = target['balance'] - stolen_amount
+            
+            await update_user_balance(message.from_user.id, new_thief_balance)
+            await update_user_balance(target_user_id, new_target_balance)
+            
+            # إضافة المعاملة
+            await add_transaction(
+                target_user_id,
+                f"سرقة بواسطة {message.from_user.first_name or 'لص مجهول'}",
+                -stolen_amount,
+                "theft"
+            )
+            await add_transaction(
+                message.from_user.id,
+                f"سرقة ناجحة من {target_name}",
+                stolen_amount,
+                "theft"
+            )
+            
+            # رسائل نجاح متنوعة
+            success_messages = [
+                "🎉 نجحت في السرقة!",
+                "💰 عملية ناجحة!",
+                "🔓 سرقة محترفة!",
+                "⭐ مهمة مكتملة!",
+                "🏆 لص ماهر!"
+            ]
+            
+            success_msg = random.choice(success_messages)
+            
+            await message.reply(
+                f"{success_msg}\n\n"
+                f"💰 المبلغ المسروق: {format_number(stolen_amount)}$\n"
+                f"👤 من: {target_name}\n"
+                f"💵 رصيدك الجديد: {format_number(new_thief_balance)}$\n\n"
+                f"🎭 كن حذراً... قد يكتشف أمرك!"
+            )
+            
+            # إشعار الضحية (إذا أمكن)
+            try:
+                await message.bot.send_message(
+                    target_user_id,
+                    f"🚨 **تم سرقتك!**\n\n"
+                    f"💸 المبلغ المسروق: {format_number(stolen_amount)}$\n"
+                    f"👤 بواسطة: {message.from_user.first_name or 'لص مجهول'}\n"
+                    f"💰 رصيدك الجديد: {format_number(new_target_balance)}$\n\n"
+                    f"🛡 نصيحة: قم بترقية أمانك أو ضع أموالك في البنك!"
+                )
+            except:
+                pass  # إذا فشل إرسال الإشعار
+                
+        else:
+            # السرقة فشلت!
+            penalty = random.randint(50, 200)  # غرامة الفشل
+            
+            if thief['balance'] >= penalty:
+                new_thief_balance = thief['balance'] - penalty
+                await update_user_balance(message.from_user.id, new_thief_balance)
+                
+                await add_transaction(
+                    message.from_user.id,
+                    f"غرامة فشل سرقة {target_name}",
+                    -penalty,
+                    "theft_penalty"
+                )
+                
+                penalty_msg = f"\n💸 غرامة الفشل: {format_number(penalty)}$"
+            else:
+                penalty_msg = ""
+            
+            # رسائل فشل متنوعة
+            fail_messages = [
+                "😅 تم اكتشافك!",
+                "🚨 فشلت المحاولة!",
+                "🛡 الضحية محمية جيداً!",
+                "❌ لم تنجح هذه المرة!",
+                "🔒 أمان قوي جداً!"
+            ]
+            
+            fail_msg = random.choice(fail_messages)
+            
+            await message.reply(
+                f"{fail_msg}\n\n"
+                f"👤 فشل في سرقة: {target_name}\n"
+                f"🛡 مستوى الأمان عالي جداً!"
+                f"{penalty_msg}\n\n"
+                f"💡 نصيحة: حاول مع ضحية أقل حماية!"
+            )
+            
+    except Exception as e:
+        logging.error(f"خطأ في محاولة السرقة: {e}")
+        await message.reply("❌ حدث خطأ أثناء محاولة السرقة")
+
+
 async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
@@ -382,6 +551,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         await banks.collect_daily_salary(message)
     elif text.startswith('تحويل') and message.reply_to_message:
         await handle_transfer_command(message)
+    elif (text in ['سرقة', 'سرف', 'زرف'] or text.startswith('سرقة') or text.startswith('سرف')) and message.reply_to_message:
+        await handle_theft_command(message)
     elif any(word in words for word in ['رصيد', 'فلوس', 'مال']):
         await banks.show_balance(message)
     elif text.startswith('ايداع') and len(words) > 1:
