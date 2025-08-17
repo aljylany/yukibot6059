@@ -138,3 +138,18 @@ Bot Configuration:
   - Added proper URL with admin permissions: `delete_messages+restrict_members+pin_messages+invite_users`
   - Private message responses redirect users to add bot to groups
   - All game functionality restricted to group chats only
+
+## August 17, 2025 - Update 4: Manual Banking Registration & Master Money Commands
+- **Removed Automatic Account Creation**: Users must now manually type "انشاء حساب بنكي" to create accounts
+- **Bank Selection System**: Interactive bank selection with different bonuses and features (الأهلي, الراجحي, سامبا, الرياض)
+- **Master Money Addition**: New command "اضف فلوس [amount]" for Masters to add money to any user by reply
+- **Enhanced User Experience**: Clear bank comparison with bonuses, daily salaries, and interest rates
+- **Technical Changes**:
+  - Created `modules/manual_registration.py` for user-initiated account creation
+  - Modified `/start` command to not create accounts automatically
+  - Added `add_money_command()` in `modules/master_commands.py` for Masters
+  - Enhanced bank selection process with detailed information
+  - Added "اضف فلوس" to master command detection system
+  - Users receive notifications when Masters add money to their accounts
+- **Banking System**: 4 different banks with unique benefits, bonuses (1500-2500$), daily salaries, and interest rates
+- **Master Privileges**: Ultimate financial control with ability to gift money to any registered user

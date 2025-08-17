@@ -530,6 +530,108 @@ async def show_hierarchy_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء عرض الهيكل الإداري")
 
 
+@master_only
+async def add_money_command(message: Message):
+    """إضافة أموال لمستخدم - أمر خاص بالأسياد"""
+    try:
+        # فحص إذا كان الأمر رد على رسالة
+        if message.reply_to_message and message.reply_to_message.from_user:
+            # استخراج المبلغ من النص
+            if not message.text:
+                await message.reply("❌ يرجى كتابة المبلغ مع الأمر\n\nمثال: اضف فلوس 5000")
+                return
+                
+            text_parts = message.text.split()
+            if len(text_parts) < 3:
+                await message.reply(
+                    "❌ استخدم الصيغة الصحيحة:\n"
+                    "رد على رسالة اللاعب واكتب: اضف فلوس [المبلغ]\n\n"
+                    "مثال: اضف فلوس 5000"
+                )
+                return
+            
+            try:
+                amount = int(text_parts[2])
+            except ValueError:
+                await message.reply("❌ يرجى كتابة مبلغ صحيح\n\nمثال: اضف فلوس 5000")
+                return
+            
+            if amount <= 0:
+                await message.reply("❌ يجب أن يكون المبلغ أكبر من صفر")
+                return
+            
+            target_user_id = message.reply_to_message.from_user.id
+            target_name = message.reply_to_message.from_user.first_name or "المستخدم"
+            master_name = message.from_user.first_name or "السيد"
+            
+            # التحقق من وجود المستخدم المستهدف
+            from database.operations import get_user, update_user_balance, add_transaction
+            target_user = await get_user(target_user_id)
+            
+            if not target_user:
+                await message.reply(
+                    f"❌ {target_name} لم ينشئ حساب بنكي بعد!\n"
+                    f"يجب عليه كتابة 'انشاء حساب بنكي' أولاً"
+                )
+                return
+            
+            # إضافة المبلغ
+            new_balance = target_user['balance'] + amount
+            await update_user_balance(target_user_id, new_balance)
+            
+            # تسجيل المعاملة
+            await add_transaction(
+                user_id=target_user_id,
+                transaction_type="master_gift",
+                amount=amount,
+                description=f"هدية من السيد {master_name}",
+                from_balance=target_user['balance'],
+                to_balance=new_balance
+            )
+            
+            from utils.helpers import format_number
+            
+            # رسالة نجاح للسيد
+            await message.reply(
+                f"✅ **تم إضافة الأموال بنجاح!**\n\n"
+                f"👑 السيد: {master_name}\n"
+                f"🎯 المستهدف: {target_name}\n"
+                f"💰 المبلغ المضاف: {format_number(amount)}$\n"
+                f"💳 الرصيد الجديد: {format_number(new_balance)}$\n\n"
+                f"🎁 تمت الهدية بسلطة السيادة المطلقة"
+            )
+            
+            # إشعار للمستخدم المستهدف
+            try:
+                await message.bot.send_message(
+                    target_user_id,
+                    f"🎉 **هدية من السيد!**\n\n"
+                    f"👑 السيد {master_name} أهداك {format_number(amount)}$ 💰\n"
+                    f"💳 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+                    f"✨ استمتع بالهدية من سيادته المطلقة!"
+                )
+            except:
+                pass  # في حالة فشل إرسال الإشعار الخاص
+                
+        else:
+            # إذا لم يكن رد على رسالة، اطلب اسم المستخدم أو الرد
+            await message.reply(
+                "💡 **طريقتان لإضافة الأموال:**\n\n"
+                "1️⃣ **بالرد على الرسالة:**\n"
+                "   رد على رسالة اللاعب واكتب: اضف فلوس [المبلغ]\n\n"
+                "2️⃣ **بالمعرف:**\n"
+                "   اكتب: اضف فلوس [المعرف] [المبلغ]\n\n"
+                "**أمثلة:**\n"
+                "• اضف فلوس 5000 (رد على رسالة اللاعب)\n"
+                "• اضف فلوس @username 3000\n"
+                "• اضب فلوس 123456789 2000"
+            )
+            
+    except Exception as e:
+        logging.error(f"خطأ في add_money_command: {e}")
+        await message.reply("❌ حدث خطأ أثناء إضافة الأموال")
+
+
 async def handle_master_commands(message: Message) -> bool:
     """معالج أوامر الأسياد"""
     if not message.text or not message.from_user:
@@ -596,6 +698,11 @@ async def handle_master_commands(message: Message) -> bool:
     
     elif text in ['الهيكل الإداري', 'عرض الإدارة', 'المديرين']:
         await show_hierarchy_command(message)
+        return True
+    
+    # أمر إضافة الأموال
+    elif text.startswith('اضف فلوس') or text.startswith('أضف فلوس') or text.startswith('add money'):
+        await add_money_command(message)
         return True
     
     return False

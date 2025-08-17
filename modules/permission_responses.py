@@ -111,7 +111,8 @@ def is_master_command(text: str) -> bool:
         'يوكي قم بالتدمير الذاتي', 'يوكي دمر المجموعة', 'self destruct',
         'يوكي قم بمغادرة المجموعة', 'يوكي اخرج', 'يوكي غادر',
         'يوكي رقي مالك مجموعة', 'رقية مالك',
-        'يوكي نزل مالك المجموعة', 'تنزيل مالك'
+        'يوكي نزل مالك المجموعة', 'تنزيل مالك',
+        'اضف فلوس', 'أضف فلوس', 'add money'
     ]
     text_lower = text.lower().strip()
     return any(cmd in text_lower for cmd in master_commands)

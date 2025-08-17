@@ -38,7 +38,11 @@ async def handle_text_messages(message: Message, state: FSMContext):
         
         # معالجة الرسائل حسب الحالة
         if current_state.startswith("Banks"):
-            await handle_banks_message(message, state, current_state)
+            if current_state == "BanksStates:selecting_bank":
+                from modules.manual_registration import handle_bank_selection
+                await handle_bank_selection(message, state)
+            else:
+                await handle_banks_message(message, state, current_state)
         elif current_state.startswith("Property"):
             await handle_property_message(message, state, current_state)
         elif current_state.startswith("Theft"):
@@ -197,6 +201,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # التحقق من طلب إنشاء حساب بنكي
     if any(phrase in text for phrase in ['انشاء حساب بنكي', 'إنشاء حساب بنكي', 'انشئ حساب', 'حساب بنكي جديد']):
+        from modules.manual_registration import handle_bank_account_creation
         await handle_bank_account_creation(message, state)
         return
     

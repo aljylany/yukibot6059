@@ -56,14 +56,8 @@ async def start_command(message: Message, state: FSMContext):
             await message.reply(welcome_text, reply_markup=keyboard)
             
         else:
-            # في مجموعة - تسجيل المستخدم وبدء اللعبة
-            if message.from_user:
-                user = await get_or_create_user(
-                    message.from_user.id, 
-                    message.from_user.username or "", 
-                    message.from_user.first_name or "User"
-                )
-                await update_user_activity(message.from_user.id)
+            # في مجموعة - رسالة ترحيب فقط بدون إنشاء حساب
+            pass
             
             group_welcome = """
 🎮 **مرحباً بكم في بوت الألعاب الاقتصادية!**
