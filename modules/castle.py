@@ -633,6 +633,3 @@ async def handle_castle_name_input(message: Message):
     except Exception as e:
         logging.error(f"خطأ في معالجة اسم القلعة: {e}")
         await message.reply("❌ حدث خطأ في إنشاء القلعة")
-        
-        await message.reply(
-            f"🎉 **تمت الترقية بنجاح!**\n\n"
