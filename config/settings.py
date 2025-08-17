@@ -171,8 +171,8 @@ PAYMENT_SETTINGS = {
 
 # إعدادات قناة الإشعارات
 NOTIFICATION_CHANNEL = {
-    "enabled": False,  # معطل مؤقتاً حتى الحصول على المعرف الصحيح
-    "chat_id": "",  # معرف القناة الفرعية (يجب الحصول على الـ Chat ID الصحيح)
+    "enabled": True,
+    "chat_id": "-1002477409722",  # معرف القناة الفرعية
     "send_new_group_notifications": True,
     "send_bot_updates": True,
     "send_admin_alerts": True

@@ -414,11 +414,14 @@ async def set_channel_command(message: Message):
         with open('config/settings.py', 'w', encoding='utf-8') as f:
             f.write(content)
         
+        # إعادة تحميل الإعدادات
+        import importlib
+        import config.settings
+        importlib.reload(config.settings)
+        
         # اختبار الاتصال بالقناة
         from modules.notification_manager import NotificationManager
         notification_manager = NotificationManager(message.bot)
-        notification_manager.channel_id = chat_id
-        notification_manager.enabled = True
         
         test_success = await notification_manager.test_notification_channel()
         

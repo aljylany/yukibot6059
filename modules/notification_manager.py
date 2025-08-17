@@ -17,12 +17,20 @@ class NotificationManager:
     
     def __init__(self, bot: Bot):
         self.bot = bot
+        # تحديث الإعدادات في كل مرة لضمان استخدام أحدث قيم
+        from config.settings import NOTIFICATION_CHANNEL
         self.channel_id = NOTIFICATION_CHANNEL["chat_id"]
         self.enabled = NOTIFICATION_CHANNEL["enabled"]
     
     async def send_notification(self, message: str, parse_mode: str = "HTML") -> bool:
         """إرسال إشعار أساسي إلى القناة"""
-        if not self.enabled:
+        # تحديث الإعدادات في كل مرة
+        from config.settings import NOTIFICATION_CHANNEL
+        self.channel_id = NOTIFICATION_CHANNEL["chat_id"]
+        self.enabled = NOTIFICATION_CHANNEL["enabled"]
+        
+        if not self.enabled or not self.channel_id:
+            logging.warning("نظام الإشعارات معطل أو معرف القناة غير محدد")
             return False
             
         try:
