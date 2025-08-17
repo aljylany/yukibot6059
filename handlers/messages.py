@@ -223,40 +223,44 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await handle_utility_commands(message):
         return
     
-    # البحث عن كلمات مفتاحية محددة فقط
-    if any(word in text for word in ['راتب', 'مرتب', 'راتبي']):
+    # البحث عن كلمات مفتاحية محددة بتطابق دقيق
+    words = text.split()
+    
+    if any(word in words for word in ['راتب', 'مرتب', 'راتبي']):
         await banks.collect_daily_salary(message)
     elif text.startswith('تحويل') and message.reply_to_message:
         await handle_transfer_command(message)
-    elif any(word in text for word in ['رصيد', 'فلوس', 'مال']):
+    elif any(word in words for word in ['رصيد', 'فلوس', 'مال']):
         await banks.show_balance(message)
-    elif any(word in text for word in ['بنك', 'ايداع', 'سحب']):
+    elif any(word in words for word in ['بنك', 'ايداع', 'سحب']):
         await banks.show_bank_menu(message)
-    elif any(word in text for word in ['عقار', 'بيت', 'شراء']):
+    elif any(word in words for word in ['عقار', 'بيت']) and not any(castle_word in words for castle_word in ['قلعة', 'موارد']):
         await real_estate.show_property_menu(message)
-    elif any(word in text for word in ['سرقة', 'سرق', 'امان']):
+    elif any(word in words for word in ['سرقة', 'سرق', 'امان']):
         await theft.show_security_menu(message)
-    elif any(word in text for word in ['اسهم', 'استثمار', 'محفظة']):
+    elif any(word in words for word in ['اسهم', 'استثمار', 'محفظة']):
         await stocks.show_stocks_menu(message)
-    elif any(word in text for word in ['مزرعة', 'زراعة', 'حصاد']):
+    elif any(word in words for word in ['مزرعة', 'زراعة', 'حصاد']):
         await farm.show_farm_menu(message)
     elif any(phrase in text for phrase in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
         await castle.create_castle_command(message, state)
     elif text.strip() == 'قلعة':
         await castle.show_castle_menu(message)
-    elif any(word in text for word in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز']):
+    elif any(phrase in text for phrase in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز']):
         await castle.treasure_hunt_command(message)
-    elif any(word in text for word in ['طور القلعة', 'تطوير القلعة', 'ترقية القلعة']):
+    elif any(phrase in text for phrase in ['طور القلعة', 'تطوير القلعة', 'ترقية القلعة']):
         await castle.upgrade_castle_command(message)
-    elif any(word in text for word in ['احصائيات القلعة', 'إحصائيات القلعة', 'احصائيات قلعة']):
+    elif any(phrase in text for phrase in ['احصائيات القلعة', 'إحصائيات القلعة', 'احصائيات قلعة']):
         await castle.castle_stats_command(message)
-    elif any(phrase in text for phrase in ['متجر القلعة', 'متجر قلعة', 'شراء موارد']):
+    elif any(phrase in text for phrase in ['متجر القلعة', 'متجر قلعة', 'شراء موارد']) or (text.strip() == 'متجر' and 'قلعة' in words):
         await castle.show_castle_shop(message)
-    elif text.startswith('شراء '):
+    elif text.startswith('شراء ') and any(word in text for word in ['ذهب', 'حجارة', 'عمال', 'موارد']):
         await castle.purchase_item_command(message)
+    elif text.startswith('شراء '):
+        await real_estate.show_property_menu(message)
     elif any(phrase in text for phrase in ['حذف قلعتي', 'حذف القلعة', 'احذف قلعتي']):
         await castle.delete_castle_command(message)
-    elif text.strip() == 'تأكيد حذف القلعة':
+    elif text.strip() == 'تأكيد حذف القلعة' or text == 'تأكيد حذف القلعة':
         await castle.confirm_delete_castle_command(message)
     elif any(phrase in text for phrase in ['حسابي', 'حساب اللاعب', 'معلوماتي', 'تفاصيلي']):
         await castle.show_player_profile(message)
@@ -268,9 +272,9 @@ async def handle_general_message(message: Message, state: FSMContext):
         await castle.list_available_castles(message)
     elif text.startswith('هجوم '):
         await castle.attack_castle_command(message)
-    elif any(word in text for word in ['سجل المعارك', 'معارك القلعة', 'سجل الحروب']):
+    elif any(phrase in text for phrase in ['سجل المعارك', 'معارك القلعة', 'سجل الحروب']):
         await castle.castle_battles_log_command(message)
-    elif any(word in text for word in ['ترتيب', 'متصدرين', 'رانكنغ']):
+    elif any(word in words for word in ['ترتيب', 'متصدرين', 'رانكنغ']):
         from modules import ranking
         await ranking.show_leaderboard(message)
     
