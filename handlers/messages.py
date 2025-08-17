@@ -179,7 +179,12 @@ async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
-    # فحص أوامر الأسياد المطلقة أولاً (أعلى أولوية)
+    # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)
+    from modules.permission_handler import handle_permission_check
+    if await handle_permission_check(message):
+        return
+    
+    # فحص أوامر الأسياد المطلقة (أعلى أولوية للأسياد فقط)
     if await handle_master_commands(message):
         return
     

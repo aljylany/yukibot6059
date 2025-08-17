@@ -10,7 +10,7 @@ import sys
 from aiogram.types import Message, ChatMemberOwner, ChatMemberAdministrator
 from aiogram import Bot
 from utils.admin_decorators import master_only
-from config.hierarchy import MASTERS, add_group_owner, remove_group_owner, get_group_admins
+from config.hierarchy import MASTERS, add_group_owner, remove_group_owner, get_group_admins, AdminLevel
 from modules.cancel_handler import start_cancellable_command, is_command_cancelled, finish_command
 
 
@@ -536,6 +536,19 @@ async def handle_master_commands(message: Message) -> bool:
         return False
     
     user_id = message.from_user.id
+    text = message.text.lower().strip()
+    
+    # فحص إذا كان النص يحتوي على أمر من أوامر الأسياد
+    from modules.permission_responses import is_master_command, get_permission_denial_response
+    if is_master_command(message.text):
+        # التحقق من كون المستخدم سيد
+        if user_id not in MASTERS:
+            # إرسال رد مهين
+            group_id = message.chat.id if message.chat.type in ['group', 'supergroup'] else None
+            insulting_response = get_permission_denial_response(user_id, group_id, AdminLevel.MASTER)
+            if insulting_response:
+                await message.reply(insulting_response)
+            return True
     
     # التحقق من كون المستخدم سيد
     if user_id not in MASTERS:

@@ -182,17 +182,28 @@ async def handle_hierarchy_commands(message: Message) -> bool:
     
     text = message.text.lower().strip()
     group_id = message.chat.id if message.chat.type in ['group', 'supergroup'] else None
+    user_id = message.from_user.id
     
     # التحقق من الصلاحيات للأوامر المختلفة
-    user_level = get_user_admin_level(message.from_user.id, group_id)
+    user_level = get_user_admin_level(user_id, group_id)
     
-    # أوامر ترقية وتنزيل المشرفين (مالك المجموعة أو أعلى)
-    if text in ['ترقية مشرف', 'رقي مشرف'] and user_level.value >= AdminLevel.GROUP_OWNER.value:
-        await promote_moderator_command(message)
+    # فحص أوامر مالكي المجموعات مع ردود مهينة
+    from modules.permission_responses import is_owner_command, get_permission_denial_response
+    if is_owner_command(message.text) and user_level.value < AdminLevel.GROUP_OWNER.value:
+        insulting_response = get_permission_denial_response(user_id, group_id, AdminLevel.GROUP_OWNER)
+        if insulting_response:
+            await message.reply(insulting_response)
         return True
     
-    elif text in ['تنزيل مشرف', 'نزل مشرف'] and user_level.value >= AdminLevel.GROUP_OWNER.value:
-        await demote_moderator_command(message)
+    # أوامر ترقية وتنزيل المشرفين (مالك المجموعة أو أعلى)
+    if text in ['ترقية مشرف', 'رقي مشرف']:
+        if user_level.value >= AdminLevel.GROUP_OWNER.value:
+            await promote_moderator_command(message)
+        return True
+    
+    elif text in ['تنزيل مشرف', 'نزل مشرف']:
+        if user_level.value >= AdminLevel.GROUP_OWNER.value:
+            await demote_moderator_command(message)
         return True
     
     # أوامر عرض المعلومات (متاحة لجميع المستويات)

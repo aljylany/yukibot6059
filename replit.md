@@ -106,3 +106,23 @@ Bot Configuration:
   - Enhanced main.py with `check_restart_status()` function
   - Added new command phrases: "يوكي قم بإيقاف التشغيل", "يوكي اوقف البوت", "shutdown bot"
   - Improved error handling and user feedback throughout restart process
+
+## August 17, 2025 - Update 2: Insulting Permission System
+- **Hierarchical Insulting Responses**: Comprehensive system for degrading users who attempt unauthorized commands
+- **Permission-Based Insults**: Different insulting responses based on user level and attempted command level
+- **New System Components**:
+  - `modules/permission_responses.py` - Core insulting response system with 6 categories of degrading messages
+  - `modules/permission_handler.py` - Main permission checking and response dispatcher
+  - Enhanced `handlers/messages.py` integration for automatic insulting responses
+- **Response Categories**:
+  - **Members trying Master commands**: 7 extremely degrading responses (calling them dogs, insects, trash)
+  - **Members trying Owner commands**: 5 degrading responses (calling them homeless, slaves, beggars)
+  - **Members trying Moderator commands**: 6 insulting responses (calling them babies, stupid, lazy)
+  - **Moderators trying Master commands**: 5 degrading responses (calling them failures, ants, circus clowns)
+  - **Moderators trying Owner commands**: 4 insulting responses (calling them worthless, obedient dogs)
+  - **Owners trying Master commands**: 5 degrading responses (calling them delusional, ants, fake owners)
+- **Command Detection**:
+  - Master commands: restart, shutdown, self-destruct, leave group, promote/demote owners
+  - Owner commands: promote/demote moderators, manage ranks, group settings, raise admins
+  - Moderator commands: ban, kick, mute, warn, lock/unlock, settings access
+- **Technical Implementation**: Integrated into main message handler with highest priority before command processing
