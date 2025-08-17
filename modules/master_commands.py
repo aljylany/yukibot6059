@@ -6,6 +6,7 @@ Master Commands - Ultimate Authority
 import logging
 import asyncio
 import os
+import sys
 from aiogram.types import Message, ChatMemberOwner, ChatMemberAdministrator
 from aiogram import Bot
 from utils.admin_decorators import master_only
@@ -77,16 +78,107 @@ async def restart_bot_command(message: Message):
         
         # حفظ البيانات المهمة قبل إعادة التشغيل
         logging.info(f"إعادة تشغيل البوت بأمر من السيد: {user_id}")
+        
+        # حفظ معلومات السيد للرسالة بعد إعادة التشغيل
+        restart_info = {
+            'user_id': user_id,
+            'chat_id': chat_id,
+            'username': message.from_user.first_name or "السيد"
+        }
+        
+        # حفظ في ملف مؤقت
+        import json
+        with open('restart_info.json', 'w', encoding='utf-8') as f:
+            json.dump(restart_info, f, ensure_ascii=False)
+        
         finish_command(user_id)
         
         # إعادة تشغيل العملية
-        os.system("kill -9 $(ps aux | grep '[p]ython.*main.py' | awk '{print $2}')")
+        os.execv(sys.executable, [sys.executable] + sys.argv)
         
     except Exception as e:
         logging.error(f"خطأ في restart_bot_command: {e}")
         if message.from_user:
             finish_command(message.from_user.id)
         await message.reply("❌ حدث خطأ أثناء إعادة التشغيل")
+
+
+@master_only
+async def shutdown_bot_command(message: Message):
+    """إيقاف تشغيل البوت نهائياً مع عد تنازلي وإمكانية الإلغاء"""
+    try:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        
+        # تسجيل بداية الأمر
+        start_cancellable_command(user_id, "shutdown", chat_id)
+        
+        # رسالة التأكيد مع العد التنازلي
+        countdown_msg = await message.reply(
+            "🔴 **أمر إيقاف التشغيل المطلق**\n\n"
+            f"👑 السيد: {message.from_user.first_name}\n"
+            "⚠️ سيتم إيقاف البوت نهائياً خلال 15 ثانية!\n"
+            "💾 سيتم حفظ جميع البيانات تلقائياً\n"
+            "🔌 لن يعود البوت للعمل إلا بإعادة تشغيل يدوية\n\n"
+            "⏰ **العد التنازلي:** 15\n\n"
+            "💡 اكتب 'إلغاء' لإيقاف الأمر"
+        )
+        
+        # العد التنازلي لمدة 15 ثانية مع فحص الإلغاء
+        for i in range(14, 0, -1):
+            await asyncio.sleep(1)
+            
+            # فحص الإلغاء
+            if is_command_cancelled(user_id):
+                await countdown_msg.edit_text(
+                    "❌ **تم إلغاء أمر إيقاف التشغيل**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    "✅ تم إيقاف أمر الإغلاق بنجاح\n"
+                    "🟢 البوت يواصل العمل بشكل طبيعي"
+                )
+                finish_command(user_id)
+                return
+            
+            try:
+                await countdown_msg.edit_text(
+                    "🔴 **أمر إيقاف التشغيل المطلق**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    "⚠️ سيتم إيقاف البوت نهائياً!\n"
+                    "💾 سيتم حفظ جميع البيانات تلقائياً\n"
+                    "🔌 لن يعود البوت للعمل إلا بإعادة تشغيل يدوية\n\n"
+                    f"⏰ **العد التنازلي:** {i}\n\n"
+                    "💡 اكتب 'إلغاء' لإيقاف الأمر"
+                )
+            except:
+                pass
+        
+        # فحص أخير قبل التنفيذ
+        if is_command_cancelled(user_id):
+            await countdown_msg.edit_text("❌ **تم إلغاء الأمر في اللحظة الأخيرة**")
+            finish_command(user_id)
+            return
+        
+        # الرسالة الأخيرة
+        await countdown_msg.edit_text(
+            "🔴 **إيقاف تشغيل البوت الآن...**\n\n"
+            "🔌 جاري إغلاق النظام نهائياً\n"
+            "💤 البوت متوقف - تم تنفيذ أمر السيد"
+        )
+        
+        await asyncio.sleep(1)
+        
+        # حفظ البيانات المهمة قبل الإغلاق
+        logging.info(f"إيقاف البوت نهائياً بأمر من السيد: {user_id}")
+        finish_command(user_id)
+        
+        # إيقاف تشغيل البوت نهائياً
+        sys.exit(0)
+        
+    except Exception as e:
+        logging.error(f"خطأ في shutdown_bot_command: {e}")
+        if message.from_user:
+            finish_command(message.from_user.id)
+        await message.reply("❌ حدث خطأ أثناء إيقاف التشغيل")
 
 
 @master_only 
@@ -467,6 +559,10 @@ async def handle_master_commands(message: Message) -> bool:
     # أوامر الأسياد المطلقة
     if any(phrase in text for phrase in ['يوكي قم بإعادة التشغيل', 'يوكي اعد التشغيل', 'restart bot']):
         await restart_bot_command(message)
+        return True
+    
+    elif any(phrase in text for phrase in ['يوكي قم بإيقاف التشغيل', 'يوكي اوقف البوت', 'shutdown bot']):
+        await shutdown_bot_command(message)
         return True
     
     elif any(phrase in text for phrase in ['يوكي قم بالتدمير الذاتي', 'يوكي دمر المجموعة', 'self destruct']):

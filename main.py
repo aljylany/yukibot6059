@@ -17,6 +17,37 @@ from handlers import commands, callbacks, messages
 from utils.helpers import setup_logging
 
 
+async def check_restart_status(bot):
+    """فحص حالة إعادة التشغيل وإرسال رسالة تأكيد"""
+    try:
+        import json
+        if os.path.exists('restart_info.json'):
+            with open('restart_info.json', 'r', encoding='utf-8') as f:
+                restart_info = json.load(f)
+            
+            # إرسال رسالة تأكيد إعادة التشغيل
+            success_message = (
+                "✅ **تم إعادة التشغيل بنجاح!**\n\n"
+                f"👑 السيد: {restart_info['username']}\n"
+                f"🔄 تمت إعادة تشغيل البوت بنجاح\n"
+                f"⚡ النظام يعمل الآن بشكل طبيعي\n\n"
+                f"📊 **تفاصيل العملية:**\n"
+                f"• المعرف: `{restart_info['user_id']}`\n"
+                f"• تمت إعادة التشغيل بأمر مطلق\n"
+                f"• جميع الأنظمة تعمل بشكل صحيح\n\n"
+                f"🎯 **البوت جاهز لاستقبال الأوامر**"
+            )
+            
+            await bot.send_message(restart_info['chat_id'], success_message)
+            
+            # حذف ملف المعلومات بعد الإرسال
+            os.remove('restart_info.json')
+            logging.info(f"تم إرسال رسالة تأكيد إعادة التشغيل للسيد: {restart_info['user_id']}")
+            
+    except Exception as e:
+        logging.error(f"خطأ في فحص حالة إعادة التشغيل: {e}")
+
+
 async def main():
     """دالة تشغيل البوت الرئيسية"""
     # إعداد نظام التسجيل
@@ -35,6 +66,9 @@ async def main():
     
     # تهيئة قاعدة البيانات
     await init_database()
+    
+    # فحص إعادة التشغيل وإرسال رسالة تأكيد
+    await check_restart_status(bot)
     
     try:
         logging.info("🚀 بدء تشغيل البوت...")

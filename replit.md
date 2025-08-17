@@ -93,4 +93,16 @@ Bot Configuration:
   - **General Responses**: 6-7 varied responses per category for all users
   - **Special Responses**: Custom romantic/personal responses for رهف in all categories
   - **Administrative Levels**: Masters (ultimate), Group Owners (local), Moderators (basic), Members
-  - **Master Commands**: Bot restart, self-destruct, leave groups, promote/demote owners
+  - **Master Commands**: Bot restart, shutdown, self-destruct, leave groups, promote/demote owners
+  
+## August 17, 2025 - Update
+- **Enhanced Restart System**: Improved restart command to properly restart bot instead of just shutdown
+- **New Shutdown Command**: Added dedicated shutdown command for permanent bot stop
+- **Post-Restart Confirmation**: Bot now sends success message after restart completion
+- **Technical Changes**:
+  - Modified `restart_bot_command()` to use `os.execv()` for proper restart
+  - Added `shutdown_bot_command()` for clean shutdown with countdown
+  - Added restart status tracking with JSON file storage
+  - Enhanced main.py with `check_restart_status()` function
+  - Added new command phrases: "يوكي قم بإيقاف التشغيل", "يوكي اوقف البوت", "shutdown bot"
+  - Improved error handling and user feedback throughout restart process
