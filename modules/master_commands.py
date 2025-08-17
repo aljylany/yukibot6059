@@ -97,28 +97,54 @@ async def self_destruct_command(message: Message):
             await message.reply("❌ هذا الأمر يعمل في المجموعات فقط")
             return
         
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        
+        # تسجيل بداية الأمر
+        start_cancellable_command(user_id, "self_destruct", chat_id)
+        
         # رسالة التحذير مع العد التنازلي
         countdown_msg = await message.reply(
             "💥 **أمر التدمير الذاتي المطلق**\n\n"
             f"👑 السيد: {message.from_user.first_name}\n"
             "⚠️ سيتم طرد جميع الأعضاء من المجموعة!\n"
             "🚨 هذا الإجراء لا يمكن التراجع عنه\n\n"
-            "⏰ **العد التنازلي:** 15"
+            "⏰ **العد التنازلي:** 15\n\n"
+            "💡 اكتب 'إلغاء' لإيقاف الأمر"
         )
         
-        # العد التنازلي لمدة 15 ثانية
+        # العد التنازلي لمدة 15 ثانية مع فحص الإلغاء  
         for i in range(14, 0, -1):
             await asyncio.sleep(1)
+            
+            # فحص الإلغاء
+            if is_command_cancelled(user_id):
+                await countdown_msg.edit_text(
+                    "❌ **تم إلغاء أمر التدمير الذاتي**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    "✅ تم إيقاف أمر التدمير الذاتي بنجاح\n"
+                    "🔒 المجموعة آمنة"
+                )
+                finish_command(user_id)
+                return
+            
             try:
                 await countdown_msg.edit_text(
                     "💥 **أمر التدمير الذاتي المطلق**\n\n"
                     f"👑 السيد: {message.from_user.first_name}\n"
                     "⚠️ سيتم طرد جميع الأعضاء!\n"
                     "🚨 لا يمكن التراجع عن هذا الإجراء\n\n"
-                    f"⏰ **العد التنازلي:** {i}"
+                    f"⏰ **العد التنازلي:** {i}\n\n"
+                    "💡 اكتب 'إلغاء' لإيقاف الأمر"
                 )
             except:
                 pass
+        
+        # فحص أخير قبل التنفيذ
+        if is_command_cancelled(user_id):
+            await countdown_msg.edit_text("❌ **تم إلغاء الأمر في اللحظة الأخيرة**")
+            finish_command(user_id)
+            return
         
         # الرسالة الأخيرة
         await countdown_msg.edit_text(
@@ -133,27 +159,41 @@ async def self_destruct_command(message: Message):
         
         # الحصول على قائمة الأعضاء وطردهم
         try:
-            async for member in bot.get_chat_administrators(chat_id):
+            administrators = await bot.get_chat_administrators(chat_id)
+            banned_count = 0
+            
+            for member in administrators:
                 if member.user.id not in MASTERS and member.user.id != bot.id:
                     try:
                         await bot.ban_chat_member(chat_id, member.user.id)
+                        banned_count += 1
                         await asyncio.sleep(0.1)  # تجنب rate limiting
-                    except Exception:
+                    except Exception as e:
+                        logging.warning(f"فشل طرد العضو {member.user.id}: {e}")
                         pass
             
-            # طرد الأعضاء العاديين (يحتاج API إضافية)
-            await message.reply(
+            # تقرير النتائج
+            await countdown_msg.edit_text(
                 "💥 **تم تنفيذ التدمير الذاتي**\n\n"
-                "✅ تم طرد جميع المديرين\n"
-                "⚠️ لطرد الأعضاء العاديين، يجب ترقيتي كمدير مع صلاحية حظر الأعضاء"
+                f"✅ تم طرد {banned_count} مدير\n"
+                "⚠️ لطرد الأعضاء العاديين، يجب ترقيتي كمدير مع صلاحية حظر الأعضاء\n"
+                f"👑 السيد {message.from_user.first_name} نفذ الأمر بنجاح"
             )
             
         except Exception as e:
             logging.error(f"خطأ في التدمير الذاتي: {e}")
-            await message.reply("❌ حدث خطأ أثناء تنفيذ التدمير الذاتي")
+            await countdown_msg.edit_text(
+                "❌ **حدث خطأ أثناء التدمير الذاتي**\n\n"
+                "🔧 قد تحتاج لترقيتي كمدير مع صلاحيات كاملة\n"
+                f"⚠️ الخطأ: {str(e)[:100]}..."
+            )
+        
+        finish_command(user_id)
             
     except Exception as e:
         logging.error(f"خطأ في self_destruct_command: {e}")
+        if message.from_user:
+            finish_command(message.from_user.id)
         await message.reply("❌ حدث خطأ في معالجة الأمر")
 
 
@@ -165,28 +205,54 @@ async def leave_group_command(message: Message):
             await message.reply("❌ هذا الأمر يعمل في المجموعات فقط")
             return
         
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        
+        # تسجيل بداية الأمر
+        start_cancellable_command(user_id, "leave_group", chat_id)
+        
         # رسالة الوداع مع العد التنازلي
         countdown_msg = await message.reply(
             "👋 **أمر المغادرة المطلق**\n\n"
             f"👑 السيد: {message.from_user.first_name}\n"
             f"وداعاً أيها السيد العزيز!\n"
             "🚶‍♂️ سأغادر هذه المجموعة\n\n"
-            "⏰ **العد التنازلي:** 15"
+            "⏰ **العد التنازلي:** 15\n\n"
+            "💡 اكتب 'إلغاء' لإيقاف الأمر"
         )
         
-        # العد التنازلي لمدة 15 ثانية
+        # العد التنازلي لمدة 15 ثانية مع فحص الإلغاء
         for i in range(14, 0, -1):
             await asyncio.sleep(1)
+            
+            # فحص الإلغاء
+            if is_command_cancelled(user_id):
+                await countdown_msg.edit_text(
+                    "❌ **تم إلغاء أمر المغادرة**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    "✅ تم إيقاف أمر المغادرة بنجاح\n"
+                    "🏠 سأبقى في المجموعة"
+                )
+                finish_command(user_id)
+                return
+            
             try:
                 await countdown_msg.edit_text(
                     "👋 **أمر المغادرة المطلق**\n\n"
                     f"👑 السيد: {message.from_user.first_name}\n"
                     f"وداعاً أيها السيد العزيز!\n"
                     "🚶‍♂️ سأغادر هذه المجموعة\n\n"
-                    f"⏰ **العد التنازلي:** {i}"
+                    f"⏰ **العد التنازلي:** {i}\n\n"
+                    "💡 اكتب 'إلغاء' لإيقاف الأمر"
                 )
             except:
                 pass
+        
+        # فحص أخير قبل التنفيذ
+        if is_command_cancelled(user_id):
+            await countdown_msg.edit_text("❌ **تم إلغاء الأمر في اللحظة الأخيرة**")
+            finish_command(user_id)
+            return
         
         # الرسالة الأخيرة
         await countdown_msg.edit_text(
@@ -197,13 +263,15 @@ async def leave_group_command(message: Message):
         
         await asyncio.sleep(2)
         
-        chat_id = message.chat.id
-        logging.info(f"مغادرة المجموعة {chat_id} بأمر من السيد: {message.from_user.id}")
+        logging.info(f"مغادرة المجموعة {chat_id} بأمر من السيد: {user_id}")
+        finish_command(user_id)
         
         await message.bot.leave_chat(chat_id)
         
     except Exception as e:
         logging.error(f"خطأ في leave_group_command: {e}")
+        if message.from_user:
+            finish_command(message.from_user.id)
         await message.reply("❌ حدث خطأ أثناء المغادرة")
 
 
