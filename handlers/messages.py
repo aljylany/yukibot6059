@@ -591,7 +591,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         await castle.castle_stats_command(message)
     elif any(phrase in text for phrase in ['متجر القلعة', 'متجر قلعة', 'شراء موارد']) or (text.strip() == 'متجر' and 'قلعة' in words):
         await castle.show_castle_shop(message)
-    elif text.startswith('شراء ') and any(word in text for word in ['ذهب', 'حجارة', 'عمال', 'موارد']):
+    elif text.startswith('شراء ') and any(word in text for word in ['ذهب', 'حجارة', 'حجار', 'عمال', 'موارد']):
         await castle.purchase_item_command(message)
     elif text.startswith('شراء '):
         await real_estate.show_property_menu(message)

@@ -76,6 +76,20 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول العقارات (الجدول المطلوب للوحدة العقارية)
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS properties (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    property_type TEXT,
+                    location TEXT,
+                    price REAL,
+                    income_per_hour REAL,
+                    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
             # إنشاء جدول الأسهم
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS user_stocks (
