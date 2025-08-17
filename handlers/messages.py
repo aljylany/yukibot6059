@@ -595,9 +595,9 @@ async def handle_general_message(message: Message, state: FSMContext):
         await castle.purchase_item_command(message)
     elif text.startswith('شراء '):
         await real_estate.show_property_menu(message)
-    elif any(phrase in text for phrase in ['حذف قلعتي', 'حذف القلعة', 'احذف قلعتي']):
+    elif any(phrase in text for phrase in ['حذف قلعتي', 'احذف قلعتي']):
         await castle.delete_castle_command(message)
-    elif text.strip() == 'تأكيد حذف القلعة' or text == 'تأكيد حذف القلعة':
+    elif text.strip() in ['تأكيد', 'نعم']:
         await castle.confirm_delete_castle_command(message)
     elif any(phrase in text for phrase in ['حسابي', 'حساب اللاعب', 'معلوماتي', 'تفاصيلي']):
         await castle.show_player_profile(message)
