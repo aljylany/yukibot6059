@@ -244,6 +244,26 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'المجموعه':
         await group_settings.show_group_info(message)
     
+    # === لوحات التحكم والإحصائيات ===
+    elif text == 'لوحة التحكم' or text == 'الاحصائيات':
+        from modules import dashboard
+        await dashboard.show_main_dashboard(message)
+    elif text == 'احصائيات مالية' or text == 'الاحصائيات المالية':
+        from modules import dashboard
+        await dashboard.show_financial_dashboard(message)
+    elif text == 'احصائيات النشاط' or text == 'نشاط المجموعة':
+        from modules import dashboard
+        await dashboard.show_activity_dashboard(message)
+    elif text == 'احصائيات الاشراف' or text == 'احصائيات الإشراف':
+        from modules import dashboard
+        await dashboard.show_moderation_stats(message)
+    elif text == 'تقرير شامل' or text == 'التقرير الشامل':
+        from modules import dashboard
+        await dashboard.show_comprehensive_report(message)
+    elif text == 'صحة المجموعة' or text == 'نقاط الصحة':
+        from modules import dashboard
+        await dashboard.show_health_dashboard(message)
+    
     # === أوامر التسلية ===
     elif any(rank in text for rank in ['هطف', 'بثر', 'حمار', 'كلب', 'كلبه', 'عتوي', 'عتويه', 'لحجي', 'لحجيه', 'خروف', 'خفيفه', 'خفيف']):
         await handle_entertainment_rank_command(message, text)

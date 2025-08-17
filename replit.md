@@ -1,6 +1,8 @@
 # Overview
 
-This is a comprehensive Telegram bot built with aiogram that implements an economic simulation game in Arabic. The bot features a complex virtual economy where users can engage in banking, real estate, stock trading, farming, theft mechanics, and more. The project follows a modular architecture with separate handlers for different bot functionalities and uses SQLite for data persistence.
+This project is a sophisticated Telegram bot, developed using `aiogram`, designed to host an economic simulation game entirely in Arabic. Its core purpose is to provide a rich, interactive virtual economy where users can engage in diverse activities such as banking, real estate, stock trading, farming, and even player-vs-player theft. The bot aims to deliver a comprehensive, immersive gaming experience within Telegram groups, fostering a dynamic in-game economy.
+
+The project is built on a modular architecture, ensuring scalability and maintainability, with data persistence managed efficiently using SQLite. Its ambition is to create a captivating and highly engaging virtual world that can support a large Arabic-speaking community.
 
 # User Preferences
 
@@ -16,225 +18,38 @@ Bot Configuration:
 # System Architecture
 
 ## Framework and Technology Stack
-- **Bot Framework**: aiogram (Python async Telegram bot framework)
-- **Database**: SQLite with aiosqlite for async operations
+- **Bot Framework**: `aiogram` (Python async Telegram bot framework)
+- **Database**: SQLite with `aiosqlite` for async operations
 - **Programming Language**: Python with async/await patterns
-- **Architecture Pattern**: Modular design with separation of concerns
 
-## Core Components
+## Core Architectural Decisions
+- **Modular Design**: Features are separated into distinct modules (e.g., Banking, Real Estate, Theft) for clear separation of concerns and easier development.
+- **Command-Based Interface**: All user interactions are driven by text commands, replacing traditional inline keyboards for a streamlined group-chat experience.
+- **Group-Exclusive Operation**: The bot is designed to function primarily within Telegram groups, with private messages serving only to guide users to group setup.
+- **State Management**: `aiogram`'s Finite State Machine (FSM) is extensively used to manage complex multi-step user interactions across various game mechanics.
+- **Database Layer**: Asynchronous database operations using `aiosqlite` ensure efficient CRUD functionality and robust data persistence for all game states and user data.
+- **Admin & Access Control**: A multi-level admin privilege system with decorator-based access control manages user roles and permissions, including comprehensive moderation tools.
+- **Arabic Language Support**: The entire bot, including commands, responses, and game elements, is designed for native Arabic language interaction.
+- **UI/UX Decisions**: The interface is text-command driven, focusing on clear, concise Arabic messages. Visual elements, where present, are generated as text-based charts (ASCII art) within the chat.
 
-### Handler System
-The bot uses a command-focused handler system:
-- **Commands Handler**: Processes slash commands like `/start`, `/help`, `/balance`
-- **Callbacks Handler**: Removed - no longer uses inline keyboards
-- **Messages Handler**: Handles text messages based on FSM states
-- **Group-Only Operation**: Bot only works in groups, private messages redirect to group setup
+## Key Feature Specifications
+- **Economic Simulation**:
+    - **Banking System**: Account creation, deposits, withdrawals, transfers, daily salaries, and bank-specific features.
+    - **Real Estate**: Buying, selling, and income generation from virtual properties.
+    - **Stock Market**: Trading virtual stocks with fluctuating prices.
+    - **Theft Mechanics**: Player-vs-player robbery with security levels.
+    - **Investment System**: Long-term investment options.
+    - **Farming**: Crop planting and harvesting.
+- **User Management**: Registration, user profiles, ranking system, and ban system.
+- **Group Management**: Comprehensive moderation tools (ban, kick, mute), lock/unlock features for group settings, and entertainment commands.
+- **Analytics Dashboard**: Provides administrators with real-time insights into group performance, financial data, user activity, and moderation metrics through text-based visual analytics and a health score system.
 
-### State Management
-Implements aiogram's FSM (Finite State Machine) for managing user interactions across different modules:
-- Banking states for deposits/withdrawals
-- Property states for real estate transactions
-- Theft states for robbery mechanics
-- Investment and farming states for economic activities
+# External Dependencies
 
-### Database Layer
-- **Models**: User data structures with dataclasses
-- **Operations**: Async database operations for CRUD functionality
-- **Connection Management**: Context managers for database connections
-
-### Modular Game Systems
-Each game feature is implemented as a separate module:
-- **Banking System**: Virtual currency management, transfers, daily bonuses
-- **Real Estate**: Property buying/selling with income generation
-- **Stock Market**: Virtual stock trading with fluctuating prices
-- **Theft Mechanics**: Player-vs-player robbery with security levels
-- **Investment System**: Long-term investment options with returns
-- **Farming**: Crop planting and harvesting mechanics
-- **Castle Building**: Construction and upgrade system
-- **Ranking System**: Leaderboards and player statistics
-
-### Security and Access Control
-- Admin privilege system with decorator-based access control
-- User authentication and registration flow
-- Ban system for problematic users
-- Activity tracking and user state management
-
-## External Dependencies
-
-### Core Bot Dependencies
-- **aiogram**: Telegram Bot API framework for Python
-- **aiosqlite**: Async SQLite database adapter
-- **aiohttp**: HTTP client for external API calls
-
-### Database
-- **SQLite**: Local database for user data, transactions, and game state
-- Tables include: users, properties, stocks, bans, levels, investments
-
-### External APIs (Configured but Optional)
-- **Stock APIs**: For real market data integration
-- **Payment Providers**: Telegram payments for premium features
-- **Crypto APIs**: For cryptocurrency price feeds
-
-### Development and Logging
-- **Python logging**: Comprehensive error tracking and debugging
-- **asyncio**: Async programming support for scalable operations
-
-## Recent Changes (August 16, 2025)
-
-### Architecture Modifications
-- **Removed Inline Keyboards**: Eliminated all keyboard buttons and inline callbacks
-- **Group-Only Operation**: Bot now works exclusively in group chats
-- **Private Message Handling**: /start in private messages guides users to add bot to groups
-- **Command-Based Interface**: All functionality moved to text commands instead of button interactions
-- **Fixed Registration Issues**: Updated user_required decorator to handle group-only operations
-- **Simplified Callbacks**: Removed all callback handlers since keyboards are no longer used
-
-### New Bank Account System
-- **"انشاء حساب بنكي" Registration**: Users now type "انشاء حساب بنكي" instead of /start to begin
-- **Bank Selection System**: Players choose from 4 different banks (الأهلي، الراجحي، سامبا، الرياض)
-- **Random Daily Salary**: Each bank offers different salary ranges and bonuses
-- **Bank-Specific Features**: Each bank has unique initial bonuses, daily salary ranges, and interest rates
-- **Keyword-Based Commands**: Players use Arabic keywords like "راتب" for salary, "رصيد" for balance
-
-### User Experience Changes
-- Users must add bot as admin to their groups to use features
-- Registration starts with "انشاء حساب بنكي" in groups only
-- Bank selection process with detailed comparison
-- Daily salary collection with random bonuses
-- Text-based interactions using Arabic keywords
-- Improved error handling for group vs private message contexts
-
-The architecture prioritizes modularity and group-based gaming, allowing easy addition of new game features while maintaining clean separation between bot logic, database operations, and external service integrations.
-
-## Current Status (August 16, 2025)
-
-### ✅ Successfully Completed
-- **Complete Admin Management System**: Implemented comprehensive rank management with 7 admin levels
-- **Group Management Tools**: Added moderation, banning, muting, warning systems
-- **Lock/Unlock Commands**: Full control over group features and settings
-- **Entertainment Features**: Added entertainment ranks, marriage system, fun commands
-- **Database Integration**: All admin features connected to SQLite with proper tables
-- **Bot Operational**: Running successfully with token 7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o
-- **User Registration**: Bot successfully handling new user registrations
-- **Comprehensive Command System**: Implemented all commands from اوامر يوكي.txt
-
-### 🎯 Admin Command System
-- **Rank Management**: رفع/تنزيل with full hierarchy (مالك اساسي → مميز)
-- **Moderation Tools**: حظر، طرد، كتم، تحذير commands
-- **Group Controls**: قفل/فتح settings, تفعيل/تعطيل services
-- **Clear Commands**: مسح with various options (الكل، رتب، رسائل)
-- **Entertainment**: هطف، بثر، حمار، etc. ranks and زواج/طلاق system
-- **Info Commands**: الاعدادات، القوانين، المجموعه display
-
-### 🎮 New Features Added (August 16, 2025)
-
-#### Fun Commands Module
-- **Personal Info**: سيارتي، منزلي، عمري، طولي، وزني commands
-- **Interactive**: تحبني، تكرهني، شبيهي، اهدي لي commands
-- **Percentages**: نسبة الحب، نسبة الغباء، نسبة الانوثة، نسبة الرجولة
-- **Magic**: مايكي السحري for questions and predictions
-- **Games**: صراحه، لو خيروك، كت تويت entertainment
-- **Content**: اقتباسات، شعر، زخرفة النص commands
-
-#### Utility Commands Module  
-- **Search**: قوقل للبحث، من ضافني للمعلومات
-- **Downloads**: تطبيق، تحميل لعبه للتطبيقات والألعاب
-- **Islamic**: قرآن، حديث، ذكر للمحتوى الإسلامي
-- **Communication**: ارسل (زاجل)، صيح للتواصل
-- **Teams**: انشاء تيم، دخول التيم للفرق
-- **Bio**: البايو بالرد لعرض معلومات المستخدمين
-- **Conversion**: تحويل للملفات والصيغ
-
-#### Clear Commands Module
-- **Advanced Clearing**: مسح المحظورين، مسح المكتومين
-- **Data Management**: مسح قائمة المنع، مسح الردود، مسح الاوامر المضافه
-- **Settings**: مسح الايدي، مسح الترحيب، مسح الرابط
-- **Complete Reset**: مسح جميع البيانات option
-
-### 📊 Database Enhancements
-- **Teams System**: teams, team_members tables for group functionality
-- **Custom Features**: custom_replies, custom_commands for personalization  
-- **Word Management**: banned_words table for content control
-- **Enhanced Indexing**: Optimized database performance with strategic indexes
-
-### Technical Implementation
-- **20+ new Arabic commands** covering entertainment, utilities, and services
-- **Modular Architecture**: Separate modules for fun_commands, utility_commands, clear_commands
-- **Database Integration**: 5 new tables supporting advanced features
-- **Error Handling**: Comprehensive error management and logging
-- **Performance**: Async operations with proper connection management
-
-### 🔧 Architecture Updates
-- **Handler Integration**: All new commands integrated into messages.py handler
-- **Import Management**: Fixed module imports for config.database
-- **State Management**: Proper FSM integration for complex interactions
-- **Group Focus**: All features designed for group-only operation
-
-The bot now includes a comprehensive command system covering all features from the original command list, with proper Arabic language support and group-focused functionality.
-
-### 🛡️ Advanced Group Management System (August 16, 2025)
-
-#### Complete Member Moderation Features
-- **Ban System (حظر)**: Permanent ban with proper permission checks and error handling
-  - Bot verifies its own administrator status and `can_restrict_members` permission
-  - Prevents banning of other administrators or creators
-  - Tracks banned users in database with timestamps
-  - Clear success/error messages with specific guidance for setup issues
-
-- **Kick System (طرد)**: Temporary removal allowing return via invite
-  - Comprehensive permission validation before action
-  - Cannot kick administrators or group creators
-  - Uses ban/unban sequence for clean removal
-  - Informative feedback about re-entry possibility
-
-- **Mute System (كتم)**: Message restriction with duration support
-  - Advanced ChatPermissions configuration blocking all communication
-  - Duration parsing supporting Arabic time units (د=minutes, س=hours, ي=days)
-  - Database tracking of muted users with expiration dates
-  - Proper administrator exemption and permission checks
-
-- **Unban/Unmute System**: Complete reversal of restrictions
-  - **إلغاء حظر**: Removes permanent bans and database records
-  - **إلغاء كتم**: Restores normal ChatPermissions and cleans database
-  - Validates bot permissions before attempting actions
-  - User-friendly error messages for common issues
-
-#### Enhanced Administrative Tools
-- **Permission Validation**: Multi-layer verification system
-  - Bot administrator status verification
-  - Specific permission checks (`can_restrict_members`)
-  - Target user status validation (prevent moderating other admins)
-  - Clear instructional messages for permission setup
-
-- **Database Integration**: Complete tracking system
-  - `banned_users` table with moderator info and timestamps
-  - `muted_users` table with duration tracking and expiration
-  - Automatic cleanup when restrictions are removed
-  - Historical records for administrative oversight
-
-- **List Management**: View current restrictions
-  - **المحظورين**: Display all banned users with ban dates
-  - **المكتومين**: Show muted users with duration information
-  - Formatted output with user mentions and timestamps
-  - Admin-only access with proper permission verification
-
-#### Technical Implementation Details
-- **Error Handling**: Comprehensive TelegramBadRequest management
-  - Specific error detection for permission issues
-  - User-friendly error messages in Arabic
-  - Detailed logging for debugging and monitoring
-  - Graceful fallback for unexpected situations
-
-- **Command Integration**: Seamless handler system integration
-  - Arabic command recognition in messages.py
-  - Multiple command variants (حظر, إلغاء حظر, الغاء حظر)
-  - Reply-based and username-based targeting
-  - State management for complex operations
-
-- **Performance Optimization**: Efficient async operations
-  - Parallel permission checks and database operations
-  - Connection pooling for database queries
-  - Proper resource cleanup and error recovery
-  - Minimal API calls through intelligent caching
-
-The group management system provides enterprise-level moderation capabilities with Arabic language support, making it suitable for large Arabic-speaking communities while maintaining performance and reliability.
+- **aiogram**: The primary framework for Telegram Bot API interaction.
+- **aiosqlite**: Asynchronous adapter for SQLite database operations.
+- **aiohttp**: Used for making asynchronous HTTP requests, primarily for potential integration with external APIs.
+- **SQLite**: The chosen database for storing all user data, game states, transactions, and administrative records. Tables include `users`, `properties`, `stocks`, `bans`, `levels`, `investments`, `teams`, `team_members`, `custom_replies`, `custom_commands`, `banned_words`, `activity_logs`, `daily_stats`, and `performance_metrics`.
+- **Python logging**: Utilized for error tracking, debugging, and operational monitoring.
+- **asyncio**: Python's built-in library for writing concurrent code, essential for the bot's asynchronous operations.
+- **External APIs (Configured but Optional)**: The architecture supports integration with external services such as Stock APIs for real market data, Payment Providers for premium features, and Crypto APIs for cryptocurrency price feeds, though these are not core mandatory integrations for basic bot functionality.

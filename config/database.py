@@ -372,6 +372,49 @@ async def init_database():
             await db.execute('CREATE INDEX IF NOT EXISTS idx_custom_replies_chat ON custom_replies(chat_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_banned_words_chat ON banned_words(chat_id)')
             
+            # إنشاء جداول التحليلات والإحصائيات للوحة التحكم
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS activity_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    chat_id INTEGER,
+                    activity_type TEXT NOT NULL,
+                    activity_data TEXT,
+                    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                    date_only TEXT DEFAULT (DATE('now'))
+                )
+            ''')
+            
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS daily_stats (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    date TEXT NOT NULL,
+                    active_users INTEGER DEFAULT 0,
+                    new_users INTEGER DEFAULT 0,
+                    total_transactions INTEGER DEFAULT 0,
+                    total_money_flow REAL DEFAULT 0,
+                    messages_count INTEGER DEFAULT 0,
+                    moderation_actions INTEGER DEFAULT 0,
+                    UNIQUE(chat_id, date)
+                )
+            ''')
+            
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS performance_metrics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    metric_name TEXT NOT NULL,
+                    metric_value REAL NOT NULL,
+                    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                    date_only TEXT DEFAULT (DATE('now'))
+                )
+            ''')
+            
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_activity_logs_chat_date ON activity_logs(chat_id, date_only)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_daily_stats_chat_date ON daily_stats(chat_id, date)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_performance_metrics_chat_date ON performance_metrics(chat_id, date_only)')
+            
             await db.commit()
             logger.info("✅ تم تهيئة قاعدة البيانات بنجاح")
             
