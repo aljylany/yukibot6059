@@ -362,7 +362,12 @@ async def get_chat_id_command(message: Message):
 **عنوان المحادثة:** {message.chat.title or "لا يوجد"}
 **اسم المستخدم:** @{message.chat.username or "لا يوجد"}
 
-استخدم هذا الـ Chat ID في إعدادات قناة الإشعارات.
+📋 **خطوات ربط قناة الإشعارات:**
+1. انسخ الـ Chat ID أعلاه
+2. استخدم أمر `/set_channel {message.chat.id}` لربط هذه القناة
+3. جرب أمر `/test_channel` للتأكد من عمل النظام
+
+💡 **ملاحظة:** تأكد من أن البوت مشرف في القناة مع صلاحيات إرسال الرسائل
         """
         
         await message.reply(chat_info)
@@ -370,6 +375,61 @@ async def get_chat_id_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في الحصول على Chat ID: {e}")
         await message.reply("❌ حدث خطأ أثناء جلب معلومات المحادثة")
+
+
+# أمر لتعيين قناة الإشعارات - للمديرين فقط
+@router.message(Command("set_channel"))
+async def set_channel_command(message: Message):
+    """تعيين قناة الإشعارات /set_channel [chat_id] - للمديرين فقط"""
+    try:
+        # التحقق من أن المستخدم مدير
+        if message.from_user.id not in ADMIN_IDS:
+            await message.reply("❌ هذا الأمر متاح للمديرين فقط!")
+            return
+        
+        # الحصول على معرف القناة من الأمر
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            await message.reply("❌ يرجى إدخال معرف القناة!\nمثال: `/set_channel -1001234567890`")
+            return
+        
+        chat_id = command_parts[1].strip()
+        
+        # محاولة تحديث ملف الإعدادات
+        from config.settings import NOTIFICATION_CHANNEL
+        
+        # قراءة الملف وتحديثه
+        with open('config/settings.py', 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # تحديث المعرف وتفعيل النظام
+        old_line = f'    "chat_id": "",  # معرف القناة الفرعية (يجب الحصول على الـ Chat ID الصحيح)'
+        new_line = f'    "chat_id": "{chat_id}",  # معرف القناة الفرعية'
+        content = content.replace(old_line, new_line)
+        
+        # تفعيل النظام
+        content = content.replace('"enabled": False,  # معطل مؤقتاً حتى الحصول على المعرف الصحيح', '"enabled": True,')
+        
+        # حفظ الملف
+        with open('config/settings.py', 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        # اختبار الاتصال بالقناة
+        from modules.notification_manager import NotificationManager
+        notification_manager = NotificationManager(message.bot)
+        notification_manager.channel_id = chat_id
+        notification_manager.enabled = True
+        
+        test_success = await notification_manager.test_notification_channel()
+        
+        if test_success:
+            await message.reply(f"✅ تم ربط قناة الإشعارات بنجاح!\n\n🆔 **معرف القناة:** `{chat_id}`\n\n🎉 النظام جاهز الآن وتم إرسال رسالة اختبار للقناة!")
+        else:
+            await message.reply(f"⚠️ تم حفظ معرف القناة ولكن فشل الاختبار.\n\n🆔 **معرف القناة:** `{chat_id}`\n\n❌ تأكد من:\n- البوت مشرف في القناة\n- البوت لديه صلاحية إرسال الرسائل\n- معرف القناة صحيح")
+        
+    except Exception as e:
+        logging.error(f"خطأ في تعيين قناة الإشعارات: {e}")
+        await message.reply("❌ حدث خطأ أثناء تعيين قناة الإشعارات")
 
 
 @router.message(Command("upgrade"))
