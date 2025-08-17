@@ -16,6 +16,7 @@ from modules.special_admin import handle_special_admin_commands
 from modules.response_tester import handle_response_tester_commands
 from modules.master_commands import handle_master_commands
 from modules.group_hierarchy import handle_hierarchy_commands
+from modules.utility_commands import handle_utility_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -206,6 +207,10 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # فحص أوامر الهيكل الإداري
     if await handle_hierarchy_commands(message):
+        return
+    
+    # فحص الأوامر المساعدة والأدوات
+    if await handle_utility_commands(message):
         return
     
     # البحث عن كلمات مفتاحية محددة فقط

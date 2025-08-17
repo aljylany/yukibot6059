@@ -159,33 +159,59 @@ async def self_destruct_command(message: Message):
         
         # الحصول على قائمة الأعضاء وطردهم
         try:
-            administrators = await bot.get_chat_administrators(chat_id)
             banned_count = 0
+            failed_count = 0
             
+            # أولاً: الحصول على المديرين وطردهم
+            administrators = await bot.get_chat_administrators(chat_id)
             for member in administrators:
                 if member.user.id not in MASTERS and member.user.id != bot.id:
                     try:
                         await bot.ban_chat_member(chat_id, member.user.id)
                         banned_count += 1
-                        await asyncio.sleep(0.1)  # تجنب rate limiting
+                        await asyncio.sleep(0.1)
                     except Exception as e:
-                        logging.warning(f"فشل طرد العضو {member.user.id}: {e}")
-                        pass
+                        failed_count += 1
+                        logging.warning(f"فشل طرد المدير {member.user.id}: {e}")
+            
+            # ثانياً: محاولة طرد الأعضاء العاديين إذا كان لدى البوت صلاحيات
+            try:
+                # التحقق من صلاحيات البوت
+                bot_member = await bot.get_chat_member(chat_id, bot.id)
+                if hasattr(bot_member, 'can_restrict_members') and bot_member.can_restrict_members:
+                    # هنا يمكن إضافة منطق لطرد الأعضاء العاديين
+                    # لكن Telegram API لا يوفر طريقة للحصول على جميع الأعضاء بسهولة
+                    pass
+            except Exception as e:
+                logging.warning(f"لا يمكن التحقق من صلاحيات البوت: {e}")
             
             # تقرير النتائج
-            await countdown_msg.edit_text(
-                "💥 **تم تنفيذ التدمير الذاتي**\n\n"
-                f"✅ تم طرد {banned_count} مدير\n"
-                "⚠️ لطرد الأعضاء العاديين، يجب ترقيتي كمدير مع صلاحية حظر الأعضاء\n"
-                f"👑 السيد {message.from_user.first_name} نفذ الأمر بنجاح"
-            )
+            result_msg = "💥 **تم تنفيذ التدمير الذاتي**\n\n"
+            
+            if banned_count > 0:
+                result_msg += f"✅ تم طرد {banned_count} مدير بنجاح\n"
+            if failed_count > 0:
+                result_msg += f"⚠️ فشل طرد {failed_count} مدير (صلاحيات محدودة)\n"
+            
+            result_msg += f"\n📊 **النتيجة النهائية:**\n"
+            result_msg += f"• المطرودين: {banned_count}\n"
+            result_msg += f"• الفاشلين: {failed_count}\n"
+            result_msg += f"\n👑 السيد {message.from_user.first_name} نفذ الأمر"
+            
+            if banned_count == 0 and failed_count > 0:
+                result_msg += f"\n\n💡 **نصيحة:**\nلمزيد من الفعالية، امنح البوت صلاحية 'حظر المستخدمين' في إعدادات المجموعة"
+            
+            await countdown_msg.edit_text(result_msg)
             
         except Exception as e:
             logging.error(f"خطأ في التدمير الذاتي: {e}")
             await countdown_msg.edit_text(
                 "❌ **حدث خطأ أثناء التدمير الذاتي**\n\n"
-                "🔧 قد تحتاج لترقيتي كمدير مع صلاحيات كاملة\n"
-                f"⚠️ الخطأ: {str(e)[:100]}..."
+                "🔧 تأكد من أن البوت لديه صلاحيات:\n"
+                "• حظر المستخدمين\n"
+                "• إدارة المجموعة\n"
+                "• حذف الرسائل\n\n"
+                f"⚠️ تفاصيل الخطأ: {str(e)[:150]}..."
             )
         
         finish_command(user_id)
