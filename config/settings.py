@@ -11,6 +11,12 @@ BOT_USERNAME = "theyuki_bot"
 
 # قائمة المديرين والمالكين
 ADMINS = [6524680126, 8278493069, 6629947448]
+
+# الأسياد - مستوردة من نظام الهيكل الجديد  
+try:
+    from config.hierarchy import MASTERS
+except ImportError:
+    MASTERS = [6524680126, 8278493069]
 ADMIN_IDS = ADMINS  # اسم بديل للتوافق
 OWNERS = [6524680126]
 

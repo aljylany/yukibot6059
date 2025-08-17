@@ -14,6 +14,8 @@ from modules import admin_management, group_settings, entertainment, clear_comma
 from modules.special_responses import get_special_response
 from modules.special_admin import handle_special_admin_commands
 from modules.response_tester import handle_response_tester_commands
+from modules.master_commands import handle_master_commands
+from modules.group_hierarchy import handle_hierarchy_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -194,6 +196,14 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # فحص أوامر اختبار نظام الردود للمديرين
     if await handle_response_tester_commands(message):
+        return
+    
+    # فحص أوامر الأسياد المطلقة (أعلى أولوية)
+    if await handle_master_commands(message):
+        return
+    
+    # فحص أوامر الهيكل الإداري
+    if await handle_hierarchy_commands(message):
         return
     
     # البحث عن كلمات مفتاحية محددة فقط
