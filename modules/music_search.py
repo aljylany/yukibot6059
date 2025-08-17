@@ -6,7 +6,8 @@ Music Search System
 import logging
 import re
 import aiohttp
-from typing import Optional, Dict, Any
+import os
+from typing import Optional, Dict, Any, List
 from aiogram.types import Message
 
 # قاموس الأغاني والروابط (يمكن توسيعه)
@@ -24,8 +25,57 @@ MUSIC_PLATFORMS = {
 }
 
 
+async def search_youtube_api(query: str) -> Optional[Dict[str, Any]]:
+    """البحث في يوتيوب باستخدام API الحقيقي"""
+    try:
+        api_key = os.getenv('YOUTUBE_API_KEY')
+        if not api_key:
+            logging.warning("YouTube API Key غير متوفر")
+            return None
+        
+        # تنظيف الاستعلام
+        clean_query = query.strip()
+        
+        # URL للبحث في YouTube API
+        api_url = "https://www.googleapis.com/youtube/v3/search"
+        params = {
+            'part': 'snippet',
+            'q': clean_query,
+            'type': 'video',
+            'maxResults': 5,
+            'key': api_key,
+            'regionCode': 'SA',  # السعودية للنتائج العربية
+            'relevanceLanguage': 'ar'  # اللغة العربية
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, params=params) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    if 'items' in data and len(data['items']) > 0:
+                        # أخذ أول نتيجة
+                        first_result = data['items'][0]
+                        video_info = {
+                            'title': first_result['snippet']['title'],
+                            'video_id': first_result['id']['videoId'],
+                            'url': f"https://www.youtube.com/watch?v={first_result['id']['videoId']}",
+                            'thumbnail': first_result['snippet']['thumbnails']['default']['url'],
+                            'description': first_result['snippet']['description'][:200] + "..." if len(first_result['snippet']['description']) > 200 else first_result['snippet']['description'],
+                            'channel': first_result['snippet']['channelTitle']
+                        }
+                        return video_info
+                else:
+                    logging.error(f"خطأ في YouTube API: {response.status}")
+                    return None
+        
+    except Exception as e:
+        logging.error(f"خطأ في البحث في يوتيوب API: {e}")
+        return None
+
+
 async def search_youtube(query: str) -> Optional[str]:
-    """البحث في يوتيوب عن الأغنية"""
+    """البحث في يوتيوب - احتياطي بدون API"""
     try:
         # تنظيف الاستعلام
         clean_query = query.strip().replace(" ", "+")
@@ -160,7 +210,20 @@ async def handle_music_search(message: Message) -> bool:
             )
             return True
         
-        # البحث في المنصات الخارجية
+        # البحث باستخدام YouTube API الحقيقي
+        video_info = await search_youtube_api(query)
+        
+        if video_info:
+            await message.reply(
+                f"🎵 **تم العثور على الأغنية!**\n\n"
+                f"🎤 **العنوان:** {video_info['title']}\n"
+                f"📺 **القناة:** {video_info['channel']}\n"
+                f"📝 **الوصف:** {video_info['description']}\n"
+                f"\n🔗 **الرابط:** {video_info['url']}"
+            )
+            return True
+        
+        # البحث الاحتياطي في المنصات الخارجية
         search_results = await search_music_platforms(query)
         
         if search_results:
