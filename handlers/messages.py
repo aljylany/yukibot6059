@@ -673,6 +673,128 @@ async def handle_general_message(message: Message, state: FSMContext):
         await group_settings.show_group_settings(message)
     elif text == 'القوانين':
         await group_settings.show_group_rules(message)
+    
+    # === أوامر إدارة المجموعة الجديدة ===
+    elif text == 'الرابط':
+        from modules.group_management import show_group_link
+        await show_group_link(message)
+    elif text == 'المالكين الأساسيين':
+        from modules.group_management import show_owners
+        await show_owners(message)
+    elif text == 'المالكين':
+        from modules.group_management import show_group_owners
+        await show_group_owners(message)
+    elif text == 'المنشئين':
+        from modules.group_management import show_creators
+        await show_creators(message)
+    elif text == 'المدراء':
+        from modules.group_management import show_managers
+        await show_managers(message)
+    elif text == 'الإدمنية' or text == 'الادمنيه':
+        from modules.group_management import show_admins
+        await show_admins(message)
+    elif text == 'المميزين':
+        from modules.group_management import show_vips
+        await show_vips(message)
+    elif text == 'المحظورين':
+        from modules.group_management import show_banned_users
+        await show_banned_users(message)
+    elif text == 'المكتومين':
+        from modules.group_management import show_muted_users
+        await show_muted_users(message)
+    elif text == 'معلوماتي':
+        from modules.group_management import show_my_info
+        await show_my_info(message)
+    elif text == 'الحمايه' or text == 'الحماية':
+        from modules.group_management import show_group_protection
+        await show_group_protection(message)
+    elif text == 'الاعدادات':
+        from modules.group_management import show_group_settings
+        await show_group_settings(message)
+    elif text == 'المجموعه' or text == 'المجموعة':
+        from modules.group_management import show_group_info
+        await show_group_info(message)
+    
+    # === أوامر تحميل الوسائط ===
+    elif text == 'تفعيل التحميل':
+        from modules.media_download import toggle_download
+        await toggle_download(message, True)
+    elif text == 'تعطيل التحميل':
+        from modules.media_download import toggle_download
+        await toggle_download(message, False)
+    elif text.startswith('تيك '):
+        from modules.media_download import download_tiktok
+        await download_tiktok(message)
+    elif text.startswith('تويتر '):
+        from modules.media_download import download_twitter
+        await download_twitter(message)
+    elif text.startswith('ساوند '):
+        from modules.media_download import download_soundcloud
+        await download_soundcloud(message)
+    elif text.startswith('بحث '):
+        from modules.media_download import search_youtube
+        await search_youtube(message)
+    
+    # === أوامر قفل الوسائط ===
+    elif text == 'قفل الصور':
+        from modules.media_locks import lock_photos
+        await lock_photos(message)
+    elif text == 'فتح الصور':
+        from modules.media_locks import unlock_photos
+        await unlock_photos(message)
+    elif text == 'قفل الفيديو':
+        from modules.media_locks import lock_videos
+        await lock_videos(message)
+    elif text == 'فتح الفيديو':
+        from modules.media_locks import unlock_videos
+        await unlock_videos(message)
+    elif text == 'قفل الصوت':
+        from modules.media_locks import lock_voice
+        await lock_voice(message)
+    elif text == 'فتح الصوت':
+        from modules.media_locks import unlock_voice
+        await unlock_voice(message)
+    elif text == 'قفل الملصقات':
+        from modules.media_locks import lock_stickers
+        await lock_stickers(message)
+    elif text == 'فتح الملصقات':
+        from modules.media_locks import unlock_stickers
+        await unlock_stickers(message)
+    elif text == 'قفل المتحركه':
+        from modules.media_locks import lock_gifs
+        await lock_gifs(message)
+    elif text == 'فتح المتحركه':
+        from modules.media_locks import unlock_gifs
+        await unlock_gifs(message)
+    elif text == 'قفل الروابط':
+        from modules.media_locks import lock_links
+        await lock_links(message)
+    elif text == 'فتح الروابط':
+        from modules.media_locks import unlock_links
+        await unlock_links(message)
+    elif text == 'قفل التوجيه':
+        from modules.media_locks import lock_forwarding
+        await lock_forwarding(message)
+    elif text == 'فتح التوجيه':
+        from modules.media_locks import unlock_forwarding
+        await unlock_forwarding(message)
+    elif text == 'قفل الكل':
+        from modules.media_locks import lock_all_media
+        await lock_all_media(message)
+    elif text == 'فتح الكل':
+        from modules.media_locks import unlock_all_media
+        await unlock_all_media(message)
+    
+    # === أوامر إدارة الروابط ===
+    elif text.startswith('ضع رابط '):
+        from modules.link_management import set_group_link
+        await set_group_link(message)
+    elif text == 'مسح الرابط':
+        from modules.link_management import delete_group_link
+        await delete_group_link(message)
+    elif text == 'انشاء رابط' or text == 'إنشاء رابط':
+        from modules.link_management import create_invite_link
+        await create_invite_link(message)
     elif text == 'المجموعه':
         await group_settings.show_group_info(message)
     
