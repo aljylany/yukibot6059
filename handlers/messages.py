@@ -567,7 +567,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         await real_estate.show_property_menu(message)
     elif text.startswith('ترقية امان تأكيد'):
         await theft.upgrade_security_level(message)
-    elif text.startswith('ترقية امان') or text.startswith('ترقية الامان'):
+    elif text.startswith('ترقية الامان') or text in ['ترقية الأمان', 'ترقية امان']:
         await theft.show_security_upgrade(message)
     elif text in ['احصائيات سرقة', 'إحصائيات سرقة', 'احصائياتي سرقة']:
         await theft.show_theft_stats(message)

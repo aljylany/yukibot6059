@@ -21,6 +21,10 @@ Bot Configuration:
 - Implemented reply-based theft system where players reply to victim messages and write "سرقة" or "سرف"
 - Fixed theft button display issue - removed non-functional inline keyboard buttons from security menu
 - Theft functionality works through text commands only: reply to messages with "سرقة"/"سرف" for stealing
+- Fixed widespread database parameter bug (fetch= to fetch_one=/fetch_all=) across all modules
+- Separated security upgrade command: "ترقية الامان" now distinct from security menu "امان"
+- Added comprehensive theft statistics and leaderboard functionality with text commands
+- Enhanced security upgrade system with detailed cost/benefit display
 - Enhanced banking system with immediate command recognition for better user experience
 
 # System Architecture
