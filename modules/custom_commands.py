@@ -121,27 +121,30 @@ async def get_custom_response(chat_id: int, message_text: str) -> Optional[str]:
 async def handle_add_command(message: Message, state: FSMContext):
     """معالج إضافة أمر جديد"""
     try:
-        # التحقق من الصلاحيات
+        # التحقق الأولي
         if not message.from_user or message.chat.type == 'private':
             return False
         
-        user_id = message.from_user.id
-        chat_id = message.chat.id
-        
-        # فحص الصلاحيات - المشرفين وما فوق
-        if not has_permission(user_id, AdminLevel.MODERATOR, chat_id):
-            sarcastic_responses = [
-                "😂 وانت مين عشان تضيف أوامر؟ أنا يوكي مش بوت عادي!",
-                "🙄 صلاحياتك محدودة جداً... حاول تكون مشرف أولاً!",
-                "😏 أوامر مخصصة؟ هذه للكبار فقط، عذراً!",
-                "🤭 أعتقد أنك تخلط بيني وبين بوت آخر، أنا يوكي الذكي!",
-                "😎 هذه ميزة VIP يا صديقي، ارجع لما تصير مشرف!"
-            ]
-            
-            await message.reply(random.choice(sarcastic_responses))
-            return False
-        
         text = message.text
+        
+        # التحقق أولاً من أن الرسالة تحتوي على أمر الإضافة
+        if text.startswith('اضافة امر ') or text.startswith('إضافة أمر ') or text.strip() == 'اضافة امر' or text.strip() == 'إضافة أمر':
+            # الآن نتحقق من الصلاحيات
+            user_id = message.from_user.id
+            chat_id = message.chat.id
+            
+            # فحص الصلاحيات - المشرفين وما فوق
+            if not has_permission(user_id, AdminLevel.MODERATOR, chat_id):
+                sarcastic_responses = [
+                    "😂 وانت مين عشان تضيف أوامر؟ أنا يوكي مش بوت عادي!",
+                    "🙄 صلاحياتك محدودة جداً... حاول تكون مشرف أولاً!",
+                    "😏 أوامر مخصصة؟ هذه للكبار فقط، عذراً!",
+                    "🤭 أعتقد أنك تخلط بيني وبين بوت آخر، أنا يوكي الذكي!",
+                    "😎 هذه ميزة VIP يا صديقي، ارجع لما تصير مشرف!"
+                ]
+                
+                await message.reply(random.choice(sarcastic_responses))
+                return True  # تم التعامل مع الرسالة ولكن بخطأ صلاحيات
         
         if text.startswith('اضافة امر ') or text.startswith('إضافة أمر '):
             # استخراج الكلمة المفتاحية
@@ -200,21 +203,23 @@ async def handle_add_command(message: Message, state: FSMContext):
 async def handle_delete_command(message: Message):
     """معالج حذف أمر"""
     try:
-        # التحقق من الصلاحيات
+        # التحقق الأولي
         if not message.from_user or message.chat.type == 'private':
-            return False
-        
-        user_id = message.from_user.id
-        chat_id = message.chat.id
-        
-        # فحص الصلاحيات - المشرفين وما فوق
-        if not has_permission(user_id, AdminLevel.MODERATOR, chat_id):
-            await message.reply("❌ هذا الأمر متاح للمشرفين وما فوق فقط")
             return False
         
         text = message.text
         
+        # التحقق من أن الرسالة تحتوي على أمر الحذف
         if text.startswith('حذف امر ') or text.startswith('حذف أمر '):
+            # التحقق من الصلاحيات
+            user_id = message.from_user.id
+            chat_id = message.chat.id
+            
+            # فحص الصلاحيات - المشرفين وما فوق
+            if not has_permission(user_id, AdminLevel.MODERATOR, chat_id):
+                await message.reply("❌ هذا الأمر متاح للمشرفين وما فوق فقط")
+                return True  # تم التعامل مع الرسالة ولكن بخطأ صلاحيات
+            
             # استخراج الكلمة المفتاحية
             parts = text.split(' ', 2)
             if len(parts) < 3:
