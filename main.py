@@ -67,6 +67,10 @@ async def main():
     # تهيئة قاعدة البيانات
     await init_database()
     
+    # تحميل الرتب من قاعدة البيانات
+    from config.hierarchy import load_ranks_from_database
+    await load_ranks_from_database()
+    
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)
     

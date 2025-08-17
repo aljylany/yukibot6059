@@ -4,6 +4,7 @@ Administrative Hierarchy System
 """
 
 import logging
+import asyncio
 from typing import List, Dict, Optional
 from enum import Enum
 
@@ -99,6 +100,9 @@ def add_group_owner(group_id: int, user_id: int) -> bool:
         if user_id not in GROUP_OWNERS[group_id]:
             GROUP_OWNERS[group_id].append(user_id)
             logging.info(f"تم إضافة مالك جديد {user_id} للمجموعة {group_id}")
+            
+            # حفظ في قاعدة البيانات أيضاً
+            asyncio.create_task(sync_rank_to_database(user_id, group_id, "مالك"))
             return True
         return False
     except Exception as e:
@@ -114,6 +118,9 @@ def remove_group_owner(group_id: int, user_id: int) -> bool:
             if not GROUP_OWNERS[group_id]:
                 del GROUP_OWNERS[group_id]
             logging.info(f"تم إزالة المالك {user_id} من المجموعة {group_id}")
+            
+            # إزالة من قاعدة البيانات أيضاً
+            asyncio.create_task(remove_rank_from_database(user_id, group_id, "مالك"))
             return True
         return False
     except Exception as e:
@@ -130,6 +137,9 @@ def add_moderator(group_id: int, user_id: int) -> bool:
         if user_id not in MODERATORS[group_id]:
             MODERATORS[group_id].append(user_id)
             logging.info(f"تم إضافة مشرف جديد {user_id} للمجموعة {group_id}")
+            
+            # حفظ في قاعدة البيانات أيضاً
+            asyncio.create_task(sync_rank_to_database(user_id, group_id, "مشرف"))
             return True
         return False
     except Exception as e:
@@ -145,11 +155,85 @@ def remove_moderator(group_id: int, user_id: int) -> bool:
             if not MODERATORS[group_id]:
                 del MODERATORS[group_id]
             logging.info(f"تم إزالة المشرف {user_id} من المجموعة {group_id}")
+            
+            # إزالة من قاعدة البيانات أيضاً
+            asyncio.create_task(remove_rank_from_database(user_id, group_id, "مشرف"))
             return True
         return False
     except Exception as e:
         logging.error(f"خطأ في remove_moderator: {e}")
         return False
+
+
+async def sync_rank_to_database(user_id: int, group_id: int, rank_type: str):
+    """مزامنة الرتبة مع قاعدة البيانات"""
+    try:
+        from database.operations import execute_query
+        from datetime import datetime
+        
+        await execute_query(
+            "INSERT OR REPLACE INTO group_ranks (user_id, chat_id, rank_type, promoted_at) VALUES (?, ?, ?, ?)",
+            (user_id, group_id, rank_type, datetime.now().isoformat())
+        )
+        logging.info(f"تم مزامنة رتبة {rank_type} للمستخدم {user_id} في المجموعة {group_id}")
+    except Exception as e:
+        logging.error(f"خطأ في مزامنة الرتبة: {e}")
+
+
+async def remove_rank_from_database(user_id: int, group_id: int, rank_type: str):
+    """إزالة الرتبة من قاعدة البيانات"""
+    try:
+        from database.operations import execute_query
+        
+        await execute_query(
+            "DELETE FROM group_ranks WHERE user_id = ? AND chat_id = ? AND rank_type = ?",
+            (user_id, group_id, rank_type)
+        )
+        logging.info(f"تم حذف رتبة {rank_type} للمستخدم {user_id} من المجموعة {group_id}")
+    except Exception as e:
+        logging.error(f"خطأ في حذف الرتبة: {e}")
+
+
+async def load_ranks_from_database():
+    """تحميل الرتب من قاعدة البيانات"""
+    try:
+        from database.operations import execute_query
+        
+        # تحميل المالكين
+        owners = await execute_query(
+            "SELECT user_id, chat_id FROM group_ranks WHERE rank_type = 'مالك'",
+            fetch_all=True
+        )
+        
+        if owners:
+            for owner in owners:
+                user_id = owner[0] if isinstance(owner, tuple) else owner['user_id']
+                chat_id = owner[1] if isinstance(owner, tuple) else owner['chat_id']
+                
+                if chat_id not in GROUP_OWNERS:
+                    GROUP_OWNERS[chat_id] = []
+                if user_id not in GROUP_OWNERS[chat_id]:
+                    GROUP_OWNERS[chat_id].append(user_id)
+        
+        # تحميل المشرفين
+        moderators = await execute_query(
+            "SELECT user_id, chat_id FROM group_ranks WHERE rank_type = 'مشرف'",
+            fetch_all=True
+        )
+        
+        if moderators:
+            for moderator in moderators:
+                user_id = moderator[0] if isinstance(moderator, tuple) else moderator['user_id']
+                chat_id = moderator[1] if isinstance(moderator, tuple) else moderator['chat_id']
+                
+                if chat_id not in MODERATORS:
+                    MODERATORS[chat_id] = []
+                if user_id not in MODERATORS[chat_id]:
+                    MODERATORS[chat_id].append(user_id)
+                    
+        logging.info("تم تحميل الرتب من قاعدة البيانات بنجاح")
+    except Exception as e:
+        logging.error(f"خطأ في تحميل الرتب من قاعدة البيانات: {e}")
 
 
 def get_group_admins(group_id: int) -> Dict[str, List[int]]:

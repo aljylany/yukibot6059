@@ -31,6 +31,9 @@ Bot Configuration:
 - Fixed castle resource purchase commands: added support for "حجار" alternative to "حجارة" spelling
 - Added missing properties database table to fix real estate module database errors
 - Fixed critical balance bug in castle module causing negative balances (update_user_balance function misuse)
+- Fixed rank promotion synchronization bug: unified hierarchy system and database storage with automatic synchronization
+- Enhanced marriage system with comprehensive dowry mechanics, judge approval workflow, and commission system (Judge ID: 7155814194, commission range: 100-1000$)
+- Added database startup synchronization to load existing ranks from database into memory dictionaries
 
 # System Architecture
 

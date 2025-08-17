@@ -368,11 +368,29 @@ async def init_database():
                     user1_id INTEGER,
                     user2_id INTEGER,
                     chat_id INTEGER,
+                    dowry_amount REAL DEFAULT 0,
+                    judge_commission REAL DEFAULT 0,
                     married_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user1_id) REFERENCES users (user_id),
                     FOREIGN KEY (user2_id) REFERENCES users (user_id),
                     UNIQUE(user1_id, chat_id),
                     UNIQUE(user2_id, chat_id)
+                )
+            ''')
+            
+            # إنشاء جدول طلبات الزواج
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS marriage_proposals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    proposer_id INTEGER,
+                    target_id INTEGER,
+                    chat_id INTEGER,
+                    dowry_amount REAL,
+                    status TEXT DEFAULT 'pending',
+                    proposed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    responded_at TIMESTAMP,
+                    FOREIGN KEY (proposer_id) REFERENCES users (user_id),
+                    FOREIGN KEY (target_id) REFERENCES users (user_id)
                 )
             ''')
             

@@ -199,6 +199,28 @@ async def handle_marriage(message: Message, action: str):
         user_id = message.from_user.id
         
         if action == "زواج":
+            # تحليل الرسالة للحصول على المهر
+            text_parts = message.text.split()
+            if len(text_parts) < 2:
+                await message.reply(
+                    "❌ **طريقة الزواج الصحيحة:**\n\n"
+                    "1️⃣ رد على رسالة من تريد/ين الزواج منه/ها\n"
+                    "2️⃣ اكتب: زواج [مبلغ المهر]\n\n"
+                    "**مثال:** زواج 5000\n"
+                    "💰 المهر يجب أن يكون بين 1000 و 100000"
+                )
+                return
+            
+            try:
+                dowry_amount = int(text_parts[1])
+            except ValueError:
+                await message.reply("❌ يرجى كتابة مبلغ مهر صحيح\n\n**مثال:** زواج 5000")
+                return
+            
+            if dowry_amount < 1000 or dowry_amount > 100000:
+                await message.reply("❌ مبلغ المهر يجب أن يكون بين 1,000 و 100,000")
+                return
+            
             target_user = None
             if message.reply_to_message:
                 target_user = message.reply_to_message.from_user
@@ -211,26 +233,62 @@ async def handle_marriage(message: Message, action: str):
                 await message.reply("😅 لا يمكنك الزواج من نفسك!")
                 return
 
-            # التحقق من الزواج الحالي
-            current_marriage = await execute_query(
+            # التحقق من الزواج الحالي للطرفين
+            current_marriage_proposer = await execute_query(
                 "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
                 (user_id, user_id, message.chat.id),
                 fetch_one=True
             )
             
-            if current_marriage:
-                await message.reply("💔 أنت متزوج بالفعل! اطلق أولاً")
-                return
-
-            # إجراء الزواج
-            await execute_query(
-                "INSERT INTO entertainment_marriages (user1_id, user2_id, chat_id, married_at) VALUES (?, ?, ?, ?)",
-                (user_id, target_user.id, message.chat.id, datetime.now().isoformat())
+            current_marriage_target = await execute_query(
+                "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
+                (target_user.id, target_user.id, message.chat.id),
+                fetch_one=True
             )
             
+            if current_marriage_proposer:
+                await message.reply("💔 أنت متزوج بالفعل! اطلق أولاً")
+                return
+                
+            if current_marriage_target:
+                target_name = target_user.first_name or "الشخص"
+                await message.reply(f"💔 {target_name} متزوج بالفعل!")
+                return
+
+            # التحقق من رصيد المتقدم للزواج
+            from database.operations import get_user
+            proposer = await get_user(user_id)
+            if not proposer:
+                await message.reply("❌ يرجى إنشاء حساب بنكي أولاً")
+                return
+            
+            if proposer['balance'] < dowry_amount:
+                from utils.helpers import format_number
+                await message.reply(
+                    f"❌ ليس لديك رصيد كافٍ للمهر!\n"
+                    f"💰 رصيدك: {format_number(proposer['balance'])}$\n"
+                    f"💎 المهر المطلوب: {format_number(dowry_amount)}$"
+                )
+                return
+
+            # إنشاء طلب زواج في قاعدة البيانات
+            await execute_query(
+                "INSERT INTO marriage_proposals (proposer_id, target_id, chat_id, dowry_amount, proposed_at, status) VALUES (?, ?, ?, ?, ?, 'pending')",
+                (user_id, target_user.id, message.chat.id, dowry_amount, datetime.now().isoformat())
+            )
+            
+            proposer_name = message.from_user.first_name or "شخص"
+            target_name = target_user.first_name or "شخص"
+            
+            from utils.helpers import format_number
             await message.reply(
-                f"💒 مبروك! تم زواج {format_user_mention(message.from_user)} "
-                f"و {format_user_mention(target_user)} بنجاح! 💕"
+                f"💍 **طلب زواج جديد!**\n\n"
+                f"👤 من: {proposer_name}\n"
+                f"👤 إلى: {target_name}\n"
+                f"💰 المهر: {format_number(dowry_amount)}$\n\n"
+                f"⏰ **في انتظار موافقة {target_name}**\n"
+                f"📝 يجب على {target_name} الرد بكلمة **موافقة** للقبول\n"
+                f"🚫 أو **رفض** لرفض الطلب"
             )
         
         elif action == "طلاق":
@@ -279,20 +337,206 @@ async def show_marriage_status(message: Message):
         
         if partner:
             partner_name = partner.get('first_name', f'المستخدم #{partner_id}')
-            married_date = marriage['married_at'] if isinstance(marriage, dict) else marriage[3]
+            married_date = marriage.get('married_at', '') if isinstance(marriage, dict) else marriage[6] if len(marriage) > 6 else ''
+            dowry_amount = marriage.get('dowry_amount', 0) if isinstance(marriage, dict) else marriage[4] if len(marriage) > 4 else 0
+            judge_commission = marriage.get('judge_commission', 0) if isinstance(marriage, dict) else marriage[5] if len(marriage) > 5 else 0
             
-            await message.reply(
+            marriage_info = (
                 f"💕 **حالة الزواج:**\n"
                 f"💍 الشريك: {partner_name}\n"
-                f"📅 تاريخ الزواج: {married_date[:10]}\n"
-                f"❤️ دام الحب!"
+                f"📅 تاريخ الزواج: {married_date[:10] if married_date else 'غير محدد'}\n"
             )
+            
+            if dowry_amount > 0:
+                from utils.helpers import format_number
+                marriage_info += f"💎 المهر: {format_number(dowry_amount)}$\n"
+            
+            if judge_commission > 0:
+                from utils.helpers import format_number
+                marriage_info += f"⚖️ عمولة القاضي: {format_number(judge_commission)}$\n"
+            
+            marriage_info += f"❤️ دام الحب!"
+            
+            await message.reply(marriage_info)
         else:
             await message.reply("💔 لم أتمكن من العثور على معلومات الشريك")
 
     except Exception as e:
         logging.error(f"خطأ في عرض حالة الزواج: {e}")
         await message.reply("❌ حدث خطأ أثناء عرض الحالة")
+
+
+async def handle_marriage_response(message: Message, response_type: str):
+    """معالج موافقة أو رفض الزواج"""
+    try:
+        if not await is_entertainment_enabled(message.chat.id):
+            return
+
+        user_id = message.from_user.id
+        
+        # البحث عن طلب زواج معلق
+        proposal = await execute_query(
+            "SELECT * FROM marriage_proposals WHERE target_id = ? AND chat_id = ? AND status = 'pending' ORDER BY proposed_at DESC LIMIT 1",
+            (user_id, message.chat.id),
+            fetch_one=True
+        )
+        
+        if not proposal:
+            await message.reply("❌ لا يوجد طلب زواج معلق لك")
+            return
+        
+        proposer_id = proposal['proposer_id'] if isinstance(proposal, dict) else proposal[1]
+        dowry_amount = proposal['dowry_amount'] if isinstance(proposal, dict) else proposal[4]
+        proposal_id = proposal['id'] if isinstance(proposal, dict) else proposal[0]
+        
+        from database.operations import get_user
+        proposer = await get_user(proposer_id)
+        target = await get_user(user_id)
+        
+        if not proposer or not target:
+            await message.reply("❌ خطأ في الحصول على بيانات المستخدمين")
+            return
+        
+        proposer_name = proposer.get('first_name', f'المستخدم #{proposer_id}')
+        target_name = target.get('first_name', f'المستخدم #{user_id}')
+        
+        if response_type == "موافقة":
+            # التحقق من أن المتقدم لا يزال لديه الرصيد
+            if proposer['balance'] < dowry_amount:
+                await execute_query(
+                    "UPDATE marriage_proposals SET status = 'cancelled' WHERE id = ?",
+                    (proposal_id,)
+                )
+                from utils.helpers import format_number
+                await message.reply(
+                    f"❌ **تم إلغاء الطلب!**\n"
+                    f"السبب: {proposer_name} لا يملك رصيد كافٍ للمهر\n"
+                    f"💰 المهر المطلوب: {format_number(dowry_amount)}$"
+                )
+                return
+            
+            # الآن نحتاج للقاضي - معرف القاضي المحدد
+            JUDGE_ID = 7155814194
+            
+            # حساب عمولة القاضي (بين 100-1000 حسب المهر)
+            judge_commission = max(100, min(1000, int(dowry_amount * 0.05)))  # 5% من المهر
+            
+            # التحقق من أن المتقدم يستطيع دفع المهر + العمولة
+            total_cost = dowry_amount + judge_commission
+            if proposer['balance'] < total_cost:
+                from utils.helpers import format_number
+                await message.reply(
+                    f"❌ **رصيد غير كافٍ!**\n"
+                    f"💰 المهر: {format_number(dowry_amount)}$\n"
+                    f"💼 عمولة القاضي: {format_number(judge_commission)}$\n"
+                    f"💸 المطلوب: {format_number(total_cost)}$\n"
+                    f"💰 الرصيد الحالي: {format_number(proposer['balance'])}$"
+                )
+                return
+            
+            # تنفيذ المعاملة المالية
+            from database.operations import update_user_balance, add_transaction
+            
+            # خصم من المتقدم
+            new_proposer_balance = proposer['balance'] - total_cost
+            await update_user_balance(proposer_id, new_proposer_balance)
+            
+            # إعطاء المهر للعروس
+            new_target_balance = target['balance'] + dowry_amount
+            await update_user_balance(user_id, new_target_balance)
+            
+            # إعطاء العمولة للقاضي (إذا كان مسجل في البوت)
+            judge = await get_user(JUDGE_ID)
+            if judge:
+                new_judge_balance = judge['balance'] + judge_commission
+                await update_user_balance(JUDGE_ID, new_judge_balance)
+                
+                # إضافة معاملة للقاضي
+                await add_transaction(
+                    JUDGE_ID,
+                    f"عمولة زواج {proposer_name} و {target_name}",
+                    judge_commission,
+                    "judge_commission"
+                )
+            
+            # إضافة المعاملات
+            await add_transaction(
+                proposer_id,
+                f"مهر زواج من {target_name}",
+                -dowry_amount,
+                "marriage_dowry"
+            )
+            await add_transaction(
+                proposer_id,
+                f"عمولة القاضي للزواج",
+                -judge_commission,
+                "judge_fee"
+            )
+            await add_transaction(
+                user_id,
+                f"مهر زواج من {proposer_name}",
+                dowry_amount,
+                "marriage_dowry"
+            )
+            
+            # إجراء الزواج
+            await execute_query(
+                "INSERT INTO entertainment_marriages (user1_id, user2_id, chat_id, dowry_amount, judge_commission, married_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (proposer_id, user_id, message.chat.id, dowry_amount, judge_commission, datetime.now().isoformat())
+            )
+            
+            # تحديث حالة الطلب
+            await execute_query(
+                "UPDATE marriage_proposals SET status = 'accepted' WHERE id = ?",
+                (proposal_id,)
+            )
+            
+            from utils.helpers import format_number
+            marriage_message = (
+                f"💒 **مبروك الزواج!** 🎉\n\n"
+                f"👰 العروس: {target_name}\n"
+                f"🤵 العريس: {proposer_name}\n"
+                f"💎 المهر: {format_number(dowry_amount)}$\n"
+                f"⚖️ عمولة القاضي: {format_number(judge_commission)}$\n\n"
+                f"🎊 **أقيم العقد بحضور القاضي**\n"
+                f"💕 ألف مبروك للعروسين!\n"
+                f"🌹 دام الحب والهناء!"
+            )
+            
+            await message.reply(marriage_message)
+            
+            # إشعار القاضي إذا كان متاح
+            if judge:
+                try:
+                    await message.bot.send_message(
+                        JUDGE_ID,
+                        f"⚖️ **عمولة جديدة من الزواج**\n\n"
+                        f"👰 العروس: {target_name}\n"
+                        f"🤵 العريس: {proposer_name}\n"
+                        f"💰 عمولتك: {format_number(judge_commission)}$\n"
+                        f"💳 رصيدك الجديد: {format_number(new_judge_balance)}$"
+                    )
+                except:
+                    pass  # إذا فشل إرسال الإشعار
+        
+        elif response_type == "رفض":
+            # رفض الطلب
+            await execute_query(
+                "UPDATE marriage_proposals SET status = 'rejected' WHERE id = ?",
+                (proposal_id,)
+            )
+            
+            from utils.helpers import format_number
+            await message.reply(
+                f"💔 **تم رفض طلب الزواج**\n\n"
+                f"👤 المرفوض: {proposer_name}\n"
+                f"💰 المهر المرفوض: {format_number(dowry_amount)}$\n\n"
+                f"😔 ربما في المرة القادمة!"
+            )
+    
+    except Exception as e:
+        logging.error(f"خطأ في معالجة رد الزواج: {e}")
+        await message.reply("❌ حدث خطأ أثناء معالجة الرد")
 
 
 async def handle_entertainment_command(message: Message, command: str):

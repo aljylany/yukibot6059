@@ -696,8 +696,16 @@ async def handle_general_message(message: Message, state: FSMContext):
     # === أوامر التسلية ===
     elif any(rank in text for rank in ['هطف', 'بثر', 'حمار', 'كلب', 'كلبه', 'عتوي', 'عتويه', 'لحجي', 'لحجيه', 'خروف', 'خفيفه', 'خفيف']):
         await handle_entertainment_rank_command(message, text)
-    elif text in ['زواج', 'طلاق']:
-        await entertainment.handle_marriage(message, text)
+    elif text.startswith('زواج '):  # زواج مع مبلغ المهر
+        await entertainment.handle_marriage(message, "زواج")
+    elif text == 'زواج':  # زواج بدون مبلغ (سيطلب المبلغ)
+        await entertainment.handle_marriage(message, "زواج")
+    elif text == 'طلاق':
+        await entertainment.handle_marriage(message, "طلاق")
+    elif text == 'موافقة':
+        await entertainment.handle_marriage_response(message, "موافقة")
+    elif text == 'رفض':
+        await entertainment.handle_marriage_response(message, "رفض")
     elif text in ['زوجي', 'زوجتي']:
         await entertainment.show_marriage_status(message)
     elif text == 'سيارتي':
