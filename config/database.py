@@ -136,6 +136,12 @@ async def init_database():
                 )
             ''')
             
+            # إضافة عمود الاسم إذا لم يكن موجوداً
+            try:
+                await db.execute("ALTER TABLE user_castles ADD COLUMN name TEXT")
+            except Exception:
+                pass  # العمود موجود بالفعل
+            
             # إنشاء جدول موارد المستخدمين
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS user_resources (
