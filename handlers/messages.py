@@ -24,6 +24,24 @@ from config.settings import SYSTEM_MESSAGES
 router = Router()
 
 
+# معالج خاص لإنشاء الحساب البنكي بدون فحص التسجيل
+@router.message(F.text.contains("انشاء حساب بنكي") | F.text.contains("إنشاء حساب بنكي") | F.text.contains("انشئ حساب"))
+async def handle_bank_creation_only(message: Message, state: FSMContext):
+    """معالج خاص لإنشاء الحساب البنكي للمستخدمين الجدد"""
+    try:
+        # التحقق من أن الرسالة في مجموعة وليس في الخاص
+        if message.chat.type == 'private':
+            await message.reply("🚫 **هذا الأمر متاح في المجموعات فقط!**\n\n➕ أضف البوت لمجموعتك وابدأ اللعب مباشرة")
+            return
+            
+        from modules.manual_registration import handle_bank_account_creation
+        await handle_bank_account_creation(message, state)
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج إنشاء الحساب البنكي: {e}")
+        await message.reply("❌ حدث خطأ أثناء إنشاء الحساب البنكي")
+
+
 @router.message(F.text)
 @user_required
 async def handle_text_messages(message: Message, state: FSMContext):
