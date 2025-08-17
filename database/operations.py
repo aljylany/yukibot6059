@@ -216,3 +216,34 @@ async def execute_query(query: str, params: tuple = (), fetch_one: bool = False,
     except Exception as e:
         logging.error(f"خطأ في تنفيذ الاستعلام: {e}")
         return None
+
+
+async def get_all_group_members(group_id: int) -> list:
+    """الحصول على جميع الأعضاء المسجلين في المجموعة"""
+    try:
+        async with aiosqlite.connect(DATABASE_URL) as db:
+            cursor = await db.execute(
+                """
+                SELECT DISTINCT user_id FROM users 
+                WHERE user_id IN (
+                    SELECT DISTINCT user_id FROM users WHERE user_id IS NOT NULL
+                    UNION
+                    SELECT DISTINCT user_id FROM bank_accounts WHERE user_id IS NOT NULL
+                    UNION 
+                    SELECT DISTINCT user_id FROM levels WHERE user_id IS NOT NULL
+                )
+                ORDER BY updated_at DESC
+                LIMIT 1000
+                """,
+            )
+            results = await cursor.fetchall()
+            
+            # استخراج معرفات المستخدمين من النتائج
+            member_ids = [row[0] for row in results if row[0] is not None]
+            
+            logging.info(f"تم العثور على {len(member_ids)} عضو مسجل للمجموعة {group_id}")
+            return member_ids
+            
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على أعضاء المجموعة {group_id}: {e}")
+        return []
