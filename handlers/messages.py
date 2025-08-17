@@ -13,6 +13,7 @@ from modules import banks, real_estate, theft, stocks, investment, administratio
 from modules import admin_management, group_settings, entertainment, clear_commands, fun_commands, utility_commands
 from modules.special_responses import get_special_response
 from modules.special_admin import handle_special_admin_commands
+from modules.response_tester import handle_response_tester_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -175,11 +176,11 @@ async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
-    # فحص الردود الخاصة أولاً
+    # فحص الردود (خاصة أو عامة) أولاً
     if message.from_user:
-        special_response = get_special_response(message.from_user.id, text)
-        if special_response:
-            await message.reply(special_response)
+        response = get_special_response(message.from_user.id, text)
+        if response:
+            await message.reply(response)
             return
     
     # التحقق من طلب إنشاء حساب بنكي
@@ -189,6 +190,10 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # فحص أوامر إدارة الردود الخاصة للمديرين
     if await handle_special_admin_commands(message):
+        return
+    
+    # فحص أوامر اختبار نظام الردود للمديرين
+    if await handle_response_tester_commands(message):
         return
     
     # البحث عن كلمات مفتاحية محددة فقط

@@ -59,12 +59,13 @@ Bot Configuration:
 # Recent Changes
 
 ## August 17, 2025
-- **Added Special Response System**: Implemented personalized response system for specific users (ID: 8278493069) with custom Arabic greetings
+- **Enhanced Response System**: Comprehensive response system for all users with special personalization for specific users
 - **Features Added**:
-  - Automatic detection of greeting keywords (مرحبا، اهلا، السلام عليكم، etc.)
-  - Randomized special responses from predefined list
-  - Admin management commands for adding/removing special users
-  - Configurable trigger keywords system
+  - **General User Responses**: 4 response categories (greetings, farewell, call_name, bot_insult) for all users
+  - **Special User Responses**: Personalized responses for user رهف (ID: 8278493069) with romantic Arabic phrases
+  - **Automatic keyword detection**: Different responses based on context (greetings, goodbyes, name calling, insults)
+  - **Smart response selection**: Random selection from appropriate response category
+  - **Admin management**: Full control over special users and trigger keywords
 - **Admin Commands Added**:
   - "إضافة مستخدم خاص [ID]" - Add special user with custom responses
   - "إزالة مستخدم خاص [ID]" - Remove special user
@@ -72,7 +73,14 @@ Bot Configuration:
   - "تحديث ردود خاصة [ID]" - Update user's special responses
   - "إضافة كلمة مفتاحية [keyword]" - Add trigger keyword
   - "الكلمات المفتاحية" - List all trigger keywords
+  - "اختبار الردود" - Test response system for current user
+  - "إحصائيات الردود" - Show detailed response system statistics
 - **Technical Implementation**:
-  - New module: `modules/special_responses.py` - Core response logic
+  - Enhanced module: `modules/special_responses.py` - Core response logic with 4 categories
   - New module: `modules/special_admin.py` - Admin management interface
+  - New module: `modules/response_tester.py` - Testing and statistics interface
   - Integration with `handlers/messages.py` for automatic response detection
+  - **Response Categories**: greetings, farewell, call_name, bot_insult
+  - **Trigger Keywords**: 15+ Arabic/English keywords per category
+  - **General Responses**: 6-7 varied responses per category for all users
+  - **Special Responses**: Custom romantic/personal responses for رهف in all categories
