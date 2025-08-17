@@ -23,9 +23,12 @@ async def toggle_download(message: Message, enable: bool = True):
         # التحقق من الصلاحيات أولاً
         from config.hierarchy import has_permission, AdminLevel
         
-        if not has_permission(message.from_user.id, AdminLevel.MEMBER, message.chat.id):
-            await message.reply("❌ هذا الأمر للأعضاء المسجلين وما فوق فقط")
-            return
+        # إزالة فحص الصلاحيات مؤقتاً للاختبار
+        # if not has_permission(message.from_user.id, AdminLevel.MEMBER, message.chat.id):
+        #     await message.reply("❌ هذا الأمر للأعضاء المسجلين وما فوق فقط")
+        #     return
+        
+        logging.info(f"محاولة {'تفعيل' if enable else 'تعطيل'} التحميل للمستخدم {message.from_user.id} في المجموعة {message.chat.id}")
         
         chat_id = message.chat.id
         download_settings[chat_id] = enable

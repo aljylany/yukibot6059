@@ -74,33 +74,35 @@ async def handle_eid_music_trigger(message: Message) -> bool:
                 from aiogram.types import URLInputFile
                 
                 try:
-                    # إرسال رسالة انتظار أولاً
-                    wait_msg = await message.reply("🎵 جاري تحضير موسيقى العيد...")
+                    # إرسال الملف الصوتي مباشرة بدون نص
+                    from aiogram.types import InputFile, FSInputFile
+                    import aiohttp
+                    import tempfile
+                    import os
                     
-                    # محاولة إرسال الملف الصوتي
-                    audio_file = URLInputFile(
-                        url=eid_url,
-                        filename="عيد_مبارك.mp3"
-                    )
-                    
-                    await message.reply_audio(
-                        audio=audio_file,
-                        title="جاب العيد",
-                        performer="يوكي",
-                        caption="🎉 **العيد جاب العيد!**\n✨ **كل عام وأنتم بخير!** ✨"
-                    )
-                    
-                    # حذف رسالة الانتظار
-                    await wait_msg.delete()
+                    # تحميل الملف مؤقتاً
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(eid_url) as response:
+                            if response.status == 200:
+                                # إنشاء ملف مؤقت
+                                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
+                                    temp_file.write(await response.read())
+                                    temp_path = temp_file.name
+                                
+                                # إرسال الملف الصوتي بدون أي نص
+                                audio_file = FSInputFile(temp_path)
+                                await message.reply_audio(audio=audio_file)
+                                
+                                # حذف الملف المؤقت
+                                os.unlink(temp_path)
+                            else:
+                                # فشل التحميل - أرسل رسالة بدون رابط
+                                await message.reply("🎵 العيد جاب العيد! 🎉")
                     
                 except Exception as e:
-                    # في حالة فشل إرسال الصوت، أرسل الرابط
-                    await wait_msg.edit_text(
-                        f"🎵 **العيد جاب العيد!** 🎉\n\n"
-                        f"🎶 **موسيقى العيد الخاصة:**\n"
-                        f"{eid_url}\n\n"
-                        f"✨ **كل عام وأنتم بخير!** ✨"
-                    )
+                    logging.error(f"خطأ في إرسال موسيقى العيد: {e}")
+                    # في حالة الفشل - رسالة بسيطة فقط
+                    await message.reply("🎵 العيد جاب العيد! 🎉")
                 return True
         
         return False
