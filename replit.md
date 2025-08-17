@@ -9,6 +9,7 @@ Preferred communication style: Simple, everyday language.
 Bot Configuration:
 - Remove all keyboard buttons (inline keyboards)
 - Bot works only in groups (not private messages except /start)
+- /start command works ONLY in private chats, completely disabled in groups
 - /start in private asks user to add bot to group as admin
 - All functionality integrated into text messages/commands instead of buttons
 - Fixed registration issues with user_required decorator
