@@ -70,12 +70,37 @@ async def handle_eid_music_trigger(message: Message) -> bool:
             eid_url = MUSIC_DATABASE.get("جاب العيد")
             
             if eid_url:
-                await message.reply(
-                    f"🎵 **العيد جاب العيد!** 🎉\n\n"
-                    f"🎶 **موسيقى العيد الخاصة:**\n"
-                    f"{eid_url}\n\n"
-                    f"✨ **كل عام وأنتم بخير!** ✨"
-                )
+                # إرسال الموسيقى كملف صوتي بدلاً من الرابط
+                from aiogram.types import URLInputFile
+                
+                try:
+                    # إرسال رسالة انتظار أولاً
+                    wait_msg = await message.reply("🎵 جاري تحضير موسيقى العيد...")
+                    
+                    # محاولة إرسال الملف الصوتي
+                    audio_file = URLInputFile(
+                        url=eid_url,
+                        filename="عيد_مبارك.mp3"
+                    )
+                    
+                    await message.reply_audio(
+                        audio=audio_file,
+                        title="جاب العيد",
+                        performer="يوكي",
+                        caption="🎉 **العيد جاب العيد!**\n✨ **كل عام وأنتم بخير!** ✨"
+                    )
+                    
+                    # حذف رسالة الانتظار
+                    await wait_msg.delete()
+                    
+                except Exception as e:
+                    # في حالة فشل إرسال الصوت، أرسل الرابط
+                    await wait_msg.edit_text(
+                        f"🎵 **العيد جاب العيد!** 🎉\n\n"
+                        f"🎶 **موسيقى العيد الخاصة:**\n"
+                        f"{eid_url}\n\n"
+                        f"✨ **كل عام وأنتم بخير!** ✨"
+                    )
                 return True
         
         return False

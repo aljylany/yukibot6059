@@ -109,3 +109,6 @@ Bot Configuration:
 - Fixed group settings toggle commands by adding missing "التحميل" setting to TOGGLE_SETTINGS
 - Enhanced media download toggle with proper admin permission checks
 - Corrected permission function calls to use has_permission from config.hierarchy
+- Fixed "جاب العيد" response to send audio file instead of showing YouTube link
+- Added comprehensive debugging for download settings persistence issues
+- Adjusted permission level for download toggle to MEMBER level for better accessibility

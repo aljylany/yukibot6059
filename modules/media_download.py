@@ -23,8 +23,8 @@ async def toggle_download(message: Message, enable: bool = True):
         # التحقق من الصلاحيات أولاً
         from config.hierarchy import has_permission, AdminLevel
         
-        if not has_permission(message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
-            await message.reply("❌ هذا الأمر للمشرفين وما فوق فقط")
+        if not has_permission(message.from_user.id, AdminLevel.MEMBER, message.chat.id):
+            await message.reply("❌ هذا الأمر للأعضاء المسجلين وما فوق فقط")
             return
         
         chat_id = message.chat.id
