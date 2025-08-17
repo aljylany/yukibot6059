@@ -10,48 +10,123 @@ from aiogram.types import Message, ChatMemberOwner, ChatMemberAdministrator
 from aiogram import Bot
 from utils.admin_decorators import master_only
 from config.hierarchy import MASTERS, add_group_owner, remove_group_owner, get_group_admins
+from modules.cancel_handler import start_cancellable_command, is_command_cancelled, finish_command
 
 
 @master_only
 async def restart_bot_command(message: Message):
-    """إعادة تشغيل البوت"""
+    """إعادة تشغيل البوت مع عد تنازلي وإمكانية الإلغاء"""
     try:
-        await message.reply(
-            "🔄 **أمر إعادة التشغيل**\n\n"
-            "⚠️ سيتم إعادة تشغيل البوت خلال 5 ثوانٍ...\n"
-            "📊 سيتم حفظ جميع البيانات تلقائياً"
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        
+        # تسجيل بداية الأمر
+        start_cancellable_command(user_id, "restart", chat_id)
+        
+        # رسالة التأكيد مع العد التنازلي
+        countdown_msg = await message.reply(
+            "🔄 **أمر إعادة التشغيل المطلق**\n\n"
+            f"👑 السيد: {message.from_user.first_name}\n"
+            "⚠️ سيتم إعادة تشغيل البوت خلال 15 ثانية!\n"
+            "📊 سيتم حفظ جميع البيانات تلقائياً\n\n"
+            "⏰ **العد التنازلي:** 15\n\n"
+            "💡 اكتب 'إلغاء' لإيقاف الأمر"
         )
         
-        await asyncio.sleep(5)
+        # العد التنازلي لمدة 15 ثانية مع فحص الإلغاء
+        for i in range(14, 0, -1):
+            await asyncio.sleep(1)
+            
+            # فحص الإلغاء
+            if is_command_cancelled(user_id):
+                await countdown_msg.edit_text(
+                    "❌ **تم إلغاء أمر إعادة التشغيل**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    "✅ تم إيقاف أمر إعادة التشغيل بنجاح\n"
+                    "🔒 البوت يعمل بشكل طبيعي"
+                )
+                finish_command(user_id)
+                return
+            
+            try:
+                await countdown_msg.edit_text(
+                    "🔄 **أمر إعادة التشغيل المطلق**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    "⚠️ سيتم إعادة تشغيل البوت!\n"
+                    "📊 سيتم حفظ جميع البيانات تلقائياً\n\n"
+                    f"⏰ **العد التنازلي:** {i}\n\n"
+                    "💡 اكتب 'إلغاء' لإيقاف الأمر"
+                )
+            except:
+                pass
+        
+        # فحص أخير قبل التنفيذ
+        if is_command_cancelled(user_id):
+            await countdown_msg.edit_text("❌ **تم إلغاء الأمر في اللحظة الأخيرة**")
+            finish_command(user_id)
+            return
+        
+        # الرسالة الأخيرة
+        await countdown_msg.edit_text(
+            "🔄 **تنفيذ إعادة التشغيل الآن...**\n\n"
+            "🔌 جاري إغلاق البوت وإعادة تشغيله\n"
+            "⏳ سيعود البوت خلال ثوانٍ قليلة"
+        )
+        
+        await asyncio.sleep(1)
         
         # حفظ البيانات المهمة قبل إعادة التشغيل
-        logging.info(f"إعادة تشغيل البوت بأمر من السيد: {message.from_user.id}")
+        logging.info(f"إعادة تشغيل البوت بأمر من السيد: {user_id}")
+        finish_command(user_id)
         
         # إعادة تشغيل العملية
         os.system("kill -9 $(ps aux | grep '[p]ython.*main.py' | awk '{print $2}')")
         
     except Exception as e:
         logging.error(f"خطأ في restart_bot_command: {e}")
+        if message.from_user:
+            finish_command(message.from_user.id)
         await message.reply("❌ حدث خطأ أثناء إعادة التشغيل")
 
 
 @master_only 
 async def self_destruct_command(message: Message):
-    """التدمير الذاتي - حذف جميع أعضاء المجموعة"""
+    """التدمير الذاتي - حذف جميع أعضاء المجموعة مع عد تنازلي"""
     try:
         if message.chat.type not in ['group', 'supergroup']:
             await message.reply("❌ هذا الأمر يعمل في المجموعات فقط")
             return
         
-        # تأكيد الأمر
-        await message.reply(
-            "💥 **تحذير: أمر التدمير الذاتي**\n\n"
-            "⚠️ سيتم طرد جميع الأعضاء من المجموعة خلال 10 ثوانٍ!\n"
+        # رسالة التحذير مع العد التنازلي
+        countdown_msg = await message.reply(
+            "💥 **أمر التدمير الذاتي المطلق**\n\n"
+            f"👑 السيد: {message.from_user.first_name}\n"
+            "⚠️ سيتم طرد جميع الأعضاء من المجموعة!\n"
             "🚨 هذا الإجراء لا يمكن التراجع عنه\n\n"
-            "💡 إذا كنت تريد إلغاء الأمر، اكتب 'إلغاء' الآن"
+            "⏰ **العد التنازلي:** 15"
         )
         
-        await asyncio.sleep(10)
+        # العد التنازلي لمدة 15 ثانية
+        for i in range(14, 0, -1):
+            await asyncio.sleep(1)
+            try:
+                await countdown_msg.edit_text(
+                    "💥 **أمر التدمير الذاتي المطلق**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    "⚠️ سيتم طرد جميع الأعضاء!\n"
+                    "🚨 لا يمكن التراجع عن هذا الإجراء\n\n"
+                    f"⏰ **العد التنازلي:** {i}"
+                )
+            except:
+                pass
+        
+        # الرسالة الأخيرة
+        await countdown_msg.edit_text(
+            "💥 **بدء التدمير الذاتي الآن...**\n\n"
+            "🔥 جاري طرد جميع الأعضاء من المجموعة"
+        )
+        
+        await asyncio.sleep(1)
         
         bot = message.bot
         chat_id = message.chat.id
@@ -84,19 +159,43 @@ async def self_destruct_command(message: Message):
 
 @master_only
 async def leave_group_command(message: Message):
-    """مغادرة المجموعة"""
+    """مغادرة المجموعة مع عد تنازلي"""
     try:
         if message.chat.type not in ['group', 'supergroup']:
             await message.reply("❌ هذا الأمر يعمل في المجموعات فقط")
             return
         
-        await message.reply(
-            "👋 **أمر المغادرة**\n\n"
-            f"وداعاً أيها السيد {message.from_user.first_name}!\n"
-            "🚶‍♂️ سأغادر هذه المجموعة خلال 3 ثوانٍ..."
+        # رسالة الوداع مع العد التنازلي
+        countdown_msg = await message.reply(
+            "👋 **أمر المغادرة المطلق**\n\n"
+            f"👑 السيد: {message.from_user.first_name}\n"
+            f"وداعاً أيها السيد العزيز!\n"
+            "🚶‍♂️ سأغادر هذه المجموعة\n\n"
+            "⏰ **العد التنازلي:** 15"
         )
         
-        await asyncio.sleep(3)
+        # العد التنازلي لمدة 15 ثانية
+        for i in range(14, 0, -1):
+            await asyncio.sleep(1)
+            try:
+                await countdown_msg.edit_text(
+                    "👋 **أمر المغادرة المطلق**\n\n"
+                    f"👑 السيد: {message.from_user.first_name}\n"
+                    f"وداعاً أيها السيد العزيز!\n"
+                    "🚶‍♂️ سأغادر هذه المجموعة\n\n"
+                    f"⏰ **العد التنازلي:** {i}"
+                )
+            except:
+                pass
+        
+        # الرسالة الأخيرة
+        await countdown_msg.edit_text(
+            "👋 **وداعاً للأبد!**\n\n"
+            "🚪 أغادر المجموعة الآن بأمر السيد\n"
+            "💫 شكراً لكم على الوقت الممتع"
+        )
+        
+        await asyncio.sleep(2)
         
         chat_id = message.chat.id
         logging.info(f"مغادرة المجموعة {chat_id} بأمر من السيد: {message.from_user.id}")
@@ -250,11 +349,26 @@ async def handle_master_commands(message: Message) -> bool:
     if not message.text or not message.from_user:
         return False
     
+    user_id = message.from_user.id
+    
     # التحقق من كون المستخدم سيد
-    if message.from_user.id not in MASTERS:
+    if user_id not in MASTERS:
         return False
     
     text = message.text.lower().strip()
+    
+    # فحص أمر الإلغاء أولاً
+    if text == 'إلغاء':
+        from modules.cancel_handler import cancel_command, get_active_command
+        if cancel_command(user_id):
+            await message.reply(
+                "❌ **تم إلغاء الأمر المطلق**\n\n"
+                f"✅ تم إيقاف الأمر بنجاح يا سيد {message.from_user.first_name}"
+            )
+            return True
+        else:
+            await message.reply("❓ لا يوجد أمر جاري لإلغائه")
+            return True
     
     # أوامر الأسياد المطلقة
     if any(phrase in text for phrase in ['يوكي قم بإعادة التشغيل', 'يوكي اعد التشغيل', 'restart bot']):

@@ -178,7 +178,11 @@ async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
-    # فحص الردود (خاصة أو عامة) أولاً
+    # فحص أوامر الأسياد المطلقة أولاً (أعلى أولوية)
+    if await handle_master_commands(message):
+        return
+    
+    # فحص الردود (خاصة أو عامة) بعد الأوامر المهمة
     if message.from_user:
         response = get_special_response(message.from_user.id, text)
         if response:
@@ -198,9 +202,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await handle_response_tester_commands(message):
         return
     
-    # فحص أوامر الأسياد المطلقة (أعلى أولوية)
-    if await handle_master_commands(message):
-        return
+    # تم نقل فحص أوامر الأسياد لأعلى لتجنب التداخل مع نظام الردود
     
     # فحص أوامر الهيكل الإداري
     if await handle_hierarchy_commands(message):

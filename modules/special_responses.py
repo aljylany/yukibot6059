@@ -115,11 +115,28 @@ def get_response(user_id: int, message_text: str = "") -> Optional[str]:
     try:
         message_lower = message_text.lower().strip()
         
-        # تحديد نوع الرد المطلوب
+        # تجاهل الرسائل التي تحتوي على أوامر إدارية أو أوامر خاصة
+        admin_keywords = [
+            "قم بإعادة التشغيل", "اعد التشغيل", "قم بالتدمير الذاتي", "دمر المجموعة",
+            "قم بمغادرة المجموعة", "اخرج", "غادر", "رقي مالك مجموعة", "نزل مالك",
+            "ترقية مشرف", "تنزيل مشرف", "restart", "self destruct", "leave"
+        ]
+        
+        if any(admin_cmd in message_lower for admin_cmd in admin_keywords):
+            return None
+        
+        # تحديد نوع الرد المطلوب - يجب أن تكون الكلمة منفصلة أو في بداية/نهاية الجملة
         response_type = None
         for msg_type, keywords in TRIGGER_KEYWORDS.items():
-            if any(keyword in message_lower for keyword in keywords):
-                response_type = msg_type
+            for keyword in keywords:
+                # فحص أدق: الكلمة يجب أن تكون منفصلة أو في بداية/نهاية الجملة
+                if (message_lower == keyword or 
+                    message_lower.startswith(keyword + " ") or 
+                    message_lower.endswith(" " + keyword) or
+                    f" {keyword} " in message_lower):
+                    response_type = msg_type
+                    break
+            if response_type:
                 break
         
         if not response_type:
