@@ -706,3 +706,105 @@ async def handle_master_commands(message: Message) -> bool:
         return True
     
     return False
+
+
+async def add_money_command(message: Message):
+    """أمر إضافة الأموال للمستخدمين (خاص بالأسياد)"""
+    try:
+        if not message.reply_to_message:
+            await message.reply(
+                "❌ **يرجى الرد على رسالة المستخدم**\n\n"
+                "📝 **الطريقة الصحيحة:**\n"
+                "1️⃣ اجعل رد على رسالة المستخدم\n"
+                "2️⃣ اكتب: اضف فلوس [المبلغ]\n\n"
+                "مثال: اضف فلوس 5000"
+            )
+            return
+        
+        # استخراج المبلغ من النص
+        text_parts = message.text.split()
+        if len(text_parts) < 3:
+            await message.reply(
+                "❌ **صيغة خاطئة!**\n\n"
+                "✅ **الصيغة الصحيحة:**\n"
+                "اضف فلوس [المبلغ]\n\n"
+                "مثال: اضب فلوس 5000"
+            )
+            return
+        
+        try:
+            amount = int(text_parts[2])
+        except ValueError:
+            await message.reply("❌ يرجى كتابة مبلغ صحيح\n\nمثال: اضف فلوس 5000")
+            return
+        
+        if amount <= 0:
+            await message.reply("❌ يجب أن يكون المبلغ أكبر من صفر")
+            return
+        
+        # الحصول على معلومات المستخدم المستهدف
+        target_user = message.reply_to_message.from_user
+        if not target_user:
+            await message.reply("❌ لا يمكن الحصول على معلومات المستخدم")
+            return
+        
+        target_user_id = target_user.id
+        target_name = target_user.first_name or "مستخدم"
+        master_name = message.from_user.first_name or "السيد"
+        
+        # التحقق من وجود المستخدم في قاعدة البيانات
+        from database.operations import get_user, update_user_balance, add_transaction
+        from utils.helpers import format_number
+        
+        user_data = await get_user(target_user_id)
+        if not user_data:
+            await message.reply(
+                f"❌ **المستخدم {target_name} لم ينشئ حساب بنكي بعد!**\n\n"
+                f"💡 يجب عليه كتابة 'انشاء حساب بنكي' أولاً"
+            )
+            return
+        
+        # إضافة المبلغ إلى رصيد المستخدم
+        success = await update_user_balance(target_user_id, amount)
+        
+        if success:
+            # تسجيل المعاملة
+            await add_transaction(
+                target_user_id, 
+                "إضافة أموال من السيد",
+                amount, 
+                f"هدية من السيد {master_name}"
+            )
+            
+            # رسالة تأكيد للسيد
+            await message.reply(
+                f"✅ **تم إضافة الأموال بنجاح!**\n\n"
+                f"👤 المستفيد: {target_name}\n"
+                f"💰 المبلغ المضاف: {format_number(amount)}$\n"
+                f"💳 الرصيد الجديد: {format_number(user_data['balance'] + amount)}$\n\n"
+                f"🎁 **تم إرسال إشعار للمستخدم**"
+            )
+            
+            # إشعار للمستخدم المستفيد
+            try:
+                notification_msg = (
+                    f"🎉 **مفاجأة سارة!**\n\n"
+                    f"💰 لقد حصلت على هدية مالية من السيد {master_name}\n"
+                    f"💵 المبلغ: {format_number(amount)}$\n"
+                    f"💳 رصيدك الحالي: {format_number(user_data['balance'] + amount)}$\n\n"
+                    f"🙏 **شكراً لك يا سيد {master_name}!**"
+                )
+                
+                # إرسال رد على رسالة المستخدم
+                await message.reply_to_message.reply(notification_msg)
+                    
+            except Exception as e:
+                logging.error(f"خطأ في إرسال الإشعار: {e}")
+                # الإشعار ليس ضرورياً، المهم تم إضافة الأموال
+                pass
+        else:
+            await message.reply("❌ حدث خطأ أثناء إضافة الأموال")
+            
+    except Exception as e:
+        logging.error(f"خطأ في add_money_command: {e}")
+        await message.reply("❌ حدث خطأ أثناء إضافة الأموال")

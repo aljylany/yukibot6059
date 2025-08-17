@@ -151,5 +151,6 @@ Bot Configuration:
   - Enhanced bank selection process with detailed information
   - Added "اضف فلوس" to master command detection system
   - Users receive notifications when Masters add money to their accounts
+  - Fixed parameter order for `add_transaction()` function to match current database schema
 - **Banking System**: 4 different banks with unique benefits, bonuses (1500-2500$), daily salaries, and interest rates
 - **Master Privileges**: Ultimate financial control with ability to gift money to any registered user
