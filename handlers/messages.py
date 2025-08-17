@@ -56,7 +56,7 @@ async def handle_text_messages(message: Message, state: FSMContext):
         
         # معالجة الرسائل حسب الحالة
         if current_state.startswith("Banks"):
-            if current_state == "BanksStates:selecting_bank":
+            if current_state == "BanksStates:waiting_bank_selection":
                 from modules.manual_registration import handle_bank_selection
                 await handle_bank_selection(message, state)
             else:

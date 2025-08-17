@@ -35,7 +35,7 @@ async def handle_bank_account_creation(message: Message, state: FSMContext):
         
         # بدء عملية اختيار البنك
         await start_bank_selection(message)
-        await state.set_state(BanksStates.selecting_bank)
+        await state.set_state(BanksStates.waiting_bank_selection)
         
     except Exception as e:
         logging.error(f"خطأ في handle_bank_account_creation: {e}")
