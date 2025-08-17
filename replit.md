@@ -106,3 +106,6 @@ Bot Configuration:
 - Updated database schema for custom commands support
 - Integrated new features into main message handling pipeline
 - Added proper error handling and logging for all new features
+- Fixed group settings toggle commands by adding missing "التحميل" setting to TOGGLE_SETTINGS
+- Enhanced media download toggle with proper admin permission checks
+- Corrected permission function calls to use has_permission from config.hierarchy

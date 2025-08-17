@@ -20,11 +20,24 @@ download_settings = {}
 async def toggle_download(message: Message, enable: bool = True):
     """تفعيل أو تعطيل التحميل"""
     try:
+        # التحقق من الصلاحيات أولاً
+        from config.hierarchy import has_permission, AdminLevel
+        
+        if not has_permission(message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+            await message.reply("❌ هذا الأمر للمشرفين وما فوق فقط")
+            return
+        
         chat_id = message.chat.id
         download_settings[chat_id] = enable
         
         status = "مفعل ✅" if enable else "معطل ❌"
-        await message.reply(f"🔄 **تحميل الوسائط الآن:** {status}")
+        action = "تم تفعيل" if enable else "تم تعطيل"
+        
+        await message.reply(
+            f"✅ **{action} تحميل الوسائط**\n\n"
+            f"📱 الحالة الحالية: {status}\n\n"
+            f"💡 يمكن للأعضاء الآن {'تحميل' if enable else 'لا يمكنهم تحميل'} الوسائط من الروابط"
+        )
         
     except Exception as e:
         logging.error(f"خطأ في تغيير حالة التحميل: {e}")

@@ -11,6 +11,7 @@ from aiogram.fsm.context import FSMContext
 from database.operations import execute_query
 from utils.decorators import admin_required, group_only
 from config.settings import SYSTEM_MESSAGES
+from config.hierarchy import has_permission, AdminLevel
 
 # إعدادات القفل والفتح
 LOCK_SETTINGS = {
@@ -62,14 +63,15 @@ TOGGLE_SETTINGS = {
     "المنشن": "mention_all",
     "وضع الاقتباسات": "quotes_mode",
     "الايدي بالصوره": "id_with_photo",
-    "التحقق": "verification"
+    "التحقق": "verification",
+    "التحميل": "download"
 }
 
 
 async def handle_lock_command(message: Message, setting: str, action: str):
     """معالج أوامر القفل والفتح"""
     try:
-        if not await has_admin_permission(message.from_user.id, message.chat.id):
+        if not has_permission(message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -104,7 +106,7 @@ async def handle_lock_command(message: Message, setting: str, action: str):
 async def handle_toggle_command(message: Message, setting: str, action: str):
     """معالج أوامر التفعيل والتعطيل"""
     try:
-        if not await has_admin_permission(message.from_user.id, message.chat.id):
+        if not has_permission(message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
