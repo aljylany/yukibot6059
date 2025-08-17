@@ -49,7 +49,7 @@ async def handle_bank_selection_state(message: Message, state: FSMContext):
     try:
         current_state = await state.get_state()
         
-        # التحقق من أن المستخدم في حالة اختيار البنك
+        # التحقق من أن المستخدم في حالة اختيار البنك فقط
         if current_state == "BanksStates:waiting_bank_selection":
             # التحقق من أن الرسالة في مجموعة وليس في الخاص
             if message.chat.type == 'private':
@@ -58,6 +58,9 @@ async def handle_bank_selection_state(message: Message, state: FSMContext):
                 
             from modules.manual_registration import handle_bank_selection
             await handle_bank_selection(message, state)
+        else:
+            # إذا لم يكن في حالة اختيار البنك، اتركه يمر للمعالج العادي
+            return
         
     except Exception as e:
         logging.error(f"خطأ في معالج اختيار البنك: {e}")

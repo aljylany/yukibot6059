@@ -34,6 +34,9 @@ Bot Configuration:
 - Fixed rank promotion synchronization bug: unified hierarchy system and database storage with automatic synchronization
 - Enhanced marriage system with comprehensive dowry mechanics, judge approval workflow, and commission system (Judge ID: 7155814194, commission range: 100-1000$)
 - Added database startup synchronization to load existing ranks from database into memory dictionaries
+- Added comprehensive user information commands: "رتبتي" (my rank), "فلوسي" (my balance), "فلوسه" (check others' balance with reply), "رتبته" (check others' rank with reply), "مستواي"/"مستواه" (level checking)
+- Fixed bank selection handler conflicts that were interfering with user info commands
+- Created dedicated user_info.py module for handling all user information display functionality
 
 # System Architecture
 
