@@ -23,10 +23,7 @@ async def main():
     setup_logging()
     
     # إنشاء كائن البوت مع الإعدادات الافتراضية
-    bot = Bot(
-        token=BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
+    bot = Bot(token=BOT_TOKEN)
     
     # إنشاء موزع الأحداث
     dp = Dispatcher()
@@ -41,13 +38,33 @@ async def main():
     
     try:
         logging.info("🚀 بدء تشغيل البوت...")
-        # حذف التحديثات المعلقة وبدء التصويت
-        await bot.delete_webhook(drop_pending_updates=True)
+        
+        # التأكد من إغلاق أي webhooks نشطة
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logging.info("✅ تم حذف جميع الـ webhooks والتحديثات المعلقة")
+        except Exception as webhook_error:
+            logging.warning(f"⚠️ تحذير في حذف الـ webhooks: {webhook_error}")
+        
+        # إضافة تأخير قصير للتأكد من تطبيق التغييرات
+        await asyncio.sleep(2)
+        
+        # بدء التصويت
         await dp.start_polling(bot)
+        
+    except KeyboardInterrupt:
+        logging.info("🛑 تم إيقاف البوت بواسطة المستخدم")
     except Exception as e:
         logging.error(f"❌ خطأ في تشغيل البوت: {e}")
+        # إضافة تفاصيل أكثر عن الخطأ
+        import traceback
+        logging.error(f"تفاصيل الخطأ: {traceback.format_exc()}")
     finally:
-        await bot.session.close()
+        try:
+            await bot.session.close()
+            logging.info("✅ تم إغلاق جلسة البوت بنجاح")
+        except Exception as close_error:
+            logging.error(f"خطأ في إغلاق الجلسة: {close_error}")
 
 
 if __name__ == "__main__":

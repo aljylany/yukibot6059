@@ -124,8 +124,8 @@ async def update_user_bank_balance(user_id: int, new_bank_balance: float) -> boo
 
 
 async def add_transaction(user_id: int, transaction_type: str, amount: float, 
-                         description: str = "", from_user_id: int = None, 
-                         to_user_id: int = None) -> bool:
+                         description: str = "", from_user_id: Optional[int] = None, 
+                         to_user_id: Optional[int] = None) -> bool:
     """إضافة معاملة جديدة"""
     try:
         async with aiosqlite.connect(DATABASE_URL) as db:
