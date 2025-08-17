@@ -5,7 +5,7 @@ Theft and Security Module
 
 import logging
 import random
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from database.operations import get_user, update_user_balance, execute_query, add_transaction
@@ -37,17 +37,6 @@ async def show_security_menu(message: Message):
         # الحصول على إحصائيات السرقة
         theft_stats = await get_theft_stats(message.from_user.id)
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🔓 سرقة لاعب", callback_data="theft_steal"),
-                InlineKeyboardButton(text="🛡 ترقية الأمان", callback_data="theft_security")
-            ],
-            [
-                InlineKeyboardButton(text="📊 إحصائيات السرقة", callback_data="theft_stats"),
-                InlineKeyboardButton(text="🏆 أفضل اللصوص", callback_data="theft_leaderboard")
-            ]
-        ])
-        
         security_text = f"""
 🛡 **نظام الأمان والسرقة**
 
@@ -65,9 +54,15 @@ async def show_security_menu(message: Message):
 🔒 مرات تم سرقتك: {theft_stats['times_stolen']}
 
 💡 نصيحة: ضع أموالك في البنك لحمايتها!
+
+📝 **الأوامر المتاحة:**
+🔓 للسرقة: رد على رسالة الشخص واكتب "سرقة" أو "سرف"
+🛡 لترقية الأمان: اكتب "ترقية امان"
+📊 لرؤية الإحصائيات: اكتب "احصائيات سرقة"
+🏆 لرؤية أفضل اللصوص: اكتب "افضل لصوص"
         """
         
-        await message.reply(security_text, reply_markup=keyboard)
+        await message.reply(security_text)
         
     except Exception as e:
         logging.error(f"خطأ في قائمة الأمان: {e}")

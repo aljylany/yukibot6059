@@ -19,6 +19,8 @@ Bot Configuration:
 - Added missing last_salary_time column to database schema
 - Added direct deposit/withdraw commands supporting "ايداع 100" and "سحب 200" format
 - Implemented reply-based theft system where players reply to victim messages and write "سرقة" or "سرف"
+- Fixed theft button display issue - removed non-functional inline keyboard buttons from security menu
+- Theft functionality works through text commands only: reply to messages with "سرقة"/"سرف" for stealing
 - Enhanced banking system with immediate command recognition for better user experience
 
 # System Architecture
