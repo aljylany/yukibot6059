@@ -30,6 +30,9 @@ async def toggle_download(message: Message, enable: bool = True):
         chat_id = message.chat.id
         download_settings[chat_id] = enable
         
+        # إضافة تسجيل للتصحيح
+        logging.info(f"تم {'تفعيل' if enable else 'تعطيل'} التحميل للمجموعة {chat_id}. الإعدادات الحالية: {download_settings}")
+        
         status = "مفعل ✅" if enable else "معطل ❌"
         action = "تم تفعيل" if enable else "تم تعطيل"
         
@@ -164,8 +167,12 @@ async def search_youtube(message: Message, query: str = None):
     try:
         chat_id = message.chat.id
         
+        # إضافة تسجيل للتصحيح
+        current_setting = download_settings.get(chat_id, False)
+        logging.info(f"فحص إعدادات التحميل للمجموعة {chat_id}: {current_setting}. جميع الإعدادات: {download_settings}")
+        
         # التحقق من تفعيل التحميل
-        if not download_settings.get(chat_id, False):
+        if not current_setting:
             await message.reply("❌ التحميل معطل في هذه المجموعة\nاستخدم 'تفعيل التحميل' لتفعيله")
             return
         
