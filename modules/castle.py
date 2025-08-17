@@ -1225,3 +1225,8 @@ async def confirm_delete_castle_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في تأكيد حذف القلعة: {e}")
         await message.reply("❌ حدث خطأ أثناء حذف القلعة")
+
+# دالة مطابقة للاستدعاء من messages.py
+async def show_castle_stats(message: Message):
+    """عرض إحصائيات القلعة - دالة مطابقة"""
+    await castle_stats_command(message)

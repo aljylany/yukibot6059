@@ -242,14 +242,14 @@ async def handle_general_message(message: Message, state: FSMContext):
         await farm.show_farm_menu(message)
     elif any(phrase in text for phrase in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
         await castle.create_castle_command(message, state)
-    elif any(word in text for word in ['قلعة']):
+    elif text.strip() == 'قلعة':
         await castle.show_castle_menu(message)
     elif any(word in text for word in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز']):
         await castle.treasure_hunt_command(message)
     elif any(word in text for word in ['طور القلعة', 'تطوير القلعة', 'ترقية القلعة']):
         await castle.upgrade_castle_command(message)
     elif any(word in text for word in ['احصائيات القلعة', 'إحصائيات القلعة', 'احصائيات قلعة']):
-        await castle.show_castle_stats(message)
+        await castle.castle_stats_command(message)
     elif any(phrase in text for phrase in ['متجر القلعة', 'متجر قلعة', 'شراء موارد']):
         await castle.show_castle_shop(message)
     elif text.startswith('شراء '):
