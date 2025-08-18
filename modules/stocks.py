@@ -138,6 +138,112 @@ async def sell_stock_command(message: Message):
         logging.error(f"خطأ في بيع السهم: {e}")
         await message.reply("❌ حدث خطأ في عملية البيع")
 
+async def show_buy_stocks(message: Message):
+    """عرض قائمة الأسهم للشراء"""
+    try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معرف المستخدم")
+            return
+            
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        current_prices = await get_current_stock_prices()
+        stocks_text = f"📈 **شراء الأسهم**\n\n💰 رصيدك: {format_number(user['balance'])}$\n\n"
+        
+        for symbol, info in GAME_STOCKS.items():
+            price = current_prices.get(symbol, info['base_price'])
+            stocks_text += f"{info['emoji']} **{symbol}** - {info['name']}\n"
+            stocks_text += f"   💰 السعر: ${price:.2f}\n"
+            stocks_text += f"   📊 الفئة: {info['category']}\n"
+            stocks_text += f"   🔹 اكتب: \"شراء سهم {symbol} [العدد]\"\n\n"
+        
+        stocks_text += "\n📋 **أمثلة:**\n"
+        stocks_text += "• شراء سهم AAPL 10\n"
+        stocks_text += "• شراء سهم TSLA 5\n"
+        stocks_text += "• شراء سهم MSFT 20"
+        
+        await message.reply(stocks_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض شراء الأسهم: {e}")
+        await message.reply("❌ حدث خطأ في عرض قائمة الشراء")
+
+async def show_sell_stocks(message: Message):
+    """عرض قائمة الأسهم للبيع"""
+    try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معرف المستخدم")
+            return
+            
+        user_stocks = await get_user_stocks(message.from_user.id)
+        
+        if not user_stocks or not isinstance(user_stocks, list):
+            await message.reply("📊 محفظتك فارغة\n\nلا يمكنك بيع أسهم لا تملكها")
+            return
+        
+        current_prices = await get_current_stock_prices()
+        stocks_text = "📉 **بيع الأسهم**\n\n"
+        
+        for stock in user_stocks:
+            if not isinstance(stock, dict):
+                continue
+                
+            symbol = stock.get('symbol', '')
+            quantity = stock.get('quantity', 0)
+            purchase_price = stock.get('purchase_price', 0)
+            
+            stock_info = GAME_STOCKS.get(symbol, {})
+            current_price = current_prices.get(symbol, stock_info.get('base_price', 100))
+            profit = (current_price - purchase_price) * quantity
+            
+            profit_emoji = "📈" if profit >= 0 else "📉"
+            
+            stocks_text += f"{stock_info.get('emoji', '📊')} **{symbol}** x{quantity}\n"
+            stocks_text += f"   💰 السعر الحالي: ${current_price:.2f}\n"
+            stocks_text += f"   {profit_emoji} الربح/الخسارة: ${profit:+.2f}\n"
+            stocks_text += f"   🔹 اكتب: \"بيع سهم {symbol} [العدد]\"\n\n"
+        
+        stocks_text += "\n📋 **أمثلة:**\n"
+        stocks_text += "• بيع سهم AAPL 5\n"
+        stocks_text += "• بيع سهم TSLA 2"
+        
+        await message.reply(stocks_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض بيع الأسهم: {e}")
+        await message.reply("❌ حدث خطأ في عرض قائمة البيع")
+
+async def show_stock_prices(message: Message):
+    """عرض أسعار الأسهم الحالية"""
+    try:
+        current_prices = await get_current_stock_prices()
+        prices_text = "📊 **أسعار الأسهم الحالية:**\n\n"
+        
+        for symbol, info in GAME_STOCKS.items():
+            current_price = current_prices.get(symbol, info['base_price'])
+            base_price = info['base_price']
+            
+            # حساب التغيير
+            change = ((current_price - base_price) / base_price) * 100
+            change_emoji = "📈" if change >= 0 else "📉"
+            
+            prices_text += f"{info['emoji']} **{symbol}** - {info['name']}\n"
+            prices_text += f"   💰 السعر: ${current_price:.2f}\n"
+            prices_text += f"   📊 الفئة: {info['category']}\n"
+            prices_text += f"   {change_emoji} التغيير: {change:+.1f}%\n\n"
+        
+        prices_text += "\n📋 **للشراء/البيع:**\n"
+        prices_text += "• اكتب: \"شراء اسهم\" لعرض قائمة الشراء\n"
+        prices_text += "• اكتب: \"بيع اسهم\" لعرض أسهمك للبيع"
+        
+        await message.reply(prices_text)
+    except Exception as e:
+        logging.error(f"خطأ في عرض أسعار الأسهم: {e}")
+        await message.reply("❌ حدث خطأ في عرض أسعار الأسهم")
+
 async def show_portfolio(message: Message):
     """عرض محفظة الأسهم"""
     try:

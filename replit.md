@@ -1,6 +1,6 @@
 # Overview
 
-This project is an advanced Arabic-language Telegram economic simulation bot named "يوكي" (Yuki) with enhanced interactive features. The bot includes a comprehensive virtual economy with banking, real estate, stock trading, farming, and player-vs-player systems. Recent enhancements focus on bot personality protection, custom command systems for authorized users, music search functionality across multiple platforms, and automated responses to specific triggers. The architecture remains modular with new security and entertainment systems integrated.
+This project is an advanced Arabic-language Telegram economic simulation bot named "يوكي" (Yuki) with enhanced interactive features. The bot includes a comprehensive virtual economy with banking, real estate, stock trading, farming, and player-vs-player systems. Recent enhancements focus on bot personality protection, custom command systems for authorized users, music search functionality, and automated responses to specific triggers. The architecture remains modular with new security and entertainment systems integrated.
 
 # User Preferences
 
@@ -64,7 +64,7 @@ Bot Configuration:
 
 ## Key Feature Specifications
 - **Economic Simulation**:
-    - **Banking System**: Account creation (manual), deposits, withdrawals, transfers, daily salaries, and bank-specific features across multiple virtual banks.
+    - **Banking System**: Account creation, deposits, withdrawals, transfers, daily salaries, and bank-specific features across multiple virtual banks.
     - **Real Estate**: Buying, selling, and income generation from virtual properties.
     - **Stock Market**: Trading virtual stocks.
     - **Theft Mechanics**: Player-vs-player robbery with security levels.
@@ -77,10 +77,11 @@ Bot Configuration:
 - **Special Response System**: Personalized greeting system for specific users and a comprehensive response system for all users, with automatic keyword detection and smart response selection.
 - **Master Commands**: Ultimate control commands for Masters, including bot restart, shutdown, self-destruct, and financial control (adding money to any user).
 - **Bot Protection System**: Anti-insult mechanism that responds mockingly to attempts to insult or demean the bot, protecting Yuki's personality and dignity.
-- **Custom Commands System**: Authorized admins and moderators can create custom bot commands with keywords and responses using "اضافة امر" command.
-- **Music Search Feature**: Users can search for and play songs from YouTube, Instagram, and TikTok through the bot with commands like "ابحث عن اغنية".
-- **Special Trigger Responses**: Automated responses to specific phrases like "جاب العيد" which triggers a special YouTube music link.
+- **Custom Commands System**: Authorized admins and moderators can create custom bot commands with keywords and responses.
+- **Music Search Feature**: Users can search for and play songs from YouTube, Instagram, and TikTok through the bot.
+- **Special Trigger Responses**: Automated responses to specific phrases.
 - **Anti-Zarf Protection**: Special protection against "زرف"/"سرف" commands targeted at the bot itself with humorous responses.
+- **Notification Channel System**: Comprehensive notification system for sub-channel with detailed bot activity and status updates.
 
 # External Dependencies
 
@@ -90,78 +91,4 @@ Bot Configuration:
 - **SQLite**: The chosen database for storing all user data, game states, transactions, and administrative records across various tables (e.g., `users`, `properties`, `stocks`, `bans`, `levels`, `investments`, `teams`, `team_members`, `custom_replies`, `custom_commands`, `banned_words`, `activity_logs`, `daily_stats`, `performance_metrics`).
 - **Python logging**: Utilized for error tracking, debugging, and operational monitoring.
 - **asyncio**: Python's built-in library for writing concurrent code, essential for the bot's asynchronous operations.
-- **External APIs (Configured but Optional)**: Architecture supports integration with external services like Stock APIs, Payment Providers, and Crypto APIs.
-
-# Recent Major Update (2025-08-18)
-
-## ✅ Complete Text-Based Command System Implementation
-- **Fixed All Syntax Errors**: Resolved all LSP diagnostic issues across all modules
-- **Button-to-Text Conversion**: Successfully converted entire bot from inline keyboard buttons to text-based commands
-- **Enhanced Command Handlers**: Added comprehensive text command support for:
-  - Investment system: "استثمار", "استثمار جديد", "محفظة الاستثمارات", "سحب استثمار", "تقرير الاستثمارات"
-  - Stock trading: "اسهم", "قائمة الاسهم", "شراء سهم", "بيع سهم", "محفظة الاسهم", "اسعار الاسهم"
-  - Farming: "مزرعة", "قائمة المزروعات", "زراعة", "حصاد", "حالة المزرعة", "شراء بذور"
-- **Leveling System Modernization**: Updated modules/leveling.py with async support and proper database integration
-- **Arabic Text Display**: Fixed all Arabic text rendering and menu functionality issues
-- **Database Operations**: Corrected all fetch_one/fetch_all parameter usage across modules
-- **Speed Improvements**: 
-  - Reduced crop growing times from hours to minutes (1-10 minutes for faster gameplay)
-  - Reduced salary collection cooldown from 5 minutes to 3 minutes
-- **New Tip System**: Added complete "بقشيش" command system with random rewards and multiple tip tiers
-- **Bot Status**: Currently running with enhanced user experience and faster gameplay
-
-## Technical Achievements
-- Zero syntax errors in codebase
-- Full async/await pattern implementation
-- Comprehensive text-based user interface
-- Enhanced Arabic language support
-- Robust error handling and logging
-- Complete elimination of problematic inline keyboards
-
-# Previous Changes (2025-08-17)
-
-## Latest Updates:
-- ✅ **Fixed Self-Destruct Command**: Completely overhauled the self-destruct command to properly target regular members instead of administrators
-  - Fixed database query errors (removed non-existent `levels` table reference)
-  - Enhanced targeting logic to focus on regular members only
-  - Added real-time progress updates during mass kick operations
-  - Improved error messages and result reporting
-  - Now works effectively compared to individual kick commands
-- ✅ **Notification Channel System**: Implemented comprehensive notification system for sub-channel
-  - Detailed notifications when bot is added to new groups (group info, admin list, member count)
-  - Bot promotion/demotion notifications
-  - Bot removal notifications
-  - Startup and maintenance notifications
-  - Error alerts for administrators
-  - Daily statistics reporting capability
-- ✅ **Group Events Handler**: New `handlers/group_events.py` module for handling my_chat_member events
-- ✅ **Notification Manager**: Advanced `modules/notification_manager.py` for structured notification handling
-- ✅ **Admin Test Command**: `/test_channel` command for administrators to test notification channel connectivity
-- ✅ **Enhanced Configuration**: Added NOTIFICATION_CHANNEL settings in `config/settings.py`
-- ✅ **Automatic Startup Notifications**: Bot sends startup notification to channel when launched
-
-## Previous Features:
-- ✅ **Bot Insult Protection System**: Yuki now responds with sarcastic and defensive messages when users attempt to insult or demean the bot
-- ✅ **Custom Commands System**: Authorized users (moderators+) can add custom commands with "اضافة امر [keyword] [response]" format
-- ✅ **Music Search Integration**: Users can search for music across YouTube, SoundCloud, and Spotify platforms with commands like "ابحث عن اغنية [song name]"
-- ✅ **"جاب العيد" Special Response**: Automatically responds with a specific YouTube music link when this phrase is mentioned
-- ✅ **Anti-Zarf Protection**: Bot refuses to be "zarfed" and responds humorously when targeted with زرف/سرف commands
-- ✅ **Enhanced Database Schema**: Updated custom_commands table with proper keyword/responses columns
-- ✅ **State Management**: Integrated CustomCommandsStates for multi-step command creation
-- ✅ **Permission-Based Access**: Custom command creation restricted to moderators and above
-- ✅ **Database Integration**: All new features fully integrated with SQLite database and async operations
-
-## Technical Updates:
-- Added new modules: `custom_commands.py`, `music_search.py`, `message_handlers.py`, `group_events.py`, `notification_manager.py`
-- Enhanced `special_responses.py` with comprehensive bot protection responses  
-- Updated database schema for custom commands support
-- Integrated new features into main message handling pipeline
-- Added proper error handling and logging for all new features
-- Fixed group settings toggle commands by adding missing "التحميل" setting to TOGGLE_SETTINGS
-- Enhanced media download toggle with proper admin permission checks
-- Corrected permission function calls to use has_permission from config.hierarchy
-- Fixed "جاب العيد" response to send audio file instead of showing YouTube link
-- Added comprehensive debugging for download settings persistence issues
-- Adjusted permission level for download toggle to MEMBER level for better accessibility
-- Integrated group events monitoring with my_chat_member handler
-- Enhanced main.py with automatic startup notifications
+- **External APIs**: Architecture supports integration with external services like Stock APIs, Payment Providers, and Crypto APIs.

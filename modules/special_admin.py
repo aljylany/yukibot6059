@@ -268,7 +268,11 @@ async def handle_special_admin_commands(message: Message) -> bool:
         await add_trigger_keyword_command(message)
         return True
     elif text in ['الكلمات المفتاحية', 'قائمة الكلمات المفتاحية']:
-        await list_trigger_keywords_command(message)
+        # التحقق من أن المستخدم مدير أساسي (ماستر)
+        if message.from_user.id in [7155814194, 8278493069]:  # معرفات المديرين الأساسيين
+            await list_trigger_keywords_command(message)
+        else:
+            await message.reply("❌ هذا الأمر متاح للمديرين الأساسيين فقط")
         return True
     
     return False

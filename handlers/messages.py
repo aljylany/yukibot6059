@@ -657,7 +657,11 @@ async def handle_general_message(message: Message, state: FSMContext):
         await stocks.buy_stock_command(message)
     elif text.startswith('بيع سهم '):
         await stocks.sell_stock_command(message)
-    elif text == 'محفظة الاسهم':
+    elif text == 'شراء اسهم':
+        await stocks.show_buy_stocks(message)
+    elif text == 'بيع اسهم':
+        await stocks.show_sell_stocks(message)
+    elif text == 'محفظة الاسهم' or text == 'محفظتي':
         await stocks.show_portfolio(message)
     elif text == 'اسعار الاسهم':
         await stocks.show_stock_prices(message)
