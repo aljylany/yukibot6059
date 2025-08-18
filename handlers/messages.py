@@ -631,10 +631,50 @@ async def handle_general_message(message: Message, state: FSMContext):
         await theft.show_top_thieves(message)
     elif any(word in words for word in ['سرقة', 'سرق']) or text == 'امان':
         await theft.show_security_menu(message)
-    elif any(word in words for word in ['اسهم', 'استثمار', 'محفظة']):
+    # === أوامر الاستثمار ===
+    elif any(word in words for word in ['استثمار']):
+        from modules import investment
+        await investment.show_investment_menu(message)
+    elif text == 'استثمار جديد':
+        from modules import investment
+        await investment.show_investment_options(message)
+    elif text == 'محفظة الاستثمارات':
+        from modules import investment
+        await investment.show_portfolio(message)
+    elif text == 'سحب استثمار':
+        from modules import investment
+        await investment.show_withdrawal_options(message)
+    elif text == 'تقرير الاستثمارات':
+        from modules import investment
+        await investment.show_investment_report(message)
+    
+    # === أوامر الأسهم ===
+    elif any(word in words for word in ['اسهم', 'محفظة']):
         await stocks.show_stocks_menu(message)
+    elif text == 'قائمة الاسهم':
+        await stocks.list_available_stocks(message)
+    elif text.startswith('شراء سهم '):
+        await stocks.buy_stock_command(message)
+    elif text.startswith('بيع سهم '):
+        await stocks.sell_stock_command(message)
+    elif text == 'محفظة الاسهم':
+        await stocks.show_portfolio(message)
+    elif text == 'اسعار الاسهم':
+        await stocks.show_stock_prices(message)
+    
+    # === أوامر المزرعة ===
     elif any(word in words for word in ['مزرعة', 'زراعة', 'حصاد']):
         await farm.show_farm_menu(message)
+    elif text == 'قائمة المزروعات':
+        await farm.list_crops(message)
+    elif text.startswith('زراعة '):
+        await farm.plant_crop_command(message)
+    elif text == 'حصاد':
+        await farm.harvest_command(message)
+    elif text == 'حالة المزرعة':
+        await farm.show_farm_status(message)
+    elif text == 'شراء بذور':
+        await farm.show_seeds_shop(message)
     elif any(phrase in text for phrase in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
         await castle.create_castle_command(message, state)
     elif text.strip() == 'قلعة':

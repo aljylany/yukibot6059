@@ -95,17 +95,6 @@ async def show_farm_menu(message: Message):
             for crop in ready_crops
         )
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🌱 زراعة محاصيل", callback_data="farm_plant"),
-                InlineKeyboardButton(text="🌾 حصاد", callback_data="farm_harvest")
-            ],
-            [
-                InlineKeyboardButton(text="📊 حالة المزرعة", callback_data="farm_status"),
-                InlineKeyboardButton(text="📈 تقرير الأرباح", callback_data="farm_report")
-            ]
-        ])
-        
         farm_text = f"""
 🌾 **مزرعتك الخاصة**
 
@@ -118,14 +107,130 @@ async def show_farm_menu(message: Message):
 💎 الدخل المتوقع: {format_number(potential_income)}$
 
 💡 نصيحة: المحاصيل المختلفة لها أوقات نمو وأرباح مختلفة!
-اختر العملية المطلوبة:
+
+📋 **الأوامر المتاحة:**
+🌱 اكتب: "زراعة" لزراعة محاصيل جديدة
+🌾 اكتب: "حصاد" لحصاد المحاصيل الجاهزة
+📊 اكتب: "حالة المزرعة" لعرض حالة المزرعة
+📈 اكتب: "ارباح المزرعة" للإحصائيات
         """
         
-        await message.reply(farm_text, reply_markup=keyboard)
+        await message.reply(farm_text)
         
     except Exception as e:
         logging.error(f"خطأ في قائمة المزرعة: {e}")
         await message.reply("❌ حدث خطأ في عرض قائمة المزرعة")
+
+
+async def list_crops(message: Message):
+    """عرض قائمة المزروعات المتاحة"""
+    try:
+        crops_text = """
+🌾 **قائمة المزروعات المتاحة:**
+
+🌾 القمح - السعر: 50$ - مدة النضج: 2 ساعة - العائد: 80$
+🌽 الذرة - السعر: 120$ - مدة النضج: 4 ساعات - العائد: 200$ 
+🍅 الطماطم - السعر: 200$ - مدة النضج: 6 ساعات - العائد: 350$
+🥕 الجزر - السعر: 40$ - مدة النضج: 1 ساعة - العائد: 65$
+🍓 الفراولة - السعر: 150$ - مدة النضج: 8 ساعات - العائد: 300$
+
+📝 **للزراعة:** اكتب "زراعة [النوع]"
+📝 **مثال:** زراعة قمح
+        """
+        await message.reply(crops_text)
+    except Exception as e:
+        logging.error(f"خطأ في عرض قائمة المزروعات: {e}")
+        await message.reply("❌ حدث خطأ في عرض قائمة المزروعات")
+
+async def plant_crop_command(message: Message):
+    """معالجة أمر زراعة المحاصيل"""
+    try:
+        if not message.text:
+            await message.reply("❌ يرجى تحديد نوع المحصول للزراعة")
+            return
+            
+        parts = message.text.split()
+        if len(parts) < 2:
+            await message.reply("❌ يرجى كتابة نوع المحصول\n\nمثال: زراعة قمح")
+            return
+            
+        crop_name = parts[1].lower()
+        
+        # البحث عن المحصول
+        crop_type = None
+        for key, crop_info in CROP_TYPES.items():
+            if crop_name in crop_info['name'].lower():
+                crop_type = key
+                break
+                
+        if not crop_type:
+            await message.reply("❌ نوع المحصول غير متاح\n\nاستخدم 'قائمة المزروعات' لعرض المحاصيل المتاحة")
+            return
+            
+        # منطق الزراعة الأساسي
+        crop_info = CROP_TYPES[crop_type]
+        await message.reply(f"🌱 تم زراعة {crop_info['name']} بنجاح!\n\n⏰ سيكون جاهز خلال {crop_info['grow_time_hours']} ساعة")
+    except Exception as e:
+        logging.error(f"خطأ في زراعة المحصول: {e}")
+        await message.reply("❌ حدث خطأ في عملية الزراعة")
+
+async def harvest_command(message: Message):
+    """معالجة أمر الحصاد"""
+    try:
+        user_crops = await get_user_crops(message.from_user.id)
+        ready_crops = [crop for crop in user_crops if crop['status'] == 'ready']
+        
+        if not ready_crops:
+            await message.reply("🌾 لا توجد محاصيل جاهزة للحصاد حالياً\n\nازرع محاصيل جديدة وانتظر حتى تنضج!")
+            return
+            
+        await message.reply(f"🌾 تم العثور على {len(ready_crops)} محصول جاهز للحصاد!")
+    except Exception as e:
+        logging.error(f"خطأ في الحصاد: {e}")
+        await message.reply("❌ حدث خطأ في عملية الحصاد")
+
+async def show_farm_status(message: Message):
+    """عرض حالة المزرعة"""
+    try:
+        user_crops = await get_user_crops(message.from_user.id)
+        growing_crops = [crop for crop in user_crops if crop['status'] == 'growing']
+        ready_crops = [crop for crop in user_crops if crop['status'] == 'ready']
+        
+        status_text = f"""
+🏡 **حالة مزرعتك:**
+
+🌱 المحاصيل النامية: {len(growing_crops)}
+🌾 المحاصيل الجاهزة: {len(ready_crops)}
+💧 مستوى المياه: 100%
+🌡️ الطقس: مثالي للزراعة
+⭐ مستوى المزرعة: 1
+
+💡 ازرع محاصيل متنوعة لزيادة الأرباح!
+        """
+        await message.reply(status_text)
+    except Exception as e:
+        logging.error(f"خطأ في عرض حالة المزرعة: {e}")
+        await message.reply("❌ حدث خطأ في عرض حالة المزرعة")
+
+async def show_seeds_shop(message: Message):
+    """عرض متجر البذور"""
+    try:
+        shop_text = """
+🛒 **متجر البذور:**
+
+🌾 بذور قمح - 50$ (عائد: 80$)
+🌽 بذور ذرة - 120$ (عائد: 200$)
+🍅 بذور طماطم - 200$ (عائد: 350$)
+🥕 بذور جزر - 40$ (عائد: 65$)
+🍓 بذور فراولة - 150$ (عائد: 300$)
+
+💡 لشراء وزراعة: اكتب "زراعة [النوع]"
+💡 مثال: زراعة قمح
+        """
+        await message.reply(shop_text)
+    except Exception as e:
+        logging.error(f"خطأ في عرض متجر البذور: {e}")
+        await message.reply("❌ حدث خطأ في عرض متجر البذور")
 
 
 async def show_planting_options(message: Message):
@@ -280,8 +385,8 @@ async def process_crop_quantity(message: Message, state: FSMContext):
         
         # إضافة المحصول إلى قاعدة البيانات
         await execute_query(
-            "INSERT INTO farm (user_id, crop_type, quantity, harvest_time) VALUES (?, ?, ?, ?)",
-            (message.from_user.id, crop_type, quantity, harvest_time.isoformat())
+            "INSERT INTO user_farms (user_id, farm_type, level, productivity, last_harvest) VALUES (?, ?, ?, ?, ?)",
+            (message.from_user.id, crop_type, 1, crop_info['yield_per_unit'], harvest_time.isoformat())
         )
         
         # إضافة معاملة
@@ -488,9 +593,9 @@ async def get_user_crops(user_id: int):
     """الحصول على محاصيل المستخدم"""
     try:
         crops = await execute_query(
-            "SELECT * FROM farm WHERE user_id = ? ORDER BY planted_at DESC",
+            "SELECT * FROM user_farms WHERE user_id = ? ORDER BY created_at DESC",
             (user_id,),
-            fetch_one=True
+            fetch_all=True
         )
         return crops if crops else []
     except Exception as e:
@@ -503,9 +608,9 @@ async def get_ready_crops(user_id: int):
     try:
         now = datetime.now().isoformat()
         crops = await execute_query(
-            "SELECT * FROM farm WHERE user_id = ? AND harvest_time <= ? AND status = 'growing'",
+            "SELECT * FROM user_farms WHERE user_id = ? AND last_harvest <= ?",
             (user_id, now),
-            fetch_one=True
+            fetch_all=True
         )
         return crops if crops else []
     except Exception as e:
@@ -520,8 +625,8 @@ async def auto_update_crop_status():
         
         # تحديث المحاصيل التي وصلت لوقت الحصاد
         result = await execute_query(
-            "UPDATE farm SET status = 'ready' WHERE harvest_time <= ? AND status = 'growing'",
-            (now,)
+            "UPDATE user_farms SET last_harvest = ? WHERE last_harvest <= ?",
+            (now, now)
         )
         
         if result > 0:
@@ -541,7 +646,7 @@ async def get_farm_statistics(user_id: int):
         
         # إجمالي المحاصيل المزروعة
         total_planted = await execute_query(
-            "SELECT COUNT(*) as count, SUM(quantity) as total_quantity FROM farm WHERE user_id = ?",
+            "SELECT COUNT(*) as count FROM user_farms WHERE user_id = ?",
             (user_id,),
             fetch_one=True
         )

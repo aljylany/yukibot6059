@@ -35,17 +35,6 @@ async def show_property_menu(message: Message):
         total_income = sum(prop['income_per_hour'] for prop in user_properties)
         total_value = sum(AVAILABLE_PROPERTIES.get(prop['property_type'], {}).get('price', 0) for prop in user_properties)
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🛒 شراء عقار", callback_data="property_buy"),
-                InlineKeyboardButton(text="💰 بيع عقار", callback_data="property_sell")
-            ],
-            [
-                InlineKeyboardButton(text="🏠 عقاراتي", callback_data="property_manage"),
-                InlineKeyboardButton(text="📊 الإحصائيات", callback_data="property_stats")
-            ]
-        ])
-        
         property_text = f"""
 🏠 **محفظة العقارات**
 
@@ -55,10 +44,15 @@ async def show_property_menu(message: Message):
 📈 الدخل بالساعة: {format_number(total_income)}$/ساعة
 
 💡 العقارات تولد دخل سلبي كل ساعة!
-اختر العملية المطلوبة:
+
+📋 **الأوامر المتاحة:**
+🛒 اكتب: "شراء عقار" لشراء عقار جديد
+💰 اكتب: "بيع عقار" لبيع عقار
+🏠 اكتب: "عقاراتي" لعرض عقاراتك
+📊 اكتب: "احصائيات العقارات" للإحصائيات
         """
         
-        await message.reply(property_text, reply_markup=keyboard)
+        await message.reply(property_text)
         
     except Exception as e:
         logging.error(f"خطأ في قائمة العقارات: {e}")

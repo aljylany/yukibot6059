@@ -71,30 +71,25 @@ async def show_investment_menu(message: Message):
         total_investment = sum(inv['amount'] for inv in user_investments)
         expected_returns = sum(inv['amount'] * inv['expected_return'] for inv in user_investments)
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="💼 استثمار جديد", callback_data="investment_create"),
-                InlineKeyboardButton(text="📊 محفظتي", callback_data="investment_portfolio")
-            ],
-            [
-                InlineKeyboardButton(text="💰 سحب استثمار", callback_data="investment_withdraw"),
-                InlineKeyboardButton(text="📈 تقرير الأرباح", callback_data="investment_report")
-            ]
-        ])
-        
         investment_text = f"""
 💼 **مركز الاستثمار**
 
 💰 رصيدك النقدي: {format_number(user['balance'])}$
-📊 إجمالي الاستثمارات: {format_number(total_investment)}$
-📈 العوائد المتوقعة: {format_number(expected_returns)}$
-🎯 عدد الاستثمارات: {len(user_investments)}
+📊 إجمالي الاستثمار: {format_number(total_investment)}$
+💎 العوائد المتوقعة: {format_number(expected_returns)}$
 
-💡 تنويع الاستثمارات يقلل المخاطر ويزيد الأرباح!
-اختر العملية المطلوبة:
+🎯 عدد الاستثمارات النشطة: {len(user_investments)}
+
+💡 الاستثمار طويل المدى يحقق عوائد أعلى!
+
+📋 **الأوامر المتاحة:**
+💼 اكتب: "استثمار جديد" لبدء استثمار
+📊 اكتب: "محفظة الاستثمارات" لعرض استثماراتك
+💰 اكتب: "سحب استثمار" لسحب استثمار
+📈 اكتب: "تقرير الاستثمارات" للإحصائيات
         """
         
-        await message.reply(investment_text, reply_markup=keyboard)
+        await message.reply(investment_text)
         
     except Exception as e:
         logging.error(f"خطأ في قائمة الاستثمار: {e}")
@@ -477,3 +472,54 @@ async def process_investment_duration(message: Message, state: FSMContext):
     """معالجة مدة الاستثمار"""
     await message.reply("تم استلام مدة الاستثمار")
     await state.clear()
+
+
+async def show_investment_report(message: Message):
+    """عرض تقرير شامل للاستثمارات"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+            
+        user_investments = await get_user_investments(message.from_user.id)
+        
+        if not user_investments:
+            await message.reply("📊 لا توجد استثمارات حالياً\n\nابدأ رحلتك الاستثمارية باستخدام 'استثمار'")
+            return
+            
+        report_text = "📊 **تقرير الاستثمارات:**\n\n"
+        
+        total_invested = 0
+        total_expected = 0
+        active_count = 0
+        mature_count = 0
+        
+        for inv in user_investments:
+            if inv['status'] == 'active':
+                active_count += 1
+                total_invested += inv['amount']
+                expected_return = inv['amount'] + (inv['amount'] * inv['expected_return'])
+                total_expected += expected_return
+                
+                # التحقق من النضج
+                maturity_date = datetime.fromisoformat(inv['maturity_date'])
+                if datetime.now() >= maturity_date:
+                    mature_count += 1
+        
+        report_text += f"💰 **إجمالي المبلغ المستثمر:** {format_number(total_invested)}$\n"
+        report_text += f"📈 **العائد المتوقع:** {format_number(total_expected)}$\n"
+        report_text += f"🎯 **الربح المتوقع:** {format_number(total_expected - total_invested)}$\n\n"
+        report_text += f"📊 **الإحصائيات:**\n"
+        report_text += f"   🔄 استثمارات نشطة: {active_count}\n"
+        report_text += f"   ✅ استثمارات مكتملة: {mature_count}\n"
+        
+        if total_invested > 0:
+            profit_percentage = ((total_expected - total_invested) / total_invested) * 100
+            report_text += f"   📈 نسبة الربح المتوقعة: {profit_percentage:.1f}%"
+        
+        await message.reply(report_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في تقرير الاستثمارات: {e}")
+        await message.reply("❌ حدث خطأ في عرض تقرير الاستثمارات")
