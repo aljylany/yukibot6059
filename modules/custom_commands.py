@@ -48,15 +48,15 @@ async def load_custom_commands():
         logging.error(f"خطأ في تحميل الأوامر المخصصة: {e}")
 
 
-async def save_custom_command(chat_id: int, keyword: str, responses: List[str]) -> bool:
+async def save_custom_command(chat_id: int, keyword: str, responses: List[str], created_by: int = None) -> bool:
     """حفظ أمر مخصص في قاعدة البيانات"""
     try:
         # دمج الردود في نص واحد
         responses_text = '|||'.join(responses)
         
         await execute_query(
-            "INSERT OR REPLACE INTO custom_commands (chat_id, keyword, responses, created_at) VALUES (?, ?, ?, datetime('now'))",
-            (chat_id, keyword, responses_text)
+            "INSERT OR REPLACE INTO custom_commands (chat_id, keyword, responses, created_by, created_at) VALUES (?, ?, ?, ?, datetime('now'))",
+            (chat_id, keyword, responses_text, created_by or 0)
         )
         
         # تحديث الذاكرة
@@ -170,7 +170,7 @@ async def handle_add_command(message: Message, state: FSMContext):
                 return True
             
             # حفظ الأمر
-            if await save_custom_command(chat_id, keyword, [response]):
+            if await save_custom_command(chat_id, keyword, [response], user_id):
                 await message.reply(
                     f"✅ **تم إضافة الأمر بنجاح!**\n\n"
                     f"🔑 **الكلمة المفتاحية:** `{keyword}`\n"
@@ -327,7 +327,8 @@ async def handle_custom_commands_states(message: Message, state: FSMContext, cur
             
             # حفظ الأمر
             chat_id = message.chat.id
-            if await save_custom_command(chat_id, keyword, [response]):
+            user_id = message.from_user.id
+            if await save_custom_command(chat_id, keyword, [response], user_id):
                 await message.reply(
                     f"✅ **تم إضافة الأمر بنجاح!**\n\n"
                     f"🔑 **الكلمة المفتاحية:** `{keyword}`\n"

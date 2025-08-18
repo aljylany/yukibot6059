@@ -161,22 +161,22 @@ async def save_custom_reply(keyword, response, user_id, group_id, message):
     """حفظ الرد المخصص في قاعدة البيانات"""
     try:
         # التحقق من وجود الكلمة المفتاحية مسبقاً
-        check_query = "SELECT id FROM custom_replies WHERE keyword = ? AND group_id = ?"
+        check_query = "SELECT id FROM custom_replies WHERE trigger_word = ? AND chat_id = ?"
         existing = await execute_query(check_query, (keyword, group_id), fetch_one=True)
         
         if existing:
             # تحديث الرد الموجود
             update_query = """
                 UPDATE custom_replies 
-                SET response = ?, created_by = ?, created_at = datetime('now')
-                WHERE keyword = ? AND group_id = ?
+                SET reply_text = ?, created_by = ?, created_at = datetime('now')
+                WHERE trigger_word = ? AND chat_id = ?
             """
             await execute_query(update_query, (response, user_id, keyword, group_id))
             action = "تحديث"
         else:
             # إضافة رد جديد
             insert_query = """
-                INSERT INTO custom_replies (keyword, response, group_id, created_by, created_at)
+                INSERT INTO custom_replies (trigger_word, reply_text, chat_id, created_by, created_at)
                 VALUES (?, ?, ?, ?, datetime('now'))
             """
             await execute_query(insert_query, (keyword, response, group_id, user_id))
@@ -206,7 +206,7 @@ async def check_for_custom_replies(message: Message):
         group_id = message.chat.id
         
         # البحث في ردود المجموعة الحالية
-        group_query = "SELECT response FROM custom_replies WHERE keyword = ? AND group_id = ?"
+        group_query = "SELECT reply_text FROM custom_replies WHERE trigger_word = ? AND chat_id = ?"
         group_result = await execute_query(group_query, (text, group_id), fetch_one=True)
         
         if group_result:
@@ -214,7 +214,7 @@ async def check_for_custom_replies(message: Message):
             return True
         
         # البحث في الردود العامة (كامل البوت)
-        global_query = "SELECT response FROM custom_replies WHERE keyword = ? AND group_id IS NULL"
+        global_query = "SELECT reply_text FROM custom_replies WHERE trigger_word = ? AND chat_id IS NULL"
         global_result = await execute_query(global_query, (text,), fetch_one=True)
         
         if global_result:

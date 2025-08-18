@@ -259,9 +259,34 @@ async def list_trigger_keywords_command(message: Message):
     try:
         from database.operations import execute_query
         
-        # استعلام للحصول على الكلمات المفتاحية
-        query = "SELECT trigger_word, reply_text, created_by FROM custom_replies WHERE chat_id = ?"
-        result = await execute_query(query, (message.chat.id,), fetch_all=True)
+        # استعلام للحصول على الكلمات المفتاحية من كلا الجدولين
+        # جدول الأوامر المخصصة
+        commands_query = "SELECT keyword, responses, created_by FROM custom_commands WHERE chat_id = ?"
+        commands_result = await execute_query(commands_query, (message.chat.id,), fetch_all=True)
+        
+        # جدول الردود المخصصة
+        replies_query = "SELECT trigger_word, reply_text, created_by FROM custom_replies WHERE chat_id = ?"
+        replies_result = await execute_query(replies_query, (message.chat.id,), fetch_all=True)
+        
+        # دمج النتائج
+        all_results = []
+        if commands_result:
+            for row in commands_result:
+                keyword = row[0] if isinstance(row, tuple) else row['keyword']
+                responses = row[1] if isinstance(row, tuple) else row['responses']
+                created_by = row[2] if isinstance(row, tuple) else row['created_by']
+                # أخذ أول رد فقط للعرض
+                first_response = responses.split('|||')[0] if responses else ""
+                all_results.append((keyword, first_response, created_by, 'أمر'))
+        
+        if replies_result:
+            for row in replies_result:
+                trigger = row[0] if isinstance(row, tuple) else row['trigger_word']
+                reply = row[1] if isinstance(row, tuple) else row['reply_text']
+                created_by = row[2] if isinstance(row, tuple) else row['created_by']
+                all_results.append((trigger, reply, created_by, 'رد'))
+        
+        result = all_results
         
         if not result:
             await message.reply("📝 **قائمة الكلمات المفتاحية**\n\n❌ لا توجد كلمات مفتاحية مضافة حالياً")
@@ -269,13 +294,11 @@ async def list_trigger_keywords_command(message: Message):
         
         keywords_text = "📝 **قائمة الكلمات المفتاحية:**\n\n"
         
-        for i, row in enumerate(result, 1):
-            keyword = row[0] if isinstance(row, tuple) else row['trigger_word']
-            response = row[1] if isinstance(row, tuple) else row['reply_text']
-            created_by = row[2] if isinstance(row, tuple) else row['created_by']
+        for i, (keyword, response, created_by, command_type) in enumerate(result, 1):
             keywords_text += f"{i}. **{keyword}**\n"
             keywords_text += f"   📝 الرد: {response[:50]}{'...' if len(response) > 50 else ''}\n"
-            keywords_text += f"   👤 أضافها: {created_by}\n\n"
+            keywords_text += f"   👤 أضافها: {created_by}\n"
+            keywords_text += f"   🔧 النوع: {command_type}\n\n"
         
         keywords_text += f"\n📊 **إجمالي الكلمات المفتاحية:** {len(result)}"
         
