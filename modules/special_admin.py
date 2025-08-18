@@ -269,10 +269,38 @@ async def handle_special_admin_commands(message: Message) -> bool:
         return True
     elif text in ['الكلمات المفتاحية', 'قائمة الكلمات المفتاحية']:
         # التحقق من أن المستخدم مدير أساسي (ماستر)
-        if message.from_user.id in [7155814194, 8278493069]:  # معرفات المديرين الأساسيين
+        if message.from_user.id in [7155814194, 8278493069, 6524680126]:  # معرفات المديرين الأساسيين
             await list_trigger_keywords_command(message)
         else:
             await message.reply("❌ هذا الأمر متاح للمديرين الأساسيين فقط")
         return True
     
     return False
+
+async def list_trigger_keywords_command(message: Message):
+    """عرض قائمة الكلمات المفتاحية"""
+    try:
+        from database.operations import execute_query
+        
+        # استعلام للحصول على الكلمات المفتاحية
+        query = "SELECT keyword, response, created_by FROM custom_replies WHERE group_id = ?"
+        result = await execute_query(query, (message.chat.id,), fetch_all=True)
+        
+        if not result:
+            await message.reply("📝 **قائمة الكلمات المفتاحية**\n\n❌ لا توجد كلمات مفتاحية مضافة حالياً")
+            return
+        
+        keywords_text = "📝 **قائمة الكلمات المفتاحية:**\n\n"
+        
+        for i, (keyword, response, created_by) in enumerate(result, 1):
+            keywords_text += f"{i}. **{keyword}**\n"
+            keywords_text += f"   📝 الرد: {response[:50]}{'...' if len(response) > 50 else ''}\n"
+            keywords_text += f"   👤 أضافها: {created_by}\n\n"
+        
+        keywords_text += f"\n📊 **إجمالي الكلمات المفتاحية:** {len(result)}"
+        
+        await message.reply(keywords_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض الكلمات المفتاحية: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض الكلمات المفتاحية")

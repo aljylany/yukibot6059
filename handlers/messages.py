@@ -649,14 +649,6 @@ async def handle_general_message(message: Message, state: FSMContext):
         await investment.show_investment_report(message)
     
     # === أوامر الأسهم ===
-    elif any(word in words for word in ['اسهم', 'محفظة']):
-        await stocks.show_stocks_menu(message)
-    elif text == 'قائمة الاسهم':
-        await stocks.list_available_stocks(message)
-    elif text.startswith('شراء سهم '):
-        await stocks.buy_stock_command(message)
-    elif text.startswith('بيع سهم '):
-        await stocks.sell_stock_command(message)
     elif text == 'شراء اسهم':
         await stocks.show_buy_stocks(message)
     elif text == 'بيع اسهم':
@@ -665,6 +657,14 @@ async def handle_general_message(message: Message, state: FSMContext):
         await stocks.show_portfolio(message)
     elif text == 'اسعار الاسهم':
         await stocks.show_stock_prices(message)
+    elif text == 'قائمة الاسهم':
+        await stocks.list_available_stocks(message)
+    elif text.startswith('شراء سهم '):
+        await stocks.buy_stock_command(message)
+    elif text.startswith('بيع سهم '):
+        await stocks.sell_stock_command(message)
+    elif any(word in words for word in ['اسهم', 'محفظة']):
+        await stocks.show_stocks_menu(message)
     
     # === أوامر المزرعة ===
     elif text == 'قائمة المزروعات':
