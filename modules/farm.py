@@ -178,10 +178,31 @@ async def harvest_command(message: Message):
     """معالجة أمر الحصاد"""
     try:
         user_crops = await get_user_crops(message.from_user.id)
+        
+        if not user_crops:
+            await message.reply("""
+🌾 **لا توجد محاصيل للحصاد**
+
+مزرعتك فارغة! ابدأ بزراعة بعض المحاصيل أولاً.
+
+📝 **للبدء:**
+🌾 اكتب "قائمة المزروعات" لرؤية الخيارات
+🌱 اكتب "زراعة [النوع]" مثل "زراعة قمح"
+            """)
+            return
+            
         ready_crops = [crop for crop in user_crops if crop['status'] == 'ready']
         
         if not ready_crops:
-            await message.reply("🌾 لا توجد محاصيل جاهزة للحصاد حالياً\n\nازرع محاصيل جديدة وانتظر حتى تنضج!")
+            growing_crops = [crop for crop in user_crops if crop['status'] == 'growing']
+            await message.reply(f"""
+🌾 **لا توجد محاصيل جاهزة للحصاد حالياً**
+
+🌱 لديك {len(growing_crops)} محاصيل لا تزال تنمو
+⏰ انتظر حتى تنضج ثم اكتب "حصاد" مرة أخرى
+
+💡 استخدم "حالة المزرعة" لمتابعة التقدم
+            """)
             return
             
         await message.reply(f"🌾 تم العثور على {len(ready_crops)} محصول جاهز للحصاد!")
@@ -193,6 +214,19 @@ async def show_farm_status(message: Message):
     """عرض حالة المزرعة"""
     try:
         user_crops = await get_user_crops(message.from_user.id)
+        
+        if not user_crops:
+            await message.reply("""
+🌱 **مزرعتك فارغة**
+
+ابدأ بزراعة بعض المحاصيل لتحقيق الأرباح!
+
+📝 **للبدء:**
+🌾 اكتب "قائمة المزروعات" لرؤية الخيارات المتاحة
+🌱 اكتب "زراعة [النوع]" مثل "زراعة قمح"
+            """)
+            return
+            
         growing_crops = [crop for crop in user_crops if crop['status'] == 'growing']
         ready_crops = [crop for crop in user_crops if crop['status'] == 'ready']
         

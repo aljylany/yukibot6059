@@ -663,18 +663,20 @@ async def handle_general_message(message: Message, state: FSMContext):
         await stocks.show_stock_prices(message)
     
     # === أوامر المزرعة ===
-    elif any(word in words for word in ['مزرعة', 'زراعة', 'حصاد']):
-        await farm.show_farm_menu(message)
     elif text == 'قائمة المزروعات':
         await farm.list_crops(message)
     elif text.startswith('زراعة '):
         await farm.plant_crop_command(message)
+    elif text == 'زراعة':
+        await farm.list_crops(message)
     elif text == 'حصاد':
         await farm.harvest_command(message)
     elif text == 'حالة المزرعة':
         await farm.show_farm_status(message)
     elif text == 'شراء بذور':
         await farm.show_seeds_shop(message)
+    elif any(word in words for word in ['مزرعة']):
+        await farm.show_farm_menu(message)
     elif any(phrase in text for phrase in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
         await castle.create_castle_command(message, state)
     elif text.strip() == 'قلعة':
