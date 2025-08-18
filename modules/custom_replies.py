@@ -205,24 +205,53 @@ async def check_for_custom_replies(message: Message):
         text = message.text.lower().strip()
         group_id = message.chat.id
         
-        # البحث في ردود المجموعة الحالية
-        group_query = "SELECT reply_text FROM custom_replies WHERE trigger_word = ? AND chat_id = ?"
-        group_result = await execute_query(group_query, (text, group_id), fetch_one=True)
+        logging.info(f"فحص رد مخصص للنص: '{text}' في المجموعة: {group_id}")
         
-        if group_result:
-            await message.reply(group_result[0])
-            return True
+        # استيراد مباشر لتجنب مشاكل الاستيراد
+        import aiosqlite
         
-        # البحث في الردود العامة (كامل البوت)
-        global_query = "SELECT reply_text FROM custom_replies WHERE trigger_word = ? AND chat_id IS NULL"
-        global_result = await execute_query(global_query, (text,), fetch_one=True)
-        
-        if global_result:
-            await message.reply(global_result[0])
-            return True
-        
-        return False
+        # البحث في ردود المجموعة الحالية مباشرة
+        try:
+            async with aiosqlite.connect("bot_database.db") as db:
+                db.row_factory = aiosqlite.Row
+                
+                # البحث في ردود المجموعة الحالية
+                async with db.execute(
+                    "SELECT reply_text FROM custom_replies WHERE trigger_word = ? AND chat_id = ?",
+                    (text, group_id)
+                ) as cursor:
+                    group_result = await cursor.fetchone()
+                    
+                logging.info(f"نتيجة البحث في المجموعة: {group_result}")
+                
+                if group_result:
+                    await message.reply(group_result[0])
+                    logging.info(f"تم العثور على رد مخصص في المجموعة: {group_result[0]}")
+                    return True
+                
+                # البحث في الردود العامة (كامل البوت)
+                async with db.execute(
+                    "SELECT reply_text FROM custom_replies WHERE trigger_word = ? AND chat_id IS NULL",
+                    (text,)
+                ) as cursor:
+                    global_result = await cursor.fetchone()
+                    
+                logging.info(f"نتيجة البحث العامة: {global_result}")
+                
+                if global_result:
+                    await message.reply(global_result[0])
+                    logging.info(f"تم العثور على رد مخصص عام: {global_result[0]}")
+                    return True
+                
+                logging.info("لم يتم العثور على رد مخصص")
+                return False
+                
+        except Exception as db_error:
+            logging.error(f"خطأ في قاعدة البيانات: {db_error}")
+            return False
         
     except Exception as e:
         logging.error(f"خطأ في فحص الردود المخصصة: {e}")
+        import traceback
+        logging.error(f"تفاصيل الخطأ: {traceback.format_exc()}")
         return False
