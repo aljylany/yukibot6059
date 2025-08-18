@@ -42,6 +42,10 @@ Bot Configuration:
 - Fixed null pointer exceptions and type errors in stocks.py module for proper portfolio display
 - Enhanced get_user_stocks function to properly handle both single stock and portfolio queries
 - Added proper error handling and null checks throughout stocks module to prevent crashes
+- Fixed duplicate check_for_custom_replies function calls causing "خطأ في فحص الردود المخصصة: 0" errors
+- Added Master-only delete custom reply functionality: "حذف رد [keyword]" command for Masters to delete any custom keyword/reply
+- Enhanced keywords display with proper Arabic labels instead of English database column names
+- Improved custom replies system reliability with direct aiosqlite connection and detailed logging
 
 # System Architecture
 

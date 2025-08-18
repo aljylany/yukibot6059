@@ -255,3 +255,75 @@ async def check_for_custom_replies(message: Message):
         import traceback
         logging.error(f"تفاصيل الخطأ الكاملة: {traceback.format_exc()}")
         return False
+
+
+async def handle_delete_custom_reply(message: Message):
+    """حذف رد مخصص - مخصص للسادة فقط"""
+    try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معرف المستخدم")
+            return False
+
+        user_id = message.from_user.id
+        
+        # التحقق من أن المستخدم من السادة فقط
+        if user_id not in MASTERS:
+            await message.reply("❌ هذا الأمر متاح للسادة فقط")
+            return False
+
+        # استخراج الكلمة المفتاحية من النص
+        text = message.text.strip()
+        parts = text.split(maxsplit=2)
+        
+        if len(parts) < 3:
+            await message.reply(
+                "❌ **صيغة خاطئة**\n\n"
+                "📝 **الصيغة الصحيحة:**\n"
+                "`حذف رد [الكلمة المفتاحية]`\n\n"
+                "**مثال:**\n"
+                "`حذف رد صالح`"
+            )
+            return False
+
+        keyword = parts[2].lower().strip()
+        
+        if not keyword:
+            await message.reply("❌ يرجى تحديد الكلمة المفتاحية للحذف")
+            return False
+
+        # حذف الرد من قاعدة البيانات
+        import aiosqlite
+        async with aiosqlite.connect("bot_database.db") as db:
+            # البحث عن الرد أولاً للتأكد من وجوده
+            async with db.execute(
+                "SELECT reply_text, chat_id FROM custom_replies WHERE trigger_word = ?",
+                (keyword,)
+            ) as cursor:
+                result = await cursor.fetchone()
+            
+            if not result:
+                await message.reply(f"❌ لم يتم العثور على رد مخصص للكلمة: **{keyword}**")
+                return False
+            
+            # حذف الرد
+            await db.execute(
+                "DELETE FROM custom_replies WHERE trigger_word = ?",
+                (keyword,)
+            )
+            await db.commit()
+            
+            scope_text = "كامل البوت" if result[1] is None else f"المجموعة {result[1]}"
+            
+            await message.reply(
+                f"✅ **تم حذف الرد المخصص بنجاح!**\n\n"
+                f"🔤 **الكلمة المفتاحية:** {keyword}\n"
+                f"📝 **الرد المحذوف:** {result[0][:100]}{'...' if len(result[0]) > 100 else ''}\n"
+                f"🎯 **النطاق:** {scope_text}"
+            )
+            logging.info(f"تم حذف رد مخصص: {keyword} بواسطة السيد {user_id}")
+            return True
+
+    except Exception as e:
+        logging.error(f"خطأ في حذف الرد المخصص: {e}")
+        await message.reply("❌ حدث خطأ في حذف الرد المخصص")
+        return False

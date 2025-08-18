@@ -602,6 +602,12 @@ async def handle_general_message(message: Message, state: FSMContext):
         await start_add_custom_reply(message, state)
         return
     
+    # === أوامر حذف الردود المخصصة (للسادة فقط) ===
+    if text.startswith('حذف رد '):
+        from modules.custom_replies import handle_delete_custom_reply
+        if await handle_delete_custom_reply(message):
+            return
+    
     # === تم نقل فحص الردود المخصصة لأعلى لتجنب التكرار ===
     
     # البحث عن كلمات مفتاحية محددة بتطابق دقيق
