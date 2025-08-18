@@ -215,30 +215,7 @@ async def add_trigger_keyword_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء إضافة الكلمة المفتاحية")
 
 
-@admin_required
-async def list_trigger_keywords_command(message: Message):
-    """عرض قائمة الكلمات المفتاحية"""
-    try:
-        keywords = TRIGGER_KEYWORDS.copy()
-        
-        if not keywords:
-            await message.reply("📝 لا توجد كلمات مفتاحية محددة")
-            return
-        
-        response = "🔑 **الكلمات المفتاحية للردود الخاصة:**\n\n"
-        
-        # تقسيم الكلمات إلى مجموعات
-        for i in range(0, len(keywords), 6):
-            group = keywords[i:i+6]
-            response += "• " + " | ".join(group) + "\n"
-        
-        response += f"\n📊 **إجمالي الكلمات:** {len(keywords)}"
-        
-        await message.reply(response)
-        
-    except Exception as e:
-        logging.error(f"خطأ في list_trigger_keywords_command: {e}")
-        await message.reply("❌ حدث خطأ أثناء عرض الكلمات المفتاحية")
+
 
 
 async def handle_special_admin_commands(message: Message) -> bool:
@@ -283,7 +260,7 @@ async def list_trigger_keywords_command(message: Message):
         from database.operations import execute_query
         
         # استعلام للحصول على الكلمات المفتاحية
-        query = "SELECT keyword, response, created_by FROM custom_replies WHERE group_id = ?"
+        query = "SELECT trigger_word, reply_text, created_by FROM custom_replies WHERE chat_id = ?"
         result = await execute_query(query, (message.chat.id,), fetch_all=True)
         
         if not result:
@@ -292,7 +269,10 @@ async def list_trigger_keywords_command(message: Message):
         
         keywords_text = "📝 **قائمة الكلمات المفتاحية:**\n\n"
         
-        for i, (keyword, response, created_by) in enumerate(result, 1):
+        for i, row in enumerate(result, 1):
+            keyword = row[0] if isinstance(row, tuple) else row['trigger_word']
+            response = row[1] if isinstance(row, tuple) else row['reply_text']
+            created_by = row[2] if isinstance(row, tuple) else row['created_by']
             keywords_text += f"{i}. **{keyword}**\n"
             keywords_text += f"   📝 الرد: {response[:50]}{'...' if len(response) > 50 else ''}\n"
             keywords_text += f"   👤 أضافها: {created_by}\n\n"
