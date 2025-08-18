@@ -16,20 +16,24 @@ from services.api_client import get_stock_prices
 
 # أسهم وهمية للعبة
 GAME_STOCKS = {
-    "AAPL": {"name": "Apple Inc.", "base_price": 150, "volatility": 0.05, "emoji": "🍎"},
-    "GOOGL": {"name": "Alphabet Inc.", "base_price": 2500, "volatility": 0.04, "emoji": "🔍"},
-    "TSLA": {"name": "Tesla Inc.", "base_price": 800, "volatility": 0.08, "emoji": "🚗"},
-    "AMZN": {"name": "Amazon.com Inc.", "base_price": 3200, "volatility": 0.06, "emoji": "📦"},
-    "MSFT": {"name": "Microsoft Corp.", "base_price": 300, "volatility": 0.04, "emoji": "💻"},
-    "NVDA": {"name": "NVIDIA Corp.", "base_price": 450, "volatility": 0.07, "emoji": "🎮"},
-    "META": {"name": "Meta Platforms", "base_price": 320, "volatility": 0.06, "emoji": "📱"},
-    "NFLX": {"name": "Netflix Inc.", "base_price": 400, "volatility": 0.05, "emoji": "🎬"}
+    "AAPL": {"name": "Apple Inc.", "base_price": 150, "volatility": 0.05, "emoji": "🍎", "category": "تكنولوجيا"},
+    "GOOGL": {"name": "Alphabet Inc.", "base_price": 2500, "volatility": 0.04, "emoji": "🔍", "category": "تكنولوجيا"},
+    "TSLA": {"name": "Tesla Inc.", "base_price": 800, "volatility": 0.08, "emoji": "🚗", "category": "سيارات"},
+    "AMZN": {"name": "Amazon.com Inc.", "base_price": 3200, "volatility": 0.06, "emoji": "📦", "category": "تجارة إلكترونية"},
+    "MSFT": {"name": "Microsoft Corp.", "base_price": 300, "volatility": 0.04, "emoji": "💻", "category": "تكنولوجيا"},
+    "NVDA": {"name": "NVIDIA Corp.", "base_price": 450, "volatility": 0.07, "emoji": "🎮", "category": "أشباه موصلات"},
+    "META": {"name": "Meta Platforms", "base_price": 320, "volatility": 0.06, "emoji": "📱", "category": "وسائل التواصل"},
+    "NFLX": {"name": "Netflix Inc.", "base_price": 400, "volatility": 0.05, "emoji": "🎬", "category": "ترفيه"}
 }
 
 
 async def show_stocks_menu(message: Message):
     """عرض قائمة الأسهم الرئيسية"""
     try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معرف المستخدم")
+            return
+            
         user = await get_user(message.from_user.id)
         if not user:
             await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
@@ -39,6 +43,9 @@ async def show_stocks_menu(message: Message):
         portfolio = await get_user_stocks(message.from_user.id)
         portfolio_value = await calculate_portfolio_value(portfolio)
         
+        # حساب عدد الأسهم المختلفة
+        stocks_count = len(portfolio) if isinstance(portfolio, list) else 0
+        
         stocks_text = f"""
 📈 **سوق الأسهم**
 
@@ -46,7 +53,7 @@ async def show_stocks_menu(message: Message):
 💼 قيمة المحفظة: {format_number(portfolio_value)}$
 📊 إجمالي الثروة: {format_number(user['balance'] + portfolio_value)}$
 
-🎯 عدد الأسهم المملوكة: {len(portfolio)}
+🎯 عدد الأسهم المملوكة: {stocks_count}
 
 💡 نصيحة: تنويع المحفظة يقلل المخاطر!
 
@@ -134,9 +141,13 @@ async def sell_stock_command(message: Message):
 async def show_portfolio(message: Message):
     """عرض محفظة الأسهم"""
     try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معرف المستخدم")
+            return
+            
         user_stocks = await get_user_stocks(message.from_user.id)
         
-        if not user_stocks:
+        if not user_stocks or not isinstance(user_stocks, list):
             await message.reply("📊 محفظتك فارغة\n\nابدأ الاستثمار باستخدام 'اسهم'")
             return
             
@@ -146,15 +157,21 @@ async def show_portfolio(message: Message):
         total_profit = 0
         
         for stock in user_stocks:
-            symbol = stock['symbol']
+            if not isinstance(stock, dict):
+                continue
+                
+            symbol = stock.get('symbol', '')
+            quantity = stock.get('quantity', 0)
+            purchase_price = stock.get('purchase_price', 0)
+            
             stock_info = GAME_STOCKS.get(symbol, {})
             current_price = current_prices.get(symbol, stock_info.get('base_price', 100))
-            stock_value = current_price * stock['quantity']
-            profit = (current_price - stock['purchase_price']) * stock['quantity']
+            stock_value = current_price * quantity
+            profit = (current_price - purchase_price) * quantity
             
             profit_emoji = "📈" if profit >= 0 else "📉"
             
-            portfolio_text += f"{stock_info.get('emoji', '📊')} **{symbol}** x{stock['quantity']}\n"
+            portfolio_text += f"{stock_info.get('emoji', '📊')} **{symbol}** x{quantity}\n"
             portfolio_text += f"   💰 السعر الحالي: ${current_price:.2f}\n"
             portfolio_text += f"   💵 القيمة: ${stock_value:.2f}\n"
             portfolio_text += f"   {profit_emoji} الربح/الخسارة: ${profit:+.2f}\n\n"
@@ -610,12 +627,13 @@ async def get_user_stocks(user_id: int, symbol: str = None):
         if symbol:
             query = "SELECT * FROM stocks WHERE user_id = ? AND symbol = ?"
             params = (user_id, symbol)
+            stocks = await execute_query(query, params, fetch_one=True)
+            return stocks if stocks else None
         else:
-            query = "SELECT * FROM stocks WHERE user_id = ? ORDER BY purchased_at DESC"
+            query = "SELECT * FROM stocks WHERE user_id = ? ORDER BY id DESC"
             params = (user_id,)
-        
-        stocks = await execute_query(query, params, fetch_one=True)
-        return stocks if stocks else []
+            stocks = await execute_query(query, params, fetch_all=True)
+            return stocks if stocks else []
         
     except Exception as e:
         logging.error(f"خطأ في الحصول على أسهم المستخدم: {e}")
@@ -715,3 +733,157 @@ async def process_stock_symbol(message: Message, state: FSMContext):
     """معالجة رمز السهم"""
     await message.reply("تم استلام رمز السهم")
     await state.clear()
+
+
+async def handle_state_message(message: Message, state: FSMContext, current_state: str):
+    """معالج رسائل الأسهم حسب الحالة"""
+    try:
+        if current_state == "StocksStates:waiting_buy_quantity":
+            await handle_buy_quantity(message, state)
+        elif current_state == "StocksStates:waiting_sell_quantity":
+            await handle_sell_quantity(message, state)
+        else:
+            await message.reply("❌ حالة غير معروفة")
+            await state.clear()
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالج رسائل الأسهم: {e}")
+        await message.reply("❌ حدث خطأ في معالجة الأمر")
+        await state.clear()
+
+
+async def handle_buy_quantity(message: Message, state: FSMContext):
+    """معالجة كمية الشراء"""
+    try:
+        if not message.text or not message.text.isdigit():
+            await message.reply("❌ يرجى إدخال رقم صحيح للكمية")
+            return
+        
+        quantity = int(message.text)
+        if quantity <= 0:
+            await message.reply("❌ يجب أن تكون الكمية أكبر من صفر")
+            return
+        
+        data = await state.get_data()
+        symbol = data.get('symbol')
+        price = data.get('price')
+        
+        if not symbol or not price:
+            await message.reply("❌ حدث خطأ في البيانات، يرجى المحاولة مرة أخرى")
+            await state.clear()
+            return
+        
+        total_cost = price * quantity
+        user = await get_user(message.from_user.id)
+        
+        if user['balance'] < total_cost:
+            await message.reply(
+                f"❌ رصيد غير كافٍ!\n\n"
+                f"💰 التكلفة: {format_number(total_cost)}$\n"
+                f"💵 رصيدك: {format_number(user['balance'])}$"
+            )
+            await state.clear()
+            return
+        
+        # تنفيذ عملية الشراء
+        await add_user_stocks(message.from_user.id, symbol, quantity, price)
+        new_balance = user['balance'] - total_cost
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # إضافة معاملة
+        await add_transaction(
+            message.from_user.id,
+            f"شراء {quantity} من أسهم {symbol}",
+            -total_cost,
+            "stock_buy"
+        )
+        
+        stock_info = GAME_STOCKS.get(symbol, {})
+        await message.reply(
+            f"✅ **تم شراء الأسهم بنجاح!**\n\n"
+            f"{stock_info.get('emoji', '📊')} **{symbol}** x{quantity}\n"
+            f"💰 السعر: ${price:.2f}\n"
+            f"💵 التكلفة الإجمالية: {format_number(total_cost)}$\n"
+            f"🏦 رصيدك الجديد: {format_number(new_balance)}$"
+        )
+        
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالجة شراء الأسهم: {e}")
+        await message.reply("❌ حدث خطأ أثناء شراء الأسهم")
+        await state.clear()
+
+
+async def handle_sell_quantity(message: Message, state: FSMContext):
+    """معالجة كمية البيع"""
+    try:
+        if not message.text or not message.text.isdigit():
+            await message.reply("❌ يرجى إدخال رقم صحيح للكمية")
+            return
+        
+        quantity = int(message.text)
+        if quantity <= 0:
+            await message.reply("❌ يجب أن تكون الكمية أكبر من صفر")
+            return
+        
+        data = await state.get_data()
+        symbol = data.get('symbol')
+        
+        if not symbol:
+            await message.reply("❌ حدث خطأ في البيانات، يرجى المحاولة مرة أخرى")
+            await state.clear()
+            return
+        
+        # التحقق من ملكية الأسهم
+        user_stock = await get_user_stocks(message.from_user.id, symbol)
+        if not user_stock or user_stock['quantity'] < quantity:
+            available = user_stock['quantity'] if user_stock else 0
+            await message.reply(
+                f"❌ كمية غير كافية!\n\n"
+                f"📊 المتاح: {available} سهم\n"
+                f"📉 المطلوب: {quantity} سهم"
+            )
+            await state.clear()
+            return
+        
+        # حساب سعر البيع الحالي
+        current_prices = await get_current_stock_prices()
+        stock_info = GAME_STOCKS.get(symbol, {})
+        current_price = current_prices.get(symbol, stock_info.get('base_price', 100))
+        
+        total_sale = current_price * quantity
+        
+        # تنفيذ عملية البيع
+        await remove_user_stocks(message.from_user.id, symbol, quantity)
+        user = await get_user(message.from_user.id)
+        new_balance = user['balance'] + total_sale
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # حساب الربح/الخسارة
+        profit_loss = (current_price - user_stock['purchase_price']) * quantity
+        profit_emoji = "📈" if profit_loss >= 0 else "📉"
+        
+        # إضافة معاملة
+        await add_transaction(
+            message.from_user.id,
+            f"بيع {quantity} من أسهم {symbol}",
+            total_sale,
+            "stock_sell"
+        )
+        
+        await message.reply(
+            f"✅ **تم بيع الأسهم بنجاح!**\n\n"
+            f"{stock_info.get('emoji', '📊')} **{symbol}** x{quantity}\n"
+            f"💰 سعر البيع: ${current_price:.2f}\n"
+            f"💵 إجمالي البيع: {format_number(total_sale)}$\n"
+            f"{profit_emoji} الربح/الخسارة: {profit_loss:+.2f}$\n"
+            f"🏦 رصيدك الجديد: {format_number(new_balance)}$"
+        )
+        
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالجة بيع الأسهم: {e}")
+        await message.reply("❌ حدث خطأ أثناء بيع الأسهم")
+        await state.clear()

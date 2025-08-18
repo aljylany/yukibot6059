@@ -37,6 +37,11 @@ Bot Configuration:
 - Added comprehensive user information commands: "رتبتي" (my rank), "فلوسي" (my balance), "فلوسه" (check others' balance with reply), "رتبته" (check others' rank with reply), "مستواي"/"مستواه" (level checking)
 - Fixed bank selection handler conflicts that were interfering with user info commands
 - Created dedicated user_info.py module for handling all user information display functionality
+- Fixed critical bug in stocks module: missing stocks table in database causing "❌ حدث خطأ أثناء عرض الكلمات المفتاحية" error when using "محفظتي" command
+- Created stocks table in SQLite database with proper schema for stock trading functionality
+- Fixed null pointer exceptions and type errors in stocks.py module for proper portfolio display
+- Enhanced get_user_stocks function to properly handle both single stock and portfolio queries
+- Added proper error handling and null checks throughout stocks module to prevent crashes
 
 # System Architecture
 
