@@ -602,10 +602,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         await start_add_custom_reply(message, state)
         return
     
-    # === فحص الردود المخصصة ===
-    from modules.custom_replies import check_for_custom_replies
-    if await check_for_custom_replies(message):
-        return
+    # === تم نقل فحص الردود المخصصة لأعلى لتجنب التكرار ===
     
     # البحث عن كلمات مفتاحية محددة بتطابق دقيق
     words = text.split()

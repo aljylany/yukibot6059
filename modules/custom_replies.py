@@ -251,7 +251,7 @@ async def check_for_custom_replies(message: Message):
             return False
         
     except Exception as e:
-        logging.error(f"خطأ في فحص الردود المخصصة: {e}")
+        logging.error(f"خطأ في فحص الردود المخصصة - النوع: {type(e)}, القيمة: {e}")
         import traceback
-        logging.error(f"تفاصيل الخطأ: {traceback.format_exc()}")
+        logging.error(f"تفاصيل الخطأ الكاملة: {traceback.format_exc()}")
         return False
