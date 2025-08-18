@@ -17,7 +17,7 @@ CROP_TYPES = {
     "wheat": {
         "name": "قمح",
         "cost_per_unit": 50,
-        "grow_time_hours": 2,
+        "grow_time_minutes": 2,
         "yield_per_unit": 80,
         "min_quantity": 1,
         "max_quantity": 100,
@@ -26,7 +26,7 @@ CROP_TYPES = {
     "corn": {
         "name": "ذرة",
         "cost_per_unit": 75,
-        "grow_time_hours": 4,
+        "grow_time_minutes": 5,
         "yield_per_unit": 120,
         "min_quantity": 1,
         "max_quantity": 80,
@@ -35,7 +35,7 @@ CROP_TYPES = {
     "tomato": {
         "name": "طماطم",
         "cost_per_unit": 100,
-        "grow_time_hours": 6,
+        "grow_time_minutes": 8,
         "yield_per_unit": 180,
         "min_quantity": 1,
         "max_quantity": 60,
@@ -44,7 +44,7 @@ CROP_TYPES = {
     "potato": {
         "name": "بطاطس",
         "cost_per_unit": 60,
-        "grow_time_hours": 3,
+        "grow_time_minutes": 4,
         "yield_per_unit": 100,
         "min_quantity": 1,
         "max_quantity": 90,
@@ -53,7 +53,7 @@ CROP_TYPES = {
     "carrot": {
         "name": "جزر",
         "cost_per_unit": 40,
-        "grow_time_hours": 1,
+        "grow_time_minutes": 1,
         "yield_per_unit": 65,
         "min_quantity": 1,
         "max_quantity": 120,
@@ -62,7 +62,7 @@ CROP_TYPES = {
     "strawberry": {
         "name": "فراولة",
         "cost_per_unit": 150,
-        "grow_time_hours": 8,
+        "grow_time_minutes": 10,
         "yield_per_unit": 300,
         "min_quantity": 1,
         "max_quantity": 40,
@@ -128,11 +128,12 @@ async def list_crops(message: Message):
         crops_text = """
 🌾 **قائمة المزروعات المتاحة:**
 
-🌾 القمح - السعر: 50$ - مدة النضج: 2 ساعة - العائد: 80$
-🌽 الذرة - السعر: 120$ - مدة النضج: 4 ساعات - العائد: 200$ 
-🍅 الطماطم - السعر: 200$ - مدة النضج: 6 ساعات - العائد: 350$
-🥕 الجزر - السعر: 40$ - مدة النضج: 1 ساعة - العائد: 65$
-🍓 الفراولة - السعر: 150$ - مدة النضج: 8 ساعات - العائد: 300$
+🌾 القمح - السعر: 50$ - مدة النضج: 2 دقيقة - العائد: 80$
+🌽 الذرة - السعر: 75$ - مدة النضج: 5 دقائق - العائد: 120$ 
+🍅 الطماطم - السعر: 100$ - مدة النضج: 8 دقائق - العائد: 180$
+🥔 البطاطس - السعر: 60$ - مدة النضج: 4 دقائق - العائد: 100$
+🥕 الجزر - السعر: 40$ - مدة النضج: 1 دقيقة - العائد: 65$
+🍓 الفراولة - السعر: 150$ - مدة النضج: 10 دقائق - العائد: 300$
 
 📝 **للزراعة:** اكتب "زراعة [النوع]"
 📝 **مثال:** زراعة قمح
@@ -169,7 +170,7 @@ async def plant_crop_command(message: Message):
             
         # منطق الزراعة الأساسي
         crop_info = CROP_TYPES[crop_type]
-        await message.reply(f"🌱 تم زراعة {crop_info['name']} بنجاح!\n\n⏰ سيكون جاهز خلال {crop_info['grow_time_hours']} ساعة")
+        await message.reply(f"🌱 تم زراعة {crop_info['name']} بنجاح!\n\n⏰ سيكون جاهز خلال {crop_info['grow_time_minutes']} دقيقة")
     except Exception as e:
         logging.error(f"خطأ في زراعة المحصول: {e}")
         await message.reply("❌ حدث خطأ في عملية الزراعة")

@@ -99,7 +99,11 @@ Bot Configuration:
 - **Leveling System Modernization**: Updated modules/leveling.py with async support and proper database integration
 - **Arabic Text Display**: Fixed all Arabic text rendering and menu functionality issues
 - **Database Operations**: Corrected all fetch_one/fetch_all parameter usage across modules
-- **Bot Status**: Currently running without any errors - all 186 previous LSP diagnostics resolved
+- **Speed Improvements**: 
+  - Reduced crop growing times from hours to minutes (1-10 minutes for faster gameplay)
+  - Reduced salary collection cooldown from 5 minutes to 3 minutes
+- **New Tip System**: Added complete "بقشيش" command system with random rewards and multiple tip tiers
+- **Bot Status**: Currently running with enhanced user experience and faster gameplay
 
 ## Technical Achievements
 - Zero syntax errors in codebase

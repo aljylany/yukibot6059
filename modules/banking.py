@@ -46,8 +46,8 @@ class BankingSystem:
             last_salary = row[0] if row else None
             now = time.time()
             
-            if last_salary and now - last_salary < 5 * 60:  # 5 دقائق
-                remaining = int(5 * 60 - (now - last_salary))
+            if last_salary and now - last_salary < 3 * 60:  # 3 دقائق
+                remaining = int(3 * 60 - (now - last_salary))
                 minutes = int(remaining // 60)
                 seconds = int(remaining % 60)
                 return False, f"⏱ عليك الانتظار {minutes} دقائق و {seconds} ثانية لصرف الراتب التالي"

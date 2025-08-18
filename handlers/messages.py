@@ -715,6 +715,14 @@ async def handle_general_message(message: Message, state: FSMContext):
         from modules import ranking
         await ranking.show_leaderboard(message)
     
+    # === نظام البقشيش ===
+    elif text.startswith('بقشيش '):
+        from modules import tip_system
+        await tip_system.give_tip_command(message)
+    elif text == 'بقشيش':
+        from modules import tip_system
+        await tip_system.tip_menu(message)
+    
     # === أوامر الإدارة والرفع/التنزيل ===
     elif text.startswith('رفع '):
         await handle_admin_command(message, text)
