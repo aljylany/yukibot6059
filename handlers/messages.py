@@ -112,7 +112,11 @@ async def handle_text_messages(message: Message, state: FSMContext):
         elif current_state.startswith("CustomCommands"):
             await handle_custom_commands_states(message, state, current_state)
         elif current_state.startswith("CustomReply"):
-            await handle_custom_reply_states(message, state, current_state)
+            from modules.custom_replies import handle_keyword_input, handle_response_input
+            if current_state == "CustomReplyStates:waiting_for_keyword":
+                await handle_keyword_input(message, state)
+            elif current_state == "CustomReplyStates:waiting_for_response":
+                await handle_response_input(message, state)
         else:
             await handle_general_message(message, state)
             
@@ -543,6 +547,11 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # فحص الأوامر المخصصة قبل الردود الخاصة
     if await handle_custom_commands_message(message):
+        return
+    
+    # فحص الردود المخصصة
+    from modules.custom_replies import check_for_custom_replies
+    if await check_for_custom_replies(message):
         return
     
     # فحص أوامر إدارة الأوامر المخصصة
