@@ -16,15 +16,30 @@ from services.api_client import get_stock_prices
 
 # أسهم وهمية للعبة
 GAME_STOCKS = {
-    "AAPL": {"name": "Apple Inc.", "base_price": 150, "volatility": 0.05, "emoji": "🍎", "category": "تكنولوجيا"},
-    "GOOGL": {"name": "Alphabet Inc.", "base_price": 2500, "volatility": 0.04, "emoji": "🔍", "category": "تكنولوجيا"},
-    "TSLA": {"name": "Tesla Inc.", "base_price": 800, "volatility": 0.08, "emoji": "🚗", "category": "سيارات"},
-    "AMZN": {"name": "Amazon.com Inc.", "base_price": 3200, "volatility": 0.06, "emoji": "📦", "category": "تجارة إلكترونية"},
-    "MSFT": {"name": "Microsoft Corp.", "base_price": 300, "volatility": 0.04, "emoji": "💻", "category": "تكنولوجيا"},
-    "NVDA": {"name": "NVIDIA Corp.", "base_price": 450, "volatility": 0.07, "emoji": "🎮", "category": "أشباه موصلات"},
-    "META": {"name": "Meta Platforms", "base_price": 320, "volatility": 0.06, "emoji": "📱", "category": "وسائل التواصل"},
-    "NFLX": {"name": "Netflix Inc.", "base_price": 400, "volatility": 0.05, "emoji": "🎬", "category": "ترفيه"}
+    "AAPL": {"name": "Apple Inc.", "base_price": 150, "volatility": 0.05, "emoji": "🍎", "category": "تكنولوجيا", "arabic_names": ["ابل", "أبل", "آبل"]},
+    "GOOGL": {"name": "Alphabet Inc.", "base_price": 2500, "volatility": 0.04, "emoji": "🔍", "category": "تكنولوجيا", "arabic_names": ["جوجل", "قوقل", "غوغل"]},
+    "TSLA": {"name": "Tesla Inc.", "base_price": 800, "volatility": 0.08, "emoji": "🚗", "category": "سيارات", "arabic_names": ["تسلا", "تيسلا", "تسله"]},
+    "AMZN": {"name": "Amazon.com Inc.", "base_price": 3200, "volatility": 0.06, "emoji": "📦", "category": "تجارة إلكترونية", "arabic_names": ["امازون", "أمازون", "اميزون"]},
+    "MSFT": {"name": "Microsoft Corp.", "base_price": 300, "volatility": 0.04, "emoji": "💻", "category": "تكنولوجيا", "arabic_names": ["مايكروسوفت", "ميكروسوفت", "مايكروسفت"]},
+    "NVDA": {"name": "NVIDIA Corp.", "base_price": 450, "volatility": 0.07, "emoji": "🎮", "category": "أشباه موصلات", "arabic_names": ["نفيديا", "انفيديا", "نڤيديا"]},
+    "META": {"name": "Meta Platforms", "base_price": 320, "volatility": 0.06, "emoji": "📱", "category": "وسائل التواصل", "arabic_names": ["ميتا", "فيسبوك", "فيس بوك"]},
+    "NFLX": {"name": "Netflix Inc.", "base_price": 400, "volatility": 0.05, "emoji": "🎬", "category": "ترفيه", "arabic_names": ["نتفليكس", "نيتفليكس", "نتفلكس"]}
 }
+
+def get_stock_symbol_from_name(name):
+    """الحصول على رمز السهم من الاسم العربي أو الإنجليزي"""
+    name_lower = name.lower()
+    
+    # البحث في الرموز مباشرة
+    if name_lower.upper() in GAME_STOCKS:
+        return name_lower.upper()
+    
+    # البحث في الأسماء العربية
+    for symbol, info in GAME_STOCKS.items():
+        if name_lower in [n.lower() for n in info.get("arabic_names", [])]:
+            return symbol
+    
+    return None
 
 
 async def show_stocks_menu(message: Message):
@@ -105,20 +120,39 @@ async def buy_stock_command(message: Message):
             
         parts = message.text.split()
         if len(parts) < 3:
-            await message.reply("❌ يرجى كتابة رمز السهم\n\nمثال: شراء سهم AAPL")
+            await message.reply("❌ صيغة خاطئة\n\nاستخدم: شراء سهم [الرمز] [الكمية]\nأو: شراء اسهم [الاسم] [الكمية]\nمثال: شراء سهم AAPL 10\nمثال: شراء اسهم ابل 10")
             return
-            
-        symbol = parts[2].upper()
         
-        if symbol not in GAME_STOCKS:
-            await message.reply("❌ رمز السهم غير متاح\n\nاستخدم 'قائمة الاسهم' لعرض الأسهم المتاحة")
+        # تحديد نوع الأمر (سهم أو اسهم)
+        if message.text.startswith('شراء سهم '):
+            stock_name = parts[2]
+            quantity_index = 3
+        else:  # شراء اسهم
+            stock_name = parts[2]
+            quantity_index = 3
+        
+        if len(parts) <= quantity_index:
+            await message.reply("❌ يرجى تحديد الكمية\n\nمثال: شراء سهم AAPL 10")
             return
-            
-        stock_info = GAME_STOCKS[symbol]
-        current_prices = await get_current_stock_prices()
-        current_price = current_prices.get(symbol, stock_info['base_price'])
         
-        await message.reply(f"📈 تم اختيار {stock_info['emoji']} {symbol}\n\n💰 السعر الحالي: ${current_price:.2f}\n\n⏳ يرجى إدخال الكمية...")
+        try:
+            quantity = int(parts[quantity_index])
+        except ValueError:
+            await message.reply("❌ الكمية يجب أن تكون رقماً صحيحاً")
+            return
+        
+        # البحث عن رمز السهم
+        symbol = get_stock_symbol_from_name(stock_name)
+        if not symbol:
+            await message.reply("❌ اسم أو رمز سهم غير صحيح\n\nالرموز المتاحة: " + ", ".join(GAME_STOCKS.keys()) + "\nأو استخدم الأسماء العربية: ابل، تسلا، مايكروسوفت، إلخ")
+            return
+        
+        if quantity <= 0:
+            await message.reply("❌ الكمية يجب أن تكون أكبر من صفر")
+            return
+        
+        await buy_stock(message, symbol, quantity)
+        
     except Exception as e:
         logging.error(f"خطأ في شراء السهم: {e}")
         await message.reply("❌ حدث خطأ في عملية الشراء")
@@ -160,10 +194,11 @@ async def show_buy_stocks(message: Message):
             stocks_text += f"   📊 الفئة: {info['category']}\n"
             stocks_text += f"   🔹 اكتب: \"شراء سهم {symbol} [العدد]\"\n\n"
         
-        stocks_text += "\n📋 **أمثلة:**\n"
+        stocks_text += "\n📋 **أمثلة للشراء:**\n"
         stocks_text += "• شراء سهم AAPL 10\n"
+        stocks_text += "• شراء اسهم ابل 10\n"
         stocks_text += "• شراء سهم TSLA 5\n"
-        stocks_text += "• شراء سهم MSFT 20"
+        stocks_text += "• شراء اسهم تسلا 5"
         
         await message.reply(stocks_text)
         

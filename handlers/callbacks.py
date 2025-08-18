@@ -1,11 +1,34 @@
 """
-معالج الـ Callbacks
+معالج callbacks للبوت
 Bot Callbacks Handler
-ملاحظة: تم إزالة جميع الـ callbacks لأن البوت لا يستخدم keyboards
 """
 
+import logging
 from aiogram import Router
+from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
 
-# Router فارغ - تم إزالة جميع callback handlers
-# البوت يعمل بالأوامر النصية فقط بدلاً من الأزرار
 router = Router()
+
+
+@router.callback_query()
+async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
+    """معالج شامل لجميع الـ callbacks"""
+    try:
+        data = callback.data
+        
+        # معالجة callbacks نطاق الردود المخصصة
+        if data in ["scope_group", "scope_global", "scope_cancel"]:
+            from modules.custom_replies import handle_scope_callback
+            await handle_scope_callback(callback, state)
+            return
+        
+        # معالجة callbacks أخرى
+        await callback.answer("⚠️ هذا الزر غير نشط حالياً")
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج الـ callbacks: {e}")
+        try:
+            await callback.answer("❌ حدث خطأ")
+        except:
+            pass

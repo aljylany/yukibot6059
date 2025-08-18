@@ -111,6 +111,8 @@ async def handle_text_messages(message: Message, state: FSMContext):
             await handle_admin_message(message, state, current_state)
         elif current_state.startswith("CustomCommands"):
             await handle_custom_commands_states(message, state, current_state)
+        elif current_state.startswith("CustomReply"):
+            await handle_custom_reply_states(message, state, current_state)
         else:
             await handle_general_message(message, state)
             
@@ -585,6 +587,17 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await handle_utility_commands(message):
         return
     
+    # === أوامر إضافة الردود المخصصة ===
+    if text == 'اضف رد' or text == 'إضف رد' or text == 'اضافة رد':
+        from modules.custom_replies import start_add_custom_reply
+        await start_add_custom_reply(message, state)
+        return
+    
+    # === فحص الردود المخصصة ===
+    from modules.custom_replies import check_for_custom_replies
+    if await check_for_custom_replies(message):
+        return
+    
     # البحث عن كلمات مفتاحية محددة بتطابق دقيق
     words = text.split()
     
@@ -659,9 +672,9 @@ async def handle_general_message(message: Message, state: FSMContext):
         await stocks.show_stock_prices(message)
     elif text == 'قائمة الاسهم':
         await stocks.list_available_stocks(message)
-    elif text.startswith('شراء سهم '):
+    elif text.startswith('شراء سهم ') or text.startswith('شراء اسهم '):
         await stocks.buy_stock_command(message)
-    elif text.startswith('بيع سهم '):
+    elif text.startswith('بيع سهم ') or text.startswith('بيع اسهم '):
         await stocks.sell_stock_command(message)
     elif any(word in words for word in ['اسهم', 'محفظة']):
         await stocks.show_stocks_menu(message)
@@ -1101,6 +1114,21 @@ async def handle_admin_command(message: Message, text: str):
             
     except Exception as e:
         logging.error(f"خطأ في معالجة الأمر الإداري: {e}")
+
+
+async def handle_custom_reply_states(message: Message, state: FSMContext, current_state: str):
+    """معالجة حالات الردود المخصصة"""
+    try:
+        from modules.custom_replies import handle_keyword_input, handle_response_input
+        
+        if current_state == "CustomReplyStates:waiting_for_keyword":
+            await handle_keyword_input(message, state)
+        elif current_state == "CustomReplyStates:waiting_for_response":
+            await handle_response_input(message, state)
+    except Exception as e:
+        logging.error(f"خطأ في معالجة حالات الردود المخصصة: {e}")
+        await message.reply("❌ حدث خطأ في إضافة الرد المخصص")
+        await state.clear()
 
 
 async def handle_clear_command(message: Message, text: str):

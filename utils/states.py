@@ -235,3 +235,9 @@ class CustomCommandsStates(StatesGroup):
     """حالات الأوامر المخصصة"""
     waiting_keyword = State()
     waiting_response = State()
+
+class CustomReplyStates(StatesGroup):
+    """حالات الردود المخصصة"""
+    waiting_for_keyword = State()
+    waiting_for_response = State()
+    waiting_for_scope = State()
