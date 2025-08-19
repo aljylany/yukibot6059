@@ -29,6 +29,7 @@ from modules.utility_commands import handle_utility_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
+from config.hierarchy import MASTERS
 
 router = Router()
 
@@ -594,6 +595,43 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # فحص الأوامر المساعدة والأدوات
     if await handle_utility_commands(message):
+        return
+    
+    # === أمر عرض قائمة الأوامر الشاملة ===
+    if (text == 'الأوامر' or text == 'الاوامر' or text == 'قائمة الأوامر' or 
+        text == 'قائمة الاوامر' or text == 'جميع الأوامر' or text == 'كل الأوامر'):
+        try:
+            with open('commands_list.txt', 'rb') as f:
+                await message.reply_document(
+                    document=f,
+                    caption="📋 **قائمة أوامر بوت يوكي الشاملة**\n\n"
+                           "🔍 **هذا الملف يحتوي على:**\n"
+                           "• جميع أوامر البوت مقسمة حسب الصلاحيات\n"
+                           "• شرح مفصل لكل أمر\n"
+                           "• التحديثات الأخيرة للنظام\n\n"
+                           "💡 **نصيحة:** احفظ هذا الملف للرجوع إليه وقت الحاجة!"
+                )
+        except Exception as e:
+            logging.error(f"خطأ في إرسال ملف الأوامر: {e}")
+            await message.reply("❌ حدث خطأ في تحميل ملف الأوامر")
+        return
+    
+    # === أمر عرض قائمة الأسياد (للأسياد فقط) ===
+    if text == 'الأسياد' or text == 'الاسياد' or text == 'قائمة الأسياد' or text == 'قائمة الاسياد':
+        user_id = message.from_user.id if message.from_user else 0
+        if user_id in MASTERS:
+            masters_info = "👑 **قائمة الأسياد الحاليين:**\n\n"
+            
+            for i, master_id in enumerate(MASTERS, 1):
+                masters_info += f"{i}. `{master_id}` 👑\n"
+            
+            masters_info += f"\n📊 **إجمالي الأسياد:** {len(MASTERS)}\n"
+            masters_info += "\n🔴 **الأسياد لديهم صلاحيات مطلقة في جميع المجموعات**\n"
+            masters_info += "⚡ **يمكنهم تنفيذ أي أمر وإدارة جميع الأنظمة**"
+            
+            await message.reply(masters_info)
+        else:
+            await message.reply("❌ هذا الأمر متاح للأسياد فقط")
         return
     
     # === أوامر إضافة الردود المخصصة ===
