@@ -550,7 +550,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         return
     
     # فحص الردود المخصصة
-    from modules.custom_replies import check_for_custom_replies
+    from modules.custom_replies import check_for_custom_replies, handle_show_custom_replies
     if await check_for_custom_replies(message):
         return
     
@@ -602,7 +602,14 @@ async def handle_general_message(message: Message, state: FSMContext):
         await start_add_custom_reply(message, state)
         return
     
-    # === أوامر حذف الردود المخصصة (للسادة فقط) ===
+    # === أوامر عرض الردود المخصصة ===
+    if (text == 'الردود المخصصة' or text == 'عرض الردود' or 
+        text == 'قائمة الردود' or text == 'الردود المخصصه' or 
+        text == 'عرض ردود'):
+        await handle_show_custom_replies(message)
+        return
+    
+    # === أوامر حذف الردود المخصصة ===
     if text.startswith('حذف رد '):
         from modules.custom_replies import handle_delete_custom_reply
         if await handle_delete_custom_reply(message):

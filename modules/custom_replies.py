@@ -262,18 +262,103 @@ async def check_for_custom_replies(message: Message):
         return False
 
 
+async def handle_show_custom_replies(message: Message):
+    """عرض الردود المخصصة بناءً على الصلاحيات"""
+    try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معرف المستخدم")
+            return
+
+        user_id = message.from_user.id
+        group_id = message.chat.id
+        
+        # التحقق من الصلاحيات
+        if not (user_id in MASTERS or await is_group_owner(user_id, group_id) or await is_moderator(user_id, group_id)):
+            await message.reply("❌ هذا الأمر متاح للمشرفين ومالكي المجموعات والسادة فقط")
+            return
+
+        import aiosqlite
+        async with aiosqlite.connect("bot_database.db") as db:
+            if user_id in MASTERS:
+                # السيد يرى جميع الردود
+                async with db.execute(
+                    """
+                    SELECT trigger_word, reply_text, chat_id, created_by 
+                    FROM custom_replies 
+                    ORDER BY created_at DESC
+                    """
+                ) as cursor:
+                    replies = await cursor.fetchall()
+            else:
+                # مالك المجموعة أو مشرف يرى ردود مجموعته فقط
+                async with db.execute(
+                    """
+                    SELECT trigger_word, reply_text, chat_id, created_by 
+                    FROM custom_replies 
+                    WHERE chat_id = ?
+                    ORDER BY created_at DESC
+                    """,
+                    (group_id,)
+                ) as cursor:
+                    replies = await cursor.fetchall()
+
+            if not replies:
+                await message.reply("📝 **لا توجد ردود مخصصة**")
+                return
+
+            # تنظيم الردود في رسائل
+            replies_text = "📝 **قائمة الردود المخصصة:**\n\n"
+            
+            for i, reply in enumerate(replies, 1):
+                keyword = reply[0]
+                reply_text = reply[1]
+                chat_id = reply[2]
+                created_by = reply[3]
+                
+                # تحديد نطاق الرد
+                if chat_id is None:
+                    scope = "🌐 كامل البوت"
+                else:
+                    scope = f"🏠 هذه المجموعة"
+                
+                # معلومات إضافية للسيد
+                creator_info = ""
+                if user_id in MASTERS and created_by:
+                    if created_by in MASTERS:
+                        creator_info = f" | 👑 بواسطة سيد"
+                    else:
+                        creator_info = f" | 👤 بواسطة {created_by}"
+                
+                replies_text += f"{i}. **{keyword}**\n"
+                replies_text += f"   📝 {reply_text[:50]}{'...' if len(reply_text) > 50 else ''}\n"
+                replies_text += f"   {scope}{creator_info}\n\n"
+                
+                # تقسيم الرسائل إذا كانت طويلة
+                if len(replies_text) > 3500:
+                    await message.reply(replies_text)
+                    replies_text = ""
+            
+            if replies_text:
+                await message.reply(replies_text)
+                
+    except Exception as e:
+        logging.error(f"خطأ في عرض الردود المخصصة: {e}")
+        await message.reply("❌ حدث خطأ في عرض الردود المخصصة")
+
+
 async def handle_delete_custom_reply(message: Message):
-    """حذف رد مخصص - مخصص للسادة فقط"""
+    """حذف رد مخصص بناءً على الصلاحيات"""
     try:
         if not message.from_user:
             await message.reply("❌ خطأ في معرف المستخدم")
             return False
 
         user_id = message.from_user.id
+        group_id = message.chat.id
         
-        # التحقق من أن المستخدم من السادة فقط
-        if user_id not in MASTERS:
-            await message.reply("❌ هذا الأمر متاح للسادة فقط")
+        # التحقق من الصلاحيات
+        if not (user_id in MASTERS or await is_group_owner(user_id, group_id)):
+            await message.reply("❌ هذا الأمر متاح للسادة ومالكي المجموعات فقط")
             return False
 
         # استخراج الكلمة المفتاحية من النص
@@ -300,28 +385,42 @@ async def handle_delete_custom_reply(message: Message):
             await message.reply("❌ يرجى تحديد الكلمة المفتاحية للحذف")
             return False
 
-        # حذف الرد من قاعدة البيانات
+        # البحث عن الرد وحذفه
         import aiosqlite
         async with aiosqlite.connect("bot_database.db") as db:
-            # البحث عن الرد أولاً للتأكد من وجوده
-            async with db.execute(
-                "SELECT reply_text, chat_id FROM custom_replies WHERE trigger_word = ?",
-                (keyword,)
-            ) as cursor:
-                result = await cursor.fetchone()
+            if user_id in MASTERS:
+                # السيد يستطيع حذف أي رد
+                async with db.execute(
+                    "SELECT reply_text, chat_id FROM custom_replies WHERE trigger_word = ?",
+                    (keyword,)
+                ) as cursor:
+                    result = await cursor.fetchone()
+            else:
+                # مالك المجموعة يستطيع حذف ردود مجموعته فقط
+                async with db.execute(
+                    "SELECT reply_text, chat_id FROM custom_replies WHERE trigger_word = ? AND chat_id = ?",
+                    (keyword, group_id)
+                ) as cursor:
+                    result = await cursor.fetchone()
             
             if not result:
-                await message.reply(f"❌ لم يتم العثور على رد مخصص للكلمة: **{keyword}**")
+                await message.reply(f"❌ لم يتم العثور على رد مخصص للكلمة: **{keyword}** في نطاق صلاحيتك")
                 return False
             
             # حذف الرد
-            await db.execute(
-                "DELETE FROM custom_replies WHERE trigger_word = ?",
-                (keyword,)
-            )
+            if user_id in MASTERS:
+                await db.execute(
+                    "DELETE FROM custom_replies WHERE trigger_word = ?",
+                    (keyword,)
+                )
+            else:
+                await db.execute(
+                    "DELETE FROM custom_replies WHERE trigger_word = ? AND chat_id = ?",
+                    (keyword, group_id)
+                )
             await db.commit()
             
-            scope_text = "كامل البوت" if result[1] is None else f"المجموعة {result[1]}"
+            scope_text = "كامل البوت" if result[1] is None else f"هذه المجموعة"
             
             await message.reply(
                 f"✅ **تم حذف الرد المخصص بنجاح!**\n\n"
@@ -329,7 +428,7 @@ async def handle_delete_custom_reply(message: Message):
                 f"📝 **الرد المحذوف:** {result[0][:100]}{'...' if len(result[0]) > 100 else ''}\n"
                 f"🎯 **النطاق:** {scope_text}"
             )
-            logging.info(f"تم حذف رد مخصص: {keyword} بواسطة السيد {user_id}")
+            logging.info(f"تم حذف رد مخصص: {keyword} بواسطة {user_id}")
             return True
 
     except Exception as e:
