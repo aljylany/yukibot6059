@@ -27,7 +27,7 @@ GROUP_OWNERS: Dict[int, List[int]] = {}  # {group_id: [owner_ids]}
 MODERATORS: Dict[int, List[int]] = {}  # {group_id: [moderator_ids]}
 
 
-def get_user_admin_level(user_id: int, group_id: int = None) -> AdminLevel:
+def get_user_admin_level(user_id: int, group_id: Optional[int] = None) -> AdminLevel:
     """
     الحصول على مستوى الإدارة للمستخدم في المجموعة المحددة
     
@@ -67,19 +67,19 @@ def is_master(user_id: int) -> bool:
     return user_id in MASTERS
 
 
-def is_group_owner(user_id: int, group_id: int) -> bool:
+async def is_group_owner(user_id: int, group_id: int) -> bool:
     """التحقق من كون المستخدم مالك للمجموعة"""
     return group_id in GROUP_OWNERS and user_id in GROUP_OWNERS[group_id]
 
 
-def is_moderator(user_id: int, group_id: int) -> bool:
+async def is_moderator(user_id: int, group_id: int) -> bool:
     """التحقق من كون المستخدم مشرف في المجموعة"""
     return group_id in MODERATORS and user_id in MODERATORS[group_id]
 
 
 def has_permission(user_id: int,
                    required_level: AdminLevel,
-                   group_id: int = None) -> bool:
+                   group_id: Optional[int] = None) -> bool:
     """
     التحقق من امتلاك المستخدم للصلاحية المطلوبة
     
@@ -217,8 +217,17 @@ async def load_ranks_from_database():
 
         if owners:
             for owner in owners:
-                user_id = owner[0] if isinstance(owner, tuple) else owner['user_id']
-                chat_id = owner[1] if isinstance(owner, tuple) else owner['chat_id']
+                if isinstance(owner, tuple):
+                    user_id = owner[0]
+                    chat_id = owner[1]
+                elif hasattr(owner, 'get'):
+                    user_id = owner.get('user_id')
+                    chat_id = owner.get('chat_id')
+                else:
+                    continue
+                
+                if user_id is None or chat_id is None:
+                    continue
 
                 if chat_id not in GROUP_OWNERS:
                     GROUP_OWNERS[chat_id] = []
@@ -232,8 +241,17 @@ async def load_ranks_from_database():
 
         if moderators:
             for moderator in moderators:
-                user_id = moderator[0] if isinstance(moderator, tuple) else moderator['user_id']
-                chat_id = moderator[1] if isinstance(moderator, tuple) else moderator['chat_id']
+                if isinstance(moderator, tuple):
+                    user_id = moderator[0]
+                    chat_id = moderator[1]
+                elif hasattr(moderator, 'get'):
+                    user_id = moderator.get('user_id')
+                    chat_id = moderator.get('chat_id')
+                else:
+                    continue
+                
+                if user_id is None or chat_id is None:
+                    continue
 
                 if chat_id not in MODERATORS:
                     MODERATORS[chat_id] = []
@@ -267,7 +285,7 @@ def get_admin_level_name(level: AdminLevel) -> str:
     return names.get(level, "غير محدد")
 
 
-def get_user_permissions(user_id: int, group_id: int = None) -> List[str]:
+def get_user_permissions(user_id: int, group_id: Optional[int] = None) -> List[str]:
     """الحصول على قائمة بصلاحيات المستخدم"""
     level = get_user_admin_level(user_id, group_id)
 

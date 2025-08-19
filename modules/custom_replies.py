@@ -92,8 +92,8 @@ async def handle_response_input(message: Message, state: FSMContext):
         # حفظ الرد في الحالة
         await state.update_data(response=response)
         
-        # التحقق إذا كان المستخدم سيد لإظهار خيارات النطاق
-        if user_id in MASTERS:
+        # التحقق إذا كان المستخدم سيد أو مالك مجموعة لإظهار خيارات النطاق
+        if user_id and group_id and (user_id in MASTERS or await is_group_owner(user_id, group_id)):
             await state.set_state(CustomReplyStates.waiting_for_scope)
             
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -144,12 +144,17 @@ async def handle_scope_callback(callback_query, state: FSMContext):
         await save_custom_reply(keyword, response, user_id, scope_group_id, callback_query.message)
         await state.clear()
         
+        if callback_query.from_user and callback_query.from_user.first_name:
+            user_name = callback_query.from_user.first_name
+        else:
+            user_name = "مستخدم"
+            
         await callback_query.message.edit_text(
             f"✅ **تم إضافة الرد المخصص بنجاح!**\n\n"
             f"🔤 **الكلمة المفتاحية:** {keyword}\n"
-            f"📝 **الرد:** {response[:100]}{'...' if len(response) > 100 else ''}\n"
+            f"📝 **الرد:** {response[:100] if response else ''}{'...' if response and len(response) > 100 else ''}\n"
             f"🎯 **النطاق:** {scope_text}\n"
-            f"👤 **أضافه:** {callback_query.from_user.first_name}"
+            f"👤 **أضافه:** {user_name}"
         )
         
     except Exception as e:
@@ -266,12 +271,17 @@ async def handle_delete_custom_reply(message: Message):
 
         user_id = message.from_user.id
         
-        # التحقق من أن المستخدم من السادة فقط
-        if user_id not in MASTERS:
-            await message.reply("❌ هذا الأمر متاح للسادة فقط")
+        # التحقق من أن المستخدم من السادة أو مالك مجموعة
+        group_id = message.chat.id
+        if user_id not in MASTERS and not await is_group_owner(user_id, group_id):
+            await message.reply("❌ هذا الأمر متاح للسادة ومالكي المجموعات فقط")
             return False
 
         # استخراج الكلمة المفتاحية من النص
+        if not message.text:
+            await message.reply("❌ يرجى إرسال النص مع الأمر")
+            return False
+            
         text = message.text.strip()
         parts = text.split(maxsplit=2)
         
