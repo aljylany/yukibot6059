@@ -5,7 +5,7 @@ Bot Messages Handler
 
 import logging
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 
 from database.operations import get_or_create_user, update_user_activity, get_user
@@ -601,16 +601,16 @@ async def handle_general_message(message: Message, state: FSMContext):
     if (text == 'الأوامر' or text == 'الاوامر' or text == 'قائمة الأوامر' or 
         text == 'قائمة الاوامر' or text == 'جميع الأوامر' or text == 'كل الأوامر'):
         try:
-            with open('commands_list.txt', 'rb') as f:
-                await message.reply_document(
-                    document=f,
-                    caption="📋 **قائمة أوامر بوت يوكي الشاملة**\n\n"
-                           "🔍 **هذا الملف يحتوي على:**\n"
-                           "• جميع أوامر البوت مقسمة حسب الصلاحيات\n"
-                           "• شرح مفصل لكل أمر\n"
-                           "• التحديثات الأخيرة للنظام\n\n"
-                           "💡 **نصيحة:** احفظ هذا الملف للرجوع إليه وقت الحاجة!"
-                )
+            commands_file = FSInputFile('commands_list.txt', filename='yuki_commands.txt')
+            await message.reply_document(
+                document=commands_file,
+                caption="📋 **قائمة أوامر بوت يوكي الشاملة**\n\n"
+                       "🔍 **هذا الملف يحتوي على:**\n"
+                       "• جميع أوامر البوت مقسمة حسب الصلاحيات\n"
+                       "• شرح مفصل لكل أمر\n"
+                       "• التحديثات الأخيرة للنظام\n\n"
+                       "💡 **نصيحة:** احفظ هذا الملف للرجوع إليه وقت الحاجة!"
+            )
         except Exception as e:
             logging.error(f"خطأ في إرسال ملف الأوامر: {e}")
             await message.reply("❌ حدث خطأ في تحميل ملف الأوامر")
@@ -620,13 +620,22 @@ async def handle_general_message(message: Message, state: FSMContext):
     if text == 'الأسياد' or text == 'الاسياد' or text == 'قائمة الأسياد' or text == 'قائمة الاسياد':
         user_id = message.from_user.id if message.from_user else 0
         if user_id in MASTERS:
+            # قاموس أسماء الأسياد
+            MASTERS_NAMES = {
+                6524680126: "👑 السيد الأول",
+                8278493069: "👑 رهف - المالكة",
+                6629947448: "👑 السيد الثالث"
+            }
+            
             masters_info = "👑 **قائمة الأسياد الحاليين:**\n\n"
             
             for i, master_id in enumerate(MASTERS, 1):
-                masters_info += f"{i}. `{master_id}` 👑\n"
+                master_name = MASTERS_NAMES.get(master_id, f"👑 سيد {i}")
+                masters_info += f"{i}. **{master_name}**\n"
+                masters_info += f"   🆔 `{master_id}`\n\n"
             
-            masters_info += f"\n📊 **إجمالي الأسياد:** {len(MASTERS)}\n"
-            masters_info += "\n🔴 **الأسياد لديهم صلاحيات مطلقة في جميع المجموعات**\n"
+            masters_info += f"📊 **إجمالي الأسياد:** {len(MASTERS)}\n\n"
+            masters_info += "🔴 **الأسياد لديهم صلاحيات مطلقة في جميع المجموعات**\n"
             masters_info += "⚡ **يمكنهم تنفيذ أي أمر وإدارة جميع الأنظمة**"
             
             await message.reply(masters_info)
