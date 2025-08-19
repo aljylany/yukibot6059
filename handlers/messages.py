@@ -620,25 +620,50 @@ async def handle_general_message(message: Message, state: FSMContext):
     if text == 'الأسياد' or text == 'الاسياد' or text == 'قائمة الأسياد' or text == 'قائمة الاسياد':
         user_id = message.from_user.id if message.from_user else 0
         if user_id in MASTERS:
-            # قاموس أسماء الأسياد
-            MASTERS_NAMES = {
-                6524680126: "👑 السيد الأول",
-                8278493069: "👑 رهف - المالكة",
-                6629947448: "👑 السيد الثالث"
-            }
-            
-            masters_info = "👑 **قائمة الأسياد الحاليين:**\n\n"
-            
-            for i, master_id in enumerate(MASTERS, 1):
-                master_name = MASTERS_NAMES.get(master_id, f"👑 سيد {i}")
-                masters_info += f"{i}. **{master_name}**\n"
-                masters_info += f"   🆔 `{master_id}`\n\n"
-            
-            masters_info += f"📊 **إجمالي الأسياد:** {len(MASTERS)}\n\n"
-            masters_info += "🔴 **الأسياد لديهم صلاحيات مطلقة في جميع المجموعات**\n"
-            masters_info += "⚡ **يمكنهم تنفيذ أي أمر وإدارة جميع الأنظمة**"
-            
-            await message.reply(masters_info)
+            try:
+                masters_info = "👑 **قائمة الأسياد الحاليين:**\n\n"
+                
+                for i, master_id in enumerate(MASTERS, 1):
+                    try:
+                        # جلب معلومات المستخدم من تيليجرام
+                        chat_info = await message.bot.get_chat(master_id)
+                        
+                        # تكوين الاسم الكامل
+                        display_name = ""
+                        if chat_info.first_name:
+                            display_name = chat_info.first_name
+                        if chat_info.last_name:
+                            display_name += f" {chat_info.last_name}"
+                        if not display_name.strip():
+                            display_name = f"سيد {i}"
+                        
+                        # إنشاء رابط قابل للنقر
+                        mention_link = f"[{display_name}](tg://user?id={master_id})"
+                        
+                        masters_info += f"{i}. 👑 {mention_link}\n"
+                        
+                        # إضافة اسم المستخدم إذا كان موجوداً
+                        if chat_info.username:
+                            masters_info += f"   📱 @{chat_info.username}\n"
+                        
+                        masters_info += f"   🆔 `{master_id}`\n\n"
+                        
+                    except Exception as e:
+                        # في حالة عدم القدرة على جلب معلومات المستخدم
+                        masters_info += f"{i}. 👑 [سيد {i}](tg://user?id={master_id})\n"
+                        masters_info += f"   🆔 `{master_id}`\n\n"
+                        logging.warning(f"لم يتم العثور على معلومات المستخدم {master_id}: {e}")
+                
+                masters_info += f"📊 **إجمالي الأسياد:** {len(MASTERS)}\n\n"
+                masters_info += "🔴 **الأسياد لديهم صلاحيات مطلقة في جميع المجموعات**\n"
+                masters_info += "⚡ **يمكنهم تنفيذ أي أمر وإدارة جميع الأنظمة**\n\n"
+                masters_info += "💡 **اضغط على أي اسم للانتقال إلى حساب السيد**"
+                
+                await message.reply(masters_info, parse_mode="Markdown")
+                
+            except Exception as e:
+                logging.error(f"خطأ في عرض قائمة الأسياد: {e}")
+                await message.reply("❌ حدث خطأ في تحميل قائمة الأسياد")
         else:
             await message.reply("❌ هذا الأمر متاح للأسياد فقط")
         return
