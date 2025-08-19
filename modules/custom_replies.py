@@ -92,8 +92,8 @@ async def handle_response_input(message: Message, state: FSMContext):
         # حفظ الرد في الحالة
         await state.update_data(response=response)
         
-        # التحقق إذا كان المستخدم سيد أو مالك مجموعة لإظهار خيارات النطاق
-        if user_id and group_id and (user_id in MASTERS or await is_group_owner(user_id, group_id)):
+        # التحقق إذا كان المستخدم سيد لإظهار خيارات النطاق
+        if user_id in MASTERS:
             await state.set_state(CustomReplyStates.waiting_for_scope)
             
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -271,10 +271,9 @@ async def handle_delete_custom_reply(message: Message):
 
         user_id = message.from_user.id
         
-        # التحقق من أن المستخدم من السادة أو مالك مجموعة
-        group_id = message.chat.id
-        if user_id not in MASTERS and not await is_group_owner(user_id, group_id):
-            await message.reply("❌ هذا الأمر متاح للسادة ومالكي المجموعات فقط")
+        # التحقق من أن المستخدم من السادة فقط
+        if user_id not in MASTERS:
+            await message.reply("❌ هذا الأمر متاح للسادة فقط")
             return False
 
         # استخراج الكلمة المفتاحية من النص
