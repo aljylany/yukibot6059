@@ -796,17 +796,25 @@ async def handle_general_message(message: Message, state: FSMContext):
         await theft.show_top_thieves(message)
     elif any(word in words for word in ['سرقة', 'سرق']) or text == 'امان':
         await theft.show_security_menu(message)
+    
+    # === أوامر الاستثمار البسيط ===
+    elif text == 'استثمار فلوسي':
+        from modules.simple_investment import handle_simple_investment_command
+        await handle_simple_investment_command(message, text)
+    elif text.startswith('استثمار ') and len(words) == 2 and words[1].replace('.', '').replace(',', '').isdigit():
+        from modules.simple_investment import handle_simple_investment_command
+        await handle_simple_investment_command(message, text)
     # === أوامر الاستثمار ===
     elif text.startswith('استثمار ') and len(words) >= 2:
         # التحقق من نوع الاستثمار
-        if words[1] in ['فلوسي'] or words[1].isdigit():
+        if words[1] in ['فلوسي'] or words[1].replace('.', '').replace(',', '').isdigit():
             # الاستثمار البسيط
             from modules.simple_investment import handle_simple_investment_command
             await handle_simple_investment_command(message, text)
         else:
-            # الاستثمار المتقدم في الشركات
+            # الاستثمار المتقدم في الشركات أو عرض القائمة
             from modules import investment
-            await investment.handle_investment_creation(message, text)
+            await investment.show_investment_menu(message)
     elif any(word in words for word in ['استثمار']):
         from modules import investment
         await investment.show_investment_menu(message)
