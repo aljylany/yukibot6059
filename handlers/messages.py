@@ -534,9 +534,21 @@ async def handle_general_message(message: Message, state: FSMContext):
         logging.error(f"خطأ في تحديث النشاط أو XP: {activity_error}")
     
     # فحص أوامر المستوى أولاً
-    if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp", "تقدمي", "تفاعلي"]):
-        from modules.enhanced_xp_handler import handle_level_command
-        await handle_level_command(message)
+    if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp", "تفاعلي"]):
+        try:
+            from modules.enhanced_xp_handler import handle_level_command
+            await handle_level_command(message)
+        except Exception as level_error:
+            logging.error(f"خطأ في نظام المستوى المحسن: {level_error}")
+            # استخدام النظام البديل
+            from modules.simple_level_display import show_simple_level
+            await show_simple_level(message)
+        return
+    
+    # أمر التقدم البسيط
+    if "تقدمي" in text:
+        from modules.simple_level_display import handle_simple_progress_command
+        await handle_simple_progress_command(message)
         return
     
     # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)

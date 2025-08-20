@@ -101,7 +101,15 @@ class EnhancedXPSystem:
     async def calculate_next_level_xp(self, current_world: str, current_level: str, current_xp: int):
         """حساب XP المطلوب للمستوى التالي بدقة"""
         try:
-            from config import LEVELS
+            # نظام مستويات مباشر بدون استيراد خارجي
+            LEVELS = [
+                {"name": "عالم النجوم", "xp_required": 0, "sub_levels": ["نجم 1", "نجم 2", "نجم 3", "نجم 4", "نجم 5", "نجم 6", "نجم 7", "نجم 8", "نجم 9"]},
+                {"name": "عالم القمر", "xp_required": 1000},
+                {"name": "عالم الشمس", "xp_required": 3000},
+                {"name": "عالم الأسطورة", "xp_required": 7000},
+                {"name": "العالم السيادي", "xp_required": 15000},
+                {"name": "العالم النهائي", "xp_required": 30000}
+            ]
             
             # البحث عن العالم الحالي
             for i, world in enumerate(LEVELS):

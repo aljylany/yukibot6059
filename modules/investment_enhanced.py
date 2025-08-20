@@ -10,54 +10,63 @@ from aiogram.fsm.context import FSMContext
 
 from database.operations import get_user, update_user_balance, execute_query, add_transaction
 from utils.helpers import format_number, is_valid_amount
-from modules.enhanced_xp_handler import add_xp_for_activity
+try:
+    from modules.enhanced_xp_handler import add_xp_for_activity
+except ImportError:
+    async def add_xp_for_activity(user_id: int, activity_type: str):
+        """دالة بديلة لإضافة XP"""
+        try:
+            from modules.simple_level_display import add_simple_xp
+            await add_simple_xp(user_id, 5)
+        except:
+            pass
 
 
-# أنواع الاستثمارات المحسنة
+# أنواع الاستثمارات المحسنة - شركات عربية
 ENHANCED_INVESTMENT_TYPES = {
-    "savings": {
-        "name": "حساب توفير",
+    "ارامكو": {
+        "name": "أسهم أرامكو السعودية",
         "min_amount": 1000,
         "interest_rate": 0.02,  # 2% شهرياً
         "duration_days": 30,
         "risk": "منخفض",
-        "emoji": "💰",
+        "emoji": "🛢️",
         "xp_reward": 10
     },
-    "bonds": {
-        "name": "سندات حكومية",
+    "الراجحي": {
+        "name": "مصرف الراجحي",
         "min_amount": 5000,
         "interest_rate": 0.05,  # 5% شهرياً
         "duration_days": 60,
         "risk": "منخفض",
-        "emoji": "📋",
+        "emoji": "🏦",
         "xp_reward": 15
     },
-    "mutual_funds": {
-        "name": "صناديق استثمار",
+    "سابك": {
+        "name": "الشركة السعودية للصناعات الأساسية",
         "min_amount": 10000,
         "interest_rate": 0.08,  # 8% شهرياً
         "duration_days": 90,
         "risk": "متوسط",
-        "emoji": "📊",
+        "emoji": "🏭",
         "xp_reward": 20
     },
-    "real_estate": {
-        "name": "استثمار عقاري",
+    "اتصالات": {
+        "name": "شركة الاتصالات السعودية",
         "min_amount": 50000,
         "interest_rate": 0.12,  # 12% شهرياً
         "duration_days": 180,
         "risk": "متوسط",
-        "emoji": "🏢",
+        "emoji": "📱",
         "xp_reward": 30
     },
-    "high_yield": {
-        "name": "استثمار عالي العائد",
+    "الكهرباء": {
+        "name": "الشركة السعودية للكهرباء",
         "min_amount": 100000,
         "interest_rate": 0.20,  # 20% شهرياً
         "duration_days": 365,
         "risk": "عالي",
-        "emoji": "🚀",
+        "emoji": "⚡",
         "xp_reward": 50
     }
 }
@@ -136,7 +145,7 @@ async def show_enhanced_investment_options(message: Message):
         
         options_text += f"💰 رصيدك الحالي: {format_number(user['balance'])}$\n\n"
         options_text += "📝 **للاستثمار:** اكتب 'استثمار [النوع] [المبلغ]'\n"
-        options_text += "مثال: استثمار سندات 5000"
+        options_text += "مثال: استثمار ارامكو 5000"
         
         await message.reply(options_text)
         
