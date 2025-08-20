@@ -759,7 +759,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_transfer_command(message)
     elif (text in ['سرقة'] or text.startswith('سرقة')) and message.reply_to_message:
         await handle_theft_command(message)
-    elif (text in ['سرف', 'زرف'] or text.startswith('سرف') or text.startswith('زرف')) and message.reply_to_message:
+    elif (text in ['زررف', 'زرف'] or text.startswith('زررف') or text.startswith('زرف')) and message.reply_to_message:
         # فحص إذا كان الرد على البوت نفسه
         if message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
             sarcastic_responses = [
