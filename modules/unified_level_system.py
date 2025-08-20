@@ -5,9 +5,7 @@ Unified Level System
 
 import logging
 from database.operations import execute_query
-
-# قائمة الأسياد
-MASTERS_LIST = [6524680126, 8278493069]
+from config.hierarchy import MASTERS
 
 async def get_unified_user_level(user_id: int):
     """
@@ -16,7 +14,7 @@ async def get_unified_user_level(user_id: int):
     """
     try:
         # التحقق من كون المستخدم من الأسياد
-        is_master = user_id in MASTERS_LIST
+        is_master = user_id in MASTERS
         
         if is_master:
             return {
@@ -124,7 +122,8 @@ async def show_unified_user_info(message, user_id):
             type_emoji = "👤"
         
         # بناء الرسالة
-        info_text = f"""👤 **حساب Yuki**
+        user_name = message.from_user.first_name or "المستخدم"
+        info_text = f"""👤 **حساب {user_name}**
 
 📋 **المعلومات الأساسية:**
 • 🆔 الرقم التعريفي: {user_id}
