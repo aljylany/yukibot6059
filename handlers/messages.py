@@ -545,11 +545,11 @@ async def handle_general_message(message: Message, state: FSMContext):
             await show_simple_level(message)
         return
     
-    # أمر التقدم البسيط
-    if "تقدمي" in text:
-        from modules.simple_level_display import handle_simple_progress_command
-        await handle_simple_progress_command(message)
-        return
+    # أمر التقدم البسيط - تم نقله لأسفل لتجنب التضارب
+    # if "تقدمي" in text:
+    #     from modules.simple_level_display import handle_simple_progress_command
+    #     await handle_simple_progress_command(message)
+    #     return
     
     # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)
     from modules.permission_handler import handle_permission_check

@@ -7,6 +7,7 @@ import logging
 from aiogram.types import Message
 from database.operations import get_user, execute_query, update_user_activity
 from utils.helpers import format_number
+from config.hierarchy import MASTERS
 
 
 async def show_simple_level(message: Message):
@@ -111,8 +112,8 @@ async def add_simple_xp(user_id: int, amount: int = 1):
         
         # التحقق من كون المستخدم من الأسياد - المستوى 1000
         # قائمة الأسياد المباشرة (ID: 6524680126 كمثال)
-        masters_list = [6524680126, 8278493069]  # يمكن إضافة المزيد هنا
-        is_master = user_id in masters_list
+        # استخدام قائمة الأسياد الرسمية
+        is_master = user_id in MASTERS
         
         # الحصول على XP الحالي
         current_data = await execute_query(
