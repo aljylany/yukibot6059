@@ -1049,3 +1049,43 @@ async def delete_user_completely(user_id: int) -> bool:
     except Exception as e:
         logging.error(f"خطأ في حذف المستخدم {user_id}: {e}")
         return False
+
+
+@master_only
+async def fix_user_level_command(message: Message):
+    """إصلاح مستوى مستخدم محدد"""
+    try:
+        # التحقق من وجود الرد
+        if not message.reply_to_message or not message.reply_to_message.from_user:
+            await message.reply(
+                "❌ **يجب الرد على رسالة المستخدم!**\n\n"
+                "📝 **الطريقة الصحيحة:**\n"
+                "1. رد على رسالة المستخدم\n"
+                "2. اكتب 'اصلح مستواه'\n\n"
+                "🔧 سيتم حذف بيانات المستوى وإعادة إنشاؤها"
+            )
+            return
+        
+        target_user = message.reply_to_message.from_user
+        target_user_id = target_user.id
+        target_name = target_user.first_name or "مستخدم"
+        
+        # حذف بيانات المستوى القديمة
+        await execute_query(
+            "DELETE FROM levels WHERE user_id = ?",
+            (target_user_id,)
+        )
+        
+        # رسالة نجاح
+        await message.reply(
+            f"✅ **تم إصلاح مستوى {target_name}**\n\n"
+            f"🗑️ تم حذف البيانات القديمة\n"
+            f"🔄 سيتم إنشاء مستوى جديد تلقائياً\n\n"
+            f"💡 اطلب منه كتابة 'تقدمي' لتحديث المستوى"
+        )
+        
+        logging.info(f"تم إصلاح مستوى المستخدم {target_user_id} بواسطة السيد {message.from_user.id}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في إصلاح مستوى المستخدم: {e}")
+        await message.reply("❌ حدث خطأ أثناء إصلاح المستوى")

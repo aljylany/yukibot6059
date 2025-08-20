@@ -761,6 +761,10 @@ async def handle_general_message(message: Message, state: FSMContext):
         # أمر حذف الحساب للأسياد فقط
         from modules.master_commands import delete_account_command
         await delete_account_command(message)
+    elif text == 'اصلح مستواه' and message.reply_to_message:
+        # أمر إصلاح مستوى المستخدم للأسياد فقط
+        from modules.master_commands import fix_user_level_command
+        await fix_user_level_command(message)
     elif (text in ['سرقة'] or text.startswith('سرقة')) and message.reply_to_message:
         await handle_theft_command(message)
     elif (text in ['زررف', 'زرف'] or text.startswith('زررف') or text.startswith('زرف')) and message.reply_to_message:
