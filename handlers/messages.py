@@ -533,6 +533,12 @@ async def handle_general_message(message: Message, state: FSMContext):
     except Exception as activity_error:
         logging.error(f"خطأ في تحديث النشاط أو XP: {activity_error}")
     
+    # دليل المستويات الشامل
+    if text in ['المستويات', 'دليل المستويات', 'شرح المستويات', 'كيفية التقدم']:
+        from modules.levels_guide import show_levels_guide
+        await show_levels_guide(message)
+        return
+    
     # فحص أوامر المستوى أولاً
     if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp", "تفاعلي"]):
         try:

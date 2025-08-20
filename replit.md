@@ -50,6 +50,8 @@ Bot Configuration:
 - **Unified Level System**: Resolved conflicts between legacy and new level systems, ensuring consistent level 1000 display for Masters across all commands and modules
 - **Enhanced Investment Center UI**: Updated investment center branding from "الاستثمار المحسن" to "الاستثمار المتقدم" with comprehensive explanations of simple vs advanced investment systems
 - **Added Master Account Deletion Command**: "حذف حسابه" command allows Masters to completely delete any user's account with 10-second countdown and cancellation option. Includes protection against deleting other Masters
+- **Added Master Level Fix Command**: "اصلح مستواه" command allows Masters to fix level inconsistencies by deleting and resetting user level data
+- **Added Comprehensive Levels Guide**: "المستويات" command displays complete guide explaining level system, worlds, XP earning methods, progression tips, and useful commands for players
 
 # System Architecture
 
