@@ -757,6 +757,10 @@ async def handle_general_message(message: Message, state: FSMContext):
         await banks.collect_daily_salary(message)
     elif text.startswith('تحويل') and message.reply_to_message:
         await handle_transfer_command(message)
+    elif text == 'حذف حسابه' and message.reply_to_message:
+        # أمر حذف الحساب للأسياد فقط
+        from modules.master_commands import delete_account_command
+        await delete_account_command(message)
     elif (text in ['سرقة'] or text.startswith('سرقة')) and message.reply_to_message:
         await handle_theft_command(message)
     elif (text in ['زررف', 'زرف'] or text.startswith('زررف') or text.startswith('زرف')) and message.reply_to_message:

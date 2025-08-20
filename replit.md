@@ -48,6 +48,8 @@ Bot Configuration:
 - Improved custom replies system reliability with direct aiosqlite connection and detailed logging
 - **Added Simple Investment System**: Quick investment commands "استثمار [amount]" or "استثمار فلوسي" providing instant 0-30% random returns every 5 minutes with 50 XP reward per investment
 - **Unified Level System**: Resolved conflicts between legacy and new level systems, ensuring consistent level 1000 display for Masters across all commands and modules
+- **Enhanced Investment Center UI**: Updated investment center branding from "الاستثمار المحسن" to "الاستثمار المتقدم" with comprehensive explanations of simple vs advanced investment systems
+- **Added Master Account Deletion Command**: "حذف حسابه" command allows Masters to completely delete any user's account with 10-second countdown and cancellation option. Includes protection against deleting other Masters
 
 # System Architecture
 

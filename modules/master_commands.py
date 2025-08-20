@@ -12,6 +12,7 @@ from aiogram import Bot
 from utils.admin_decorators import master_only
 from config.hierarchy import MASTERS, add_group_owner, remove_group_owner, get_group_admins, AdminLevel
 from modules.cancel_handler import start_cancellable_command, is_command_cancelled, finish_command
+from database.operations import execute_query, get_user
 
 
 @master_only
@@ -856,3 +857,195 @@ async def add_money_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في add_money_command: {e}")
         await message.reply("❌ حدث خطأ أثناء إضافة الأموال")
+
+
+@master_only
+async def delete_account_command(message: Message):
+    """حذف حساب اللاعب بالكامل من قاعدة البيانات"""
+    try:
+        # التحقق من وجود الرد
+        if not message.reply_to_message or not message.reply_to_message.from_user:
+            await message.reply(
+                "❌ **يجب الرد على رسالة اللاعب!**\n\n"
+                "📝 **الطريقة الصحيحة:**\n"
+                "1. رد على رسالة اللاعب\n"
+                "2. اكتب 'حذف حسابه'\n\n"
+                "⚠️ **تحذير:** هذا الإجراء لا يمكن التراجع عنه!"
+            )
+            return
+        
+        target_user = message.reply_to_message.from_user
+        target_user_id = target_user.id
+        target_name = target_user.first_name or "مستخدم"
+        master_name = message.from_user.first_name or "السيد"
+        
+        # التحقق من أن المستهدف ليس سيداً
+        if target_user_id in MASTERS:
+            await message.reply(
+                "❌ **لا يمكن حذف حساب سيد آخر!**\n\n"
+                "🔴 الأسياد محميون من الحذف"
+            )
+            return
+        
+        # التحقق من وجود المستخدم في قاعدة البيانات
+        user_data = await get_user(target_user_id)
+        if not user_data:
+            await message.reply(
+                f"❌ **المستخدم {target_name} لا يملك حساب في البوت**\n\n"
+                f"💡 لا يوجد شيء للحذف"
+            )
+            return
+        
+        # رسالة تأكيد مع العد التنازلي
+        from utils.helpers import format_number
+        
+        balance = user_data.get('balance', 0)
+        bank_balance = user_data.get('bank_balance', 0)
+        total_money = balance + bank_balance
+        
+        warning_msg = await message.reply(
+            f"🔴 **تحذير: حذف حساب نهائي**\n\n"
+            f"👤 المستهدف: {target_name}\n"
+            f"💰 رصيد نقدي: {format_number(balance)}$\n"
+            f"🏦 رصيد بنكي: {format_number(bank_balance)}$\n"
+            f"💎 إجمالي الأموال: {format_number(total_money)}$\n\n"
+            f"⚠️ **سيتم حذف:**\n"
+            f"• جميع الأموال والاستثمارات\n"
+            f"• العقارات والأسهم\n"
+            f"• المزارع والقلاع\n"
+            f"• التقدم والمستوى\n"
+            f"• جميع البيانات\n\n"
+            f"⏰ **العد التنازلي:** 10\n\n"
+            f"💡 اكتب 'إلغاء' لإيقاف الأمر"
+        )
+        
+        user_id = message.from_user.id
+        start_cancellable_command(user_id, "delete_account", message.chat.id)
+        
+        # العد التنازلي لمدة 10 ثوانٍ
+        for i in range(9, 0, -1):
+            await asyncio.sleep(1)
+            
+            # فحص الإلغاء
+            if is_command_cancelled(user_id):
+                await warning_msg.edit_text(
+                    f"❌ **تم إلغاء حذف الحساب**\n\n"
+                    f"👤 المستهدف: {target_name}\n"
+                    f"✅ تم إيقاف عملية الحذف بنجاح\n"
+                    f"🔒 الحساب محفوظ وآمن"
+                )
+                finish_command(user_id)
+                return
+            
+            try:
+                await warning_msg.edit_text(
+                    f"🔴 **تحذير: حذف حساب نهائي**\n\n"
+                    f"👤 المستهدف: {target_name}\n"
+                    f"💰 رصيد نقدي: {format_number(balance)}$\n"
+                    f"🏦 رصيد بنكي: {format_number(bank_balance)}$\n"
+                    f"💎 إجمالي الأموال: {format_number(total_money)}$\n\n"
+                    f"⚠️ **سيتم حذف:**\n"
+                    f"• جميع الأموال والاستثمارات\n"
+                    f"• العقارات والأسهم\n"
+                    f"• المزارع والقلاع\n"
+                    f"• التقدم والمستوى\n"
+                    f"• جميع البيانات\n\n"
+                    f"⏰ **العد التنازلي:** {i}\n\n"
+                    f"💡 اكتب 'إلغاء' لإيقاف الأمر"
+                )
+            except:
+                pass
+        
+        # فحص أخير قبل التنفيذ
+        if is_command_cancelled(user_id):
+            await warning_msg.edit_text("❌ **تم إلغاء الأمر في اللحظة الأخيرة**")
+            finish_command(user_id)
+            return
+        
+        # تنفيذ الحذف
+        await warning_msg.edit_text(
+            f"🗑️ **جاري حذف الحساب...**\n\n"
+            f"⏳ جاري حذف جميع بيانات {target_name}"
+        )
+        
+        # حذف المستخدم من جميع الجداول
+        delete_success = await delete_user_completely(target_user_id)
+        
+        if delete_success:
+            # رسالة نجاح العملية
+            await warning_msg.edit_text(
+                f"✅ **تم حذف الحساب بنجاح**\n\n"
+                f"👤 المحذوف: {target_name}\n"
+                f"👑 بواسطة السيد: {master_name}\n"
+                f"💰 الأموال المحذوفة: {format_number(total_money)}$\n\n"
+                f"🗑️ **تم حذف جميع البيانات نهائياً**\n"
+                f"📝 يمكن للمستخدم إنشاء حساب جديد"
+            )
+            
+            # إشعار للمستخدم المحذوف
+            try:
+                await message.reply_to_message.reply(
+                    f"🚨 **تم حذف حسابك من البوت**\n\n"
+                    f"👑 بواسطة السيد: {master_name}\n"
+                    f"🗑️ تم حذف جميع بياناتك نهائياً\n\n"
+                    f"💡 يمكنك إنشاء حساب جديد بكتابة:\n"
+                    f"'انشاء حساب بنكي'"
+                )
+            except:
+                pass
+        else:
+            await warning_msg.edit_text(
+                f"❌ **فشل في حذف الحساب**\n\n"
+                f"💻 حدث خطأ في قاعدة البيانات\n"
+                f"🔧 يرجى المحاولة مرة أخرى"
+            )
+        
+        finish_command(user_id)
+        
+    except Exception as e:
+        logging.error(f"خطأ في delete_account_command: {e}")
+        await message.reply("❌ حدث خطأ أثناء حذف الحساب")
+
+
+async def delete_user_completely(user_id: int) -> bool:
+    """حذف المستخدم بالكامل من جميع الجداول"""
+    try:
+        # قائمة بجميع الجداول التي قد تحتوي على بيانات المستخدم
+        tables = [
+            'users',
+            'transactions', 
+            'properties',
+            'stocks',
+            'user_stocks',
+            'bans',
+            'group_ranks',
+            'farms',
+            'farm_crops',
+            'castles',
+            'castle_resources',
+            'levels',
+            'user_levels',
+            'investments',
+            'simple_investments',
+            'user_xp',
+            'user_activities'
+        ]
+        
+        # حذف المستخدم من كل جدول
+        for table in tables:
+            try:
+                await execute_query(
+                    f"DELETE FROM {table} WHERE user_id = ?",
+                    (user_id,)
+                )
+            except Exception as table_error:
+                # تجاهل الأخطاء إذا كان الجدول غير موجود
+                logging.warning(f"لم يتم العثور على الجدول {table} أو خطأ في الحذف: {table_error}")
+                continue
+        
+        logging.info(f"تم حذف المستخدم {user_id} بالكامل من قاعدة البيانات")
+        return True
+        
+    except Exception as e:
+        logging.error(f"خطأ في حذف المستخدم {user_id}: {e}")
+        return False
