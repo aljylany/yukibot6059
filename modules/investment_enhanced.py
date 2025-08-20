@@ -284,8 +284,16 @@ async def handle_enhanced_investment_text(message: Message):
                     await message.reply("❌ يرجى كتابة مبلغ صحيح\nمثال: استثمار سندات 5000")
                     return True
         
-        # قائمة الاستثمار العامة
-        if any(keyword in text for keyword in ["استثمار", "الاستثمار"]):
+        # قائمة الاستثمار العامة - تجاهل الأوامر البسيطة
+        words = text.split()
+        
+        # تجاهل الاستثمار البسيط
+        if (text == "استثمار فلوسي" or 
+            (len(words) == 2 and words[0] == "استثمار" and words[1].replace('.', '').replace(',', '').isdigit())):
+            return False
+            
+        # عرض قائمة الاستثمار للأوامر العامة فقط
+        if text == "استثمار" or any(keyword in text for keyword in ["الاستثمار"]):
             await show_enhanced_investment_menu(message)
             return True
         
