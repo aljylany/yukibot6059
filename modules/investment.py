@@ -423,7 +423,7 @@ async def get_user_investments(user_id: int):
         investments = await execute_query(
             "SELECT * FROM investments WHERE user_id = ? ORDER BY created_at DESC",
             (user_id,),
-            fetch_one=True
+            fetch_all=True
         )
         return investments if investments else []
     except Exception as e:
@@ -438,7 +438,7 @@ async def get_mature_investments(user_id: int):
         investments = await execute_query(
             "SELECT * FROM investments WHERE user_id = ? AND status = 'active' AND maturity_date <= ?",
             (user_id, now),
-            fetch_one=True
+            fetch_all=True
         )
         return investments if investments else []
     except Exception as e:
@@ -453,14 +453,16 @@ async def check_and_mature_investments():
         mature_investments = await execute_query(
             "SELECT * FROM investments WHERE status = 'active' AND maturity_date <= ?",
             (now,),
-            fetch_one=True
+            fetch_all=True
         )
         
-        for investment in mature_investments:
-            # يمكن إضافة إشعار للمستخدم هنا
-            logging.info(f"استثمار مكتمل للمستخدم {investment['user_id']}: {investment['id']}")
+        if mature_investments:
+            for investment in mature_investments:
+                # يمكن إضافة إشعار للمستخدم هنا
+                if isinstance(investment, dict):
+                    logging.info(f"استثمار مكتمل للمستخدم {investment.get('user_id')}: {investment.get('id')}")
         
-        return len(mature_investments)
+        return len(mature_investments) if mature_investments else 0
         
     except Exception as e:
         logging.error(f"خطأ في فحص الاستثمارات المكتملة: {e}")
@@ -495,17 +497,20 @@ async def show_investment_report(message: Message):
         active_count = 0
         mature_count = 0
         
-        for inv in user_investments:
-            if inv['status'] == 'active':
-                active_count += 1
-                total_invested += inv['amount']
-                expected_return = inv['amount'] + (inv['amount'] * inv['expected_return'])
-                total_expected += expected_return
-                
-                # التحقق من النضج
-                maturity_date = datetime.fromisoformat(inv['maturity_date'])
-                if datetime.now() >= maturity_date:
-                    mature_count += 1
+        if user_investments:
+            for inv in user_investments:
+                if isinstance(inv, dict) and inv.get('status') == 'active':
+                    active_count += 1
+                    total_invested += inv.get('amount', 0)
+                    expected_return = inv.get('amount', 0) + (inv.get('amount', 0) * inv.get('expected_return', 0))
+                    total_expected += expected_return
+                    
+                    # التحقق من النضج
+                    maturity_date_str = inv.get('maturity_date')
+                    if maturity_date_str:
+                        maturity_date = datetime.fromisoformat(maturity_date_str)
+                        if datetime.now() >= maturity_date:
+                            mature_count += 1
         
         report_text += f"💰 **إجمالي المبلغ المستثمر:** {format_number(total_invested)}$\n"
         report_text += f"📈 **العائد المتوقع:** {format_number(total_expected)}$\n"

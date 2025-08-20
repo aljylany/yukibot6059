@@ -1,107 +1,75 @@
-# Bot Fixes Summary - August 17, 2025
+# ملخص الإصلاحات - يوكي بوت
 
-## Issue 1: Rank Promotion Bug (FIXED ✅)
+## التحديثات المكتملة 
 
-### Problem
-When promoting users through the hierarchy system, they still appeared as regular members when checking ranks. This was caused by two separate rank systems operating independently:
+### ✅ نظام XP والمستويات المحسن
+- إنشاء `modules/enhanced_xp_handler.py` - نظام XP محسن ومتكامل
+- إصلاح `modules/leveling.py` لدعم التحقق من أنواع البيانات
+- إضافة نظام XP تلقائي للأنشطة المختلفة:
+  - الرسائل: +1 XP
+  - العمليات المصرفية: +5 XP
+  - الاستثمار: +15 XP
+  - العقارات: +25 XP
+  - المزرعة: +8 XP
+  - القلعة: +12 XP
+  - الردود المخصصة: +2 XP
+  - استخدام الأوامر: +3 XP
 
-1. **Group Hierarchy System** (config/hierarchy.py) - stored ranks in memory dictionaries
-2. **Admin Management System** (modules/admin_management.py) - stored ranks in database
+### ✅ نظام الاستثمار المحسن
+- إنشاء `modules/investment_enhanced.py` - نظام استثمار متطور
+- أنواع استثمار جديدة:
+  - حساب توفير (2% شهرياً)
+  - سندات حكومية (5% شهرياً)
+  - صناديق استثمار (8% شهرياً)
+  - استثمار عقاري (12% شهرياً)
+  - استثمار عالي العائد (20% شهرياً)
+- تكامل كامل مع نظام XP
+- واجهة محسنة للمستخدمين
 
-### Solution
-- **Unified the systems**: Modified hierarchy.py to automatically sync rank changes to database
-- **Added synchronization functions**: 
-  - `sync_rank_to_database()` - saves memory ranks to database
-  - `remove_rank_from_database()` - removes ranks from database
-  - `load_ranks_from_database()` - loads existing ranks on startup
-- **Startup integration**: Bot now loads existing ranks from database at startup
-- **Real-time sync**: All rank changes (add/remove owner/moderator) now update both memory and database
+### ✅ تحسينات نظام الردود المخصصة
+- إصلاح مشكلة عدم حفظ الردود
+- تنظيف الكود في `modules/custom_replies.py`
+- تكامل مع نظام XP
+- تحسين البحث في قاعدة البيانات
 
-### Files Modified
-- `config/hierarchy.py` - Added async sync functions and database operations
-- `main.py` - Added rank loading at startup
-- `config/database.py` - Updated to ensure group_ranks table exists
+### ✅ معالج الرسائل المحسن
+- إضافة XP تلقائي لجميع الرسائل
+- دعم أوامر عرض المستوى: "مستواي", "تقدمي", "تفاعلي"
+- تكامل مع الأنظمة الجديدة
+- تحسين معالجة الأخطاء
 
-## Issue 2: Enhanced Marriage System (COMPLETED ✅)
+### ✅ إصلاحات قاعدة البيانات
+- إصلاح مشاكل `fetch_one` vs `fetch_all` في `modules/investment.py`
+- تحسين التحقق من أنواع البيانات
+- معالجة أفضل للقيم الفارغة
 
-### Problem
-The marriage system was too simple - just basic marriage/divorce without dowry, judge approval, or commission mechanics.
+## الحالة الحالية
 
-### Solution - Comprehensive Marriage System
+### ✅ البوت يعمل بنجاح
+- تشغيل بدون أخطاء حرجة
+- أنظمة XP والاستثمار تعمل
+- الردود المخصصة تعمل
 
-#### New Features:
-1. **Dowry System**
-   - Marriage requires dowry amount (1,000 - 100,000$)
-   - Format: `زواج 5000` (marriage with 5000$ dowry)
-   - Validates user has sufficient balance
+### 🔄 تحسينات إضافية
+- تقليل عدد أخطاء LSP المتبقية
+- إضافة المزيد من التكامل بين الأنظمة
+- تحسين واجهات المستخدم
 
-2. **Judge Approval Workflow**
-   - Judge ID: 7155814194
-   - Judge receives commission (5% of dowry, 100-1000$ range)
-   - Judge gets notification with commission details
+## أوامر جديدة للمستخدمين
 
-3. **Two-Step Process**
-   - Step 1: Proposer sends marriage request with dowry
-   - Step 2: Target responds with "موافقة" (approve) or "رفض" (reject)
-   - Only after approval does marriage complete
+### أوامر المستوى والXP:
+- `مستواي` - عرض معلومات المستوى والتقدم
+- `تقدمي` - عرض التقدم في المستوى
+- `تفاعلي` - عرض إحصائيات التفاعل
 
-4. **Financial Transactions**
-   - Proposer pays: dowry + judge commission
-   - Target receives: dowry amount
-   - Judge receives: commission (if registered in bot)
-   - All transactions recorded in database
+### أوامر الاستثمار المحسنة:
+- `استثمار جديد` - عرض خيارات الاستثمار
+- `محفظة الاستثمارات` - عرض استثماراتك
+- `تقرير الاستثمارات` - إحصائيات شاملة
+- `استثمار [النوع] [المبلغ]` - إنشاء استثمار مباشر
 
-#### Database Schema:
-- **marriage_proposals table**: Tracks pending proposals
-- **entertainment_marriages table**: Enhanced with dowry_amount and judge_commission columns
-- **Transactions**: All financial movements recorded
-
-#### Commands:
-- `زواج 5000` - Propose marriage with 5000$ dowry
-- `موافقة` - Accept marriage proposal
-- `رفض` - Reject marriage proposal
-- `طلاق` - Divorce (unchanged)
-- `زوجي/زوجتي` - Show marriage status (now includes dowry info)
-
-### Files Modified
-- `modules/entertainment.py` - Complete rewrite of marriage system
-- `handlers/messages.py` - Added new command handlers
-- `config/database.py` - Added marriage_proposals table, enhanced marriages table
-
-## Technical Improvements
-
-### Error Handling
-- Comprehensive validation for all marriage operations
-- Balance checks before financial transactions
-- Graceful handling of missing user data
-
-### User Experience
-- Clear instruction messages for proper usage
-- Detailed error messages with specific requirements
-- Rich marriage ceremony announcements with all details
-
-### Database Integrity
-- UNIQUE constraints prevent duplicate marriages
-- Proper foreign key relationships
-- Transaction atomicity for financial operations
-
-## Testing Status
-- ✅ Bot starts successfully without errors
-- ✅ No LSP diagnostics (clean code)
-- ✅ Database schema updated correctly
-- ✅ Rank synchronization implemented
-- ✅ Marriage system fully functional
-
-## Commands Ready for Testing
-
-### Rank System:
-- `رفع مشرف` @username - Should sync to both memory and database
-- `المشرفين` - Should show consistent results
-
-### Marriage System:
-1. User A: Reply to User B's message → `زواج 5000`
-2. User B: `موافقة` or `رفض`
-3. Check marriage status: `زوجي` or `زوجتي`
-4. Divorce: `طلاق`
-
-Both systems are now production-ready and fully integrated.
+## التحديثات القادمة
+- تحسين أنظمة العقارات والمزرعة
+- إضافة إشعارات الترقيات
+- تحسين نظام الأمان للسرقات
+- دمج المزيد من الميزات التفاعلية

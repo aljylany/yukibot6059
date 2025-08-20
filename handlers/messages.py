@@ -525,6 +525,20 @@ async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
+    # تحديث نشاط المستخدم وإضافة XP للرسائل
+    try:
+        await update_user_activity(message.from_user.id)
+        from modules.enhanced_xp_handler import add_xp_for_activity
+        await add_xp_for_activity(message.from_user.id, "message")
+    except Exception as activity_error:
+        logging.error(f"خطأ في تحديث النشاط أو XP: {activity_error}")
+    
+    # فحص أوامر المستوى أولاً
+    if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp", "تقدمي", "تفاعلي"]):
+        from modules.enhanced_xp_handler import handle_level_command
+        await handle_level_command(message)
+        return
+    
     # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)
     from modules.permission_handler import handle_permission_check
     if await handle_permission_check(message):
@@ -553,6 +567,12 @@ async def handle_general_message(message: Message, state: FSMContext):
     # فحص الردود المخصصة
     from modules.custom_replies import check_for_custom_replies, handle_show_custom_replies
     if await check_for_custom_replies(message):
+        # إضافة XP للمستخدم عند استخدام رد مخصص
+        try:
+            from modules.enhanced_xp_handler import add_xp_for_activity
+            await add_xp_for_activity(message.from_user.id, "custom_reply")
+        except Exception as xp_error:
+            logging.error(f"خطأ في إضافة XP: {xp_error}")
         return
     
     # فحص أوامر إدارة الأوامر المخصصة
@@ -577,7 +597,36 @@ async def handle_general_message(message: Message, state: FSMContext):
     if any(phrase in text for phrase in ['انشاء حساب بنكي', 'إنشاء حساب بنكي', 'انشئ حساب', 'حساب بنكي جديد']):
         from modules.manual_registration import handle_bank_account_creation
         await handle_bank_account_creation(message, state)
+        # إضافة XP للتسجيل
+        try:
+            from modules.enhanced_xp_handler import add_xp_for_activity
+            await add_xp_for_activity(message.from_user.id, "banking")
+        except:
+            pass
         return
+    
+    # فحص أوامر الاستثمار المحسنة
+    try:
+        from modules.investment_enhanced import handle_enhanced_investment_text
+        if await handle_enhanced_investment_text(message):
+            # إضافة XP للاستثمار
+            try:
+                from modules.enhanced_xp_handler import add_xp_for_activity
+                await add_xp_for_activity(message.from_user.id, "investment")
+            except:
+                pass
+            return
+    except Exception as inv_error:
+        logging.error(f"خطأ في نظام الاستثمار المحسن: {inv_error}")
+    
+    # فحص أوامر العمليات المصرفية
+    if any(keyword in text for keyword in ["البنك", "بنك", "حسابي", "محفظتي", "المحفظة", "ايداع", "إيداع", "سحب"]):
+        # إضافة XP للعمليات المصرفية
+        try:
+            from modules.enhanced_xp_handler import add_xp_for_activity
+            await add_xp_for_activity(message.from_user.id, "banking")
+        except:
+            pass
     
     # فحص أوامر إدارة الردود الخاصة للمديرين
     if await handle_special_admin_commands(message):

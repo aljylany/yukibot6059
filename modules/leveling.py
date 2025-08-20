@@ -4,7 +4,7 @@ import json
 import logging
 from database.operations import execute_query
 from utils.helpers import format_number
-from config.settings import LEVELS
+from config import LEVELS
 
 class LevelingSystem:
     def __init__(self):
@@ -35,9 +35,14 @@ class LevelingSystem:
                 current_world = "عالم النجوم"
                 current_level = "نجم 1"
             else:
-                current_xp = level_data.get('xp', 0)
-                current_world = level_data.get('world_name', "عالم النجوم")
-                current_level = level_data.get('level_name', "نجم 1")
+                if isinstance(level_data, dict):
+                    current_xp = level_data.get('xp', 0)
+                    current_world = level_data.get('world_name', "عالم النجوم")
+                    current_level = level_data.get('level_name', "نجم 1")
+                else:
+                    current_xp = 0
+                    current_world = "عالم النجوم"
+                    current_level = "نجم 1"
             
             # الحصول على العالم الحالي
             world = self.get_world(current_world)
@@ -121,13 +126,21 @@ class LevelingSystem:
                     'world_name': 'عالم النجوم',
                     'progress': 0
                 }
-                
-            return {
-                'xp': level_data.get('xp', 0),
-                'level_name': level_data.get('level_name', 'نجم 1'),
-                'world_name': level_data.get('world_name', 'عالم النجوم'),
-                'progress': 0  # يمكن حساب التقدم لاحقاً
-            }
+            
+            if isinstance(level_data, dict):
+                return {
+                    'xp': level_data.get('xp', 0),
+                    'level_name': level_data.get('level_name', 'نجم 1'),
+                    'world_name': level_data.get('world_name', 'عالم النجوم'),
+                    'progress': 0  # يمكن حساب التقدم لاحقاً
+                }
+            else:
+                return {
+                    'xp': 0,
+                    'level_name': 'نجم 1',
+                    'world_name': 'عالم النجوم',
+                    'progress': 0
+                }
             
         except Exception as e:
             logging.error(f"خطأ في الحصول على معلومات المستوى: {e}")
