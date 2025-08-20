@@ -46,6 +46,8 @@ Bot Configuration:
 - Added Master-only delete custom reply functionality: "حذف رد [keyword]" command for Masters to delete any custom keyword/reply
 - Enhanced keywords display with proper Arabic labels instead of English database column names
 - Improved custom replies system reliability with direct aiosqlite connection and detailed logging
+- **Added Simple Investment System**: Quick investment commands "استثمار [amount]" or "استثمار فلوسي" providing instant 0-30% random returns every 5 minutes with 50 XP reward per investment
+- **Unified Level System**: Resolved conflicts between legacy and new level systems, ensuring consistent level 1000 display for Masters across all commands and modules
 
 # System Architecture
 
@@ -72,7 +74,7 @@ Bot Configuration:
     - **Real Estate**: Buying, selling, and income generation from virtual properties.
     - **Stock Market**: Trading virtual stocks.
     - **Theft Mechanics**: Player-vs-player robbery with security levels.
-    - **Investment System**: Long-term investment options.
+    - **Investment System**: Dual investment architecture with simple (immediate 0-30% returns every 5 minutes) and advanced (long-term company investments) options.
     - **Farming**: Crop planting and harvesting.
     - **Castle System**: Comprehensive system for managing and upgrading virtual castles, including resource management, a dedicated shop, smart pricing, castle visibility controls (hide/show), attack/war system with unique castle IDs, and battle history tracking.
 - **User Management**: Registration, user profiles, ranking system, ban system, and a detailed player profile system showing statistics and achievements.
