@@ -14,16 +14,16 @@ from utils.states import StocksStates
 from utils.helpers import format_number, is_valid_amount
 from services.api_client import get_stock_prices
 
-# أسهم وهمية للعبة
+# أسهم عربية للعبة
 GAME_STOCKS = {
-    "AAPL": {"name": "Apple Inc.", "base_price": 150, "volatility": 0.05, "emoji": "🍎", "category": "تكنولوجيا", "arabic_names": ["ابل", "أبل", "آبل"]},
-    "GOOGL": {"name": "Alphabet Inc.", "base_price": 2500, "volatility": 0.04, "emoji": "🔍", "category": "تكنولوجيا", "arabic_names": ["جوجل", "قوقل", "غوغل"]},
-    "TSLA": {"name": "Tesla Inc.", "base_price": 800, "volatility": 0.08, "emoji": "🚗", "category": "سيارات", "arabic_names": ["تسلا", "تيسلا", "تسله"]},
-    "AMZN": {"name": "Amazon.com Inc.", "base_price": 3200, "volatility": 0.06, "emoji": "📦", "category": "تجارة إلكترونية", "arabic_names": ["امازون", "أمازون", "اميزون"]},
-    "MSFT": {"name": "Microsoft Corp.", "base_price": 300, "volatility": 0.04, "emoji": "💻", "category": "تكنولوجيا", "arabic_names": ["مايكروسوفت", "ميكروسوفت", "مايكروسفت"]},
-    "NVDA": {"name": "NVIDIA Corp.", "base_price": 450, "volatility": 0.07, "emoji": "🎮", "category": "أشباه موصلات", "arabic_names": ["نفيديا", "انفيديا", "نڤيديا"]},
-    "META": {"name": "Meta Platforms", "base_price": 320, "volatility": 0.06, "emoji": "📱", "category": "وسائل التواصل", "arabic_names": ["ميتا", "فيسبوك", "فيس بوك"]},
-    "NFLX": {"name": "Netflix Inc.", "base_price": 400, "volatility": 0.05, "emoji": "🎬", "category": "ترفيه", "arabic_names": ["نتفليكس", "نيتفليكس", "نتفلكس"]}
+    "ارامكو": {"name": "أرامكو السعودية", "base_price": 150, "volatility": 0.05, "emoji": "🛢️", "category": "الطاقة", "arabic_names": ["ارامكو", "أرامكو", "ارمكو"]},
+    "الراجحي": {"name": "مصرف الراجحي", "base_price": 2500, "volatility": 0.04, "emoji": "🏦", "category": "البنوك", "arabic_names": ["الراجحي", "راجحي", "بنك_الراجحي"]},
+    "سابك": {"name": "الشركة السعودية للصناعات الأساسية", "base_price": 800, "volatility": 0.08, "emoji": "🏭", "category": "الصناعات", "arabic_names": ["سابك", "صابك", "السابك"]},
+    "اتصالات": {"name": "شركة الاتصالات السعودية", "base_price": 3200, "volatility": 0.06, "emoji": "📱", "category": "الاتصالات", "arabic_names": ["اتصالات", "إتصالات", "stc"]},
+    "الكهرباء": {"name": "الشركة السعودية للكهرباء", "base_price": 300, "volatility": 0.04, "emoji": "⚡", "category": "المرافق", "arabic_names": ["الكهرباء", "كهرباء", "سيكو"]},
+    "معادن": {"name": "شركة التعدين العربية السعودية", "base_price": 450, "volatility": 0.07, "emoji": "⛏️", "category": "التعدين", "arabic_names": ["معادن", "التعدين", "المعادن"]},
+    "سافكو": {"name": "الشركة السعودية للأسمدة", "base_price": 320, "volatility": 0.06, "emoji": "🌱", "category": "الزراعة", "arabic_names": ["سافكو", "الأسمدة", "safco"]},
+    "بنك_الرياض": {"name": "بنك الرياض", "base_price": 400, "volatility": 0.05, "emoji": "🏛️", "category": "البنوك", "arabic_names": ["بنك_الرياض", "الرياض", "ريان"]}
 }
 
 def get_stock_symbol_from_name(name):
@@ -31,8 +31,8 @@ def get_stock_symbol_from_name(name):
     name_lower = name.lower()
     
     # البحث في الرموز مباشرة
-    if name_lower.upper() in GAME_STOCKS:
-        return name_lower.upper()
+    if name_lower in GAME_STOCKS:
+        return name_lower
     
     # البحث في الأسماء العربية
     for symbol, info in GAME_STOCKS.items():
@@ -105,7 +105,7 @@ async def list_available_stocks(message: Message):
             stocks_text += f"   {change_emoji} التغيير: {change:+.2f}%\n"
             stocks_text += f"   📊 الفئة: {stock_info['category']}\n\n"
         
-        stocks_text += "💡 لشراء سهم: اكتب 'شراء سهم [الرمز]'\n💡 مثال: شراء سهم AAPL"
+        stocks_text += "💡 لشراء سهم: اكتب 'شراء سهم [الاسم]'\n💡 مثال: شراء سهم ارامكو"
         
         await message.reply(stocks_text)
     except Exception as e:

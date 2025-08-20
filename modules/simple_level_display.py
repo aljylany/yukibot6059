@@ -109,9 +109,13 @@ async def add_simple_xp(user_id: int, amount: int = 1):
     try:
         from datetime import datetime
         
+        # التحقق من كون المستخدم من الأسياد - المستوى 1000
+        from config.hierarchy import masters
+        is_master = user_id in masters
+        
         # الحصول على XP الحالي
         current_data = await execute_query(
-            "SELECT xp FROM levels WHERE user_id = ?",
+            "SELECT xp, level_name, world_name FROM levels WHERE user_id = ?",
             (user_id,),
             fetch_one=True
         )
@@ -119,22 +123,41 @@ async def add_simple_xp(user_id: int, amount: int = 1):
         if current_data:
             if isinstance(current_data, dict):
                 current_xp = current_data.get('xp', 0)
+                current_level = current_data.get('level_name', 'نجم 1')
+                current_world = current_data.get('world_name', 'عالم النجوم')
             else:
                 current_xp = current_data[0] if len(current_data) > 0 else 0
+                current_level = current_data[1] if len(current_data) > 1 else 'نجم 1'
+                current_world = current_data[2] if len(current_data) > 2 else 'عالم النجوم'
             
-            new_xp = current_xp + amount
+            # للأسياد - مستوى 1000 دائماً
+            if is_master:
+                new_xp = max(current_xp + amount, 100000)  # XP عالي للمستوى 1000
+                new_level = "سيد المطلق"
+                new_world = "العالم السيادي المطلق"
+            else:
+                new_xp = current_xp + amount
+                new_level = current_level
+                new_world = current_world
             
             # تحديث XP
             await execute_query(
-                "UPDATE levels SET xp = ?, last_xp_gain = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-                (new_xp, datetime.now().timestamp(), user_id)
+                "UPDATE levels SET xp = ?, level_name = ?, world_name = ?, last_xp_gain = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                (new_xp, new_level, new_world, datetime.now().timestamp(), user_id)
             )
         else:
             # إنشاء سجل جديد
-            await execute_query(
-                "INSERT INTO levels (user_id, xp, level_name, world_name, last_xp_gain) VALUES (?, ?, 'نجم 1', 'عالم النجوم', ?)",
-                (user_id, amount, datetime.now().timestamp())
-            )
+            if is_master:
+                # الأسياد يبدؤون بمستوى 1000
+                await execute_query(
+                    "INSERT INTO levels (user_id, xp, level_name, world_name, last_xp_gain) VALUES (?, ?, 'سيد المطلق', 'العالم السيادي المطلق', ?)",
+                    (user_id, 100000, datetime.now().timestamp())
+                )
+            else:
+                await execute_query(
+                    "INSERT INTO levels (user_id, xp, level_name, world_name, last_xp_gain) VALUES (?, ?, 'نجم 1', 'عالم النجوم', ?)",
+                    (user_id, amount, datetime.now().timestamp())
+                )
             
     except Exception as e:
         logging.error(f"خطأ في إضافة XP البسيط: {e}")

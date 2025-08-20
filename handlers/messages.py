@@ -528,8 +528,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     # تحديث نشاط المستخدم وإضافة XP للرسائل
     try:
         await update_user_activity(message.from_user.id)
-        from modules.enhanced_xp_handler import add_xp_for_activity
-        await add_xp_for_activity(message.from_user.id, "message")
+        from modules.simple_level_display import add_simple_xp
+        await add_simple_xp(message.from_user.id, 1)
     except Exception as activity_error:
         logging.error(f"خطأ في تحديث النشاط أو XP: {activity_error}")
     
