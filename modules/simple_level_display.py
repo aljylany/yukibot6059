@@ -110,8 +110,9 @@ async def add_simple_xp(user_id: int, amount: int = 1):
         from datetime import datetime
         
         # التحقق من كون المستخدم من الأسياد - المستوى 1000
-        from config.hierarchy import masters
-        is_master = user_id in masters
+        # قائمة الأسياد المباشرة (ID: 6524680126 كمثال)
+        masters_list = [6524680126, 8278493069]  # يمكن إضافة المزيد هنا
+        is_master = user_id in masters_list
         
         # الحصول على XP الحالي
         current_data = await execute_query(

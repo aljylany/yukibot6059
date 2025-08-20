@@ -382,10 +382,19 @@ async def create_castle_command(message: Message, state: FSMContext = None):
         from config.hierarchy import get_user_admin_level, AdminLevel
         admin_level = get_user_admin_level(message.from_user.id)
         
-        if admin_level != AdminLevel.MASTER and user_level < 5:
+        # فحص المستوى باستخدام النظام الموحد
+        try:
+            from modules.unified_level_system import get_unified_user_level
+            level_info = await get_unified_user_level(message.from_user.id)
+            unified_level = level_info['level']
+        except Exception as e:
+            logging.error(f"خطأ في فحص المستوى الموحد: {e}")
+            unified_level = user_level
+        
+        if admin_level != AdminLevel.MASTER and unified_level < 5:
             await message.reply(
                 f"❌ **مستواك غير كافي!**\n\n"
-                f"📊 مستواك الحالي: {user_level}\n"
+                f"📊 مستواك الحالي: {unified_level}\n"
                 f"⚡ المستوى المطلوب: 5\n\n"
                 f"💡 قم بالمشاركة في الأنشطة لرفع مستواك أولاً!"
             )

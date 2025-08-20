@@ -1149,12 +1149,41 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'فلوسي':
         from modules import user_info
         await user_info.show_my_balance(message)
+    elif text == 'حسابي':
+        # استخدام النظام الموحد لعرض الحساب
+        try:
+            from modules.unified_level_system import show_unified_user_info
+            info_text = await show_unified_user_info(message, message.from_user.id)
+            await message.reply(info_text)
+        except Exception as info_error:
+            logging.error(f"خطأ في النظام الموحد: {info_error}")
+            # الرجوع للنظام القديم في حالة الخطأ
+            from modules import user_info
+            await user_info.show_detailed_account_info(message)
     elif text == 'فلوسه' and message.reply_to_message:
         from modules import user_info
         await user_info.show_user_balance(message)
-    elif text == 'مستواي':
-        from modules import user_info
-        await user_info.show_my_level(message)
+    elif text == 'مستواي' or text == 'تقدمي':
+        # استخدام النظام الموحد لعرض المستوى
+        try:
+            from modules.unified_level_system import get_unified_user_level
+            level_info = await get_unified_user_level(message.from_user.id)
+            
+            level_text = f"""🌟 **مستواك الحالي:**
+
+🌍 العالم: {level_info['world_name']}
+⭐ المستوى: {level_info['level']}
+🎭 الرتبة: {level_info['level_name']}
+✨ XP: {level_info['xp']}
+
+💡 كل نشاط يمنحك XP!"""
+            
+            await message.reply(level_text)
+        except Exception as level_error:
+            logging.error(f"خطأ في النظام الموحد للمستوى: {level_error}")
+            # الرجوع للنظام القديم في حالة الخطأ
+            from modules import user_info
+            await user_info.show_my_level(message)
     elif text == 'مستواه' and message.reply_to_message:
         from modules import user_info
         await user_info.show_user_level(message)
