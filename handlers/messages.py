@@ -797,6 +797,10 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif any(word in words for word in ['سرقة', 'سرق']) or text == 'امان':
         await theft.show_security_menu(message)
     # === أوامر الاستثمار ===
+    elif text.startswith('استثمار ') and len(words) >= 2:
+        # الاستثمار البسيط
+        from modules.simple_investment import handle_simple_investment_command
+        await handle_simple_investment_command(message, text)
     elif any(word in words for word in ['استثمار']):
         from modules import investment
         await investment.show_investment_menu(message)
@@ -812,6 +816,9 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'تقرير الاستثمارات':
         from modules import investment
         await investment.show_investment_report(message)
+    elif text == 'معلومات الاستثمار البسيط':
+        from modules.simple_investment import show_investment_info
+        await show_investment_info(message)
     
     # === أوامر الأسهم ===
     elif text == 'شراء اسهم':

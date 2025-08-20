@@ -105,7 +105,7 @@ async def list_available_stocks(message: Message):
             stocks_text += f"   {change_emoji} التغيير: {change:+.2f}%\n"
             stocks_text += f"   📊 الفئة: {stock_info['category']}\n\n"
         
-        stocks_text += "💡 لشراء سهم: اكتب 'شراء سهم [الاسم]'\n💡 مثال: شراء سهم ارامكو"
+        stocks_text += "💡 لشراء سهم: اكتب 'شراء سهم [الاسم] [الكمية]'\n💡 مثال: شراء سهم ارامكو 10"
         
         await message.reply(stocks_text)
     except Exception as e:
