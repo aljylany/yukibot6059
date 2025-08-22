@@ -4,6 +4,8 @@ import json
 import logging
 from database.operations import execute_query
 from utils.helpers import format_number
+import sys
+sys.path.append('.')
 from config import LEVELS
 
 class LevelingSystem:
