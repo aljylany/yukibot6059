@@ -7,6 +7,7 @@ import asyncio
 import logging
 import sys
 import os
+from datetime import datetime
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
@@ -15,6 +16,9 @@ from config.settings import BOT_TOKEN
 from config.database import init_database
 from handlers import commands, callbacks, messages
 from utils.helpers import setup_logging
+
+# متغير عام لتتبع وقت بدء التشغيل
+BOT_START_TIME = None
 
 
 async def check_restart_status(bot):
@@ -50,6 +54,9 @@ async def check_restart_status(bot):
 
 async def main():
     """دالة تشغيل البوت الرئيسية"""
+    global BOT_START_TIME
+    BOT_START_TIME = datetime.now()  # تسجيل وقت بدء التشغيل
+    
     # إعداد نظام التسجيل
     setup_logging()
     

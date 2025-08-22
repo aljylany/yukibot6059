@@ -8,11 +8,12 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
+from datetime import datetime
 
 from database.operations import get_or_create_user, update_user_activity
 from modules import banks, real_estate, theft, stocks, investment, ranking, administration, farm, castle
 from utils.decorators import user_required, admin_required, group_only
-from config.settings import SYSTEM_MESSAGES, ADMIN_IDS
+from config.settings import SYSTEM_MESSAGES, ADMIN_IDS, NOTIFICATION_CHANNEL
 
 router = Router()
 
@@ -513,3 +514,150 @@ async def broadcast_command(message: Message, state: FSMContext):
     except Exception as e:
         logging.error(f"خطأ في الرسالة الجماعية: {e}")
         await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("groups"))
+async def groups_command(message: Message):
+    """أمر المجموعات /groups - يعمل فقط في القناة الفرعية للإشعارات"""
+    try:
+        # التحقق من أن الأمر تم استخدامه في القناة الفرعية فقط
+        if str(message.chat.id) != str(NOTIFICATION_CHANNEL["chat_id"]):
+            # لا نرد إذا تم استخدام الأمر في مكان آخر
+            return
+        
+        # التحقق من أن المستخدم مدير
+        if message.from_user.id not in ADMIN_IDS:
+            await message.reply("❌ هذا الأمر متاح للمديرين فقط!")
+            return
+        
+        from config.hierarchy import GROUP_OWNERS, MODERATORS
+        from modules.notification_manager import NotificationManager
+        
+        # جمع معلومات المجموعات من البيانات المتاحة
+        all_groups = set()
+        all_groups.update(GROUP_OWNERS.keys())
+        all_groups.update(MODERATORS.keys())
+        
+        if not all_groups:
+            await message.reply("📝 لا توجد مجموعات مسجلة في النظام حالياً.")
+            return
+        
+        notification_manager = NotificationManager(message.bot)
+        groups_info = []
+        
+        for group_id in all_groups:
+            try:
+                # محاولة الحصول على معلومات المجموعة
+                chat = await message.bot.get_chat(group_id)
+                members_count = await message.bot.get_chat_member_count(group_id)
+                
+                # جمع معلومات المشرفين
+                owners = GROUP_OWNERS.get(group_id, [])
+                moderators = MODERATORS.get(group_id, [])
+                
+                group_info = {
+                    'title': chat.title,
+                    'id': group_id,
+                    'username': chat.username or 'غير متاح',
+                    'members_count': members_count,
+                    'owners_count': len(owners),
+                    'moderators_count': len(moderators),
+                    'type': chat.type
+                }
+                groups_info.append(group_info)
+                
+            except Exception as group_error:
+                logging.warning(f"لا يمكن الوصول للمجموعة {group_id}: {group_error}")
+                # إضافة معلومات أساسية حتى لو فشل جلب التفاصيل
+                owners = GROUP_OWNERS.get(group_id, [])
+                moderators = MODERATORS.get(group_id, [])
+                group_info = {
+                    'title': f'مجموعة غير متاحة (ID: {group_id})',
+                    'id': group_id,
+                    'username': 'غير متاح',
+                    'members_count': 'غير متاح',
+                    'owners_count': len(owners),
+                    'moderators_count': len(moderators),
+                    'type': 'غير محدد'
+                }
+                groups_info.append(group_info)
+        
+        # تنسيق الرسالة
+        if groups_info:
+            uptime = await notification_manager.get_uptime()
+            
+            groups_text = ""
+            for i, group in enumerate(groups_info, 1):
+                link = f"https://t.me/{group['username']}" if group['username'] != 'غير متاح' else "غير متاح"
+                groups_text += f"""
+{i}. 🏷️ **{group['title']}**
+   🆔 المعرف: `{group['id']}`
+   👤 اسم المستخدم: @{group['username']}
+   🔗 الرابط: {link}
+   👥 الأعضاء: {group['members_count']}
+   👑 المالكين: {group['owners_count']}
+   🔧 المشرفين: {group['moderators_count']}
+   📝 النوع: {group['type']}
+
+"""
+            
+            final_message = f"""
+📊 **قائمة المجموعات المسجلة في نظام يوكي**
+
+🤖 **معلومات البوت:**
+⏱️ وقت التشغيل: {uptime}
+📈 إجمالي المجموعات: {len(groups_info)}
+⏰ آخر تحديث: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+🏘️ **المجموعات:**
+{groups_text}
+---
+💡 **ملاحظة:** هذه المجموعات مسجلة في نظام إدارة يوكي"""
+            
+            # تقسيم الرسالة إذا كانت طويلة جداً
+            if len(final_message) > 4096:
+                # إرسال معلومات البوت أولاً
+                header = f"""
+📊 **قائمة المجموعات المسجلة في نظام يوكي**
+
+🤖 **معلومات البوت:**
+⏱️ وقت التشغيل: {uptime}
+📈 إجمالي المجموعات: {len(groups_info)}
+⏰ آخر تحديث: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+🏘️ **المجموعات:**"""
+                
+                await message.reply(header)
+                
+                # تقسيم المجموعات
+                current_message = ""
+                for i, group in enumerate(groups_info, 1):
+                    link = f"https://t.me/{group['username']}" if group['username'] != 'غير متاح' else "غير متاح"
+                    group_text = f"""
+{i}. 🏷️ **{group['title']}**
+   🆔 المعرف: `{group['id']}`
+   👤 اسم المستخدم: @{group['username']}
+   🔗 الرابط: {link}
+   👥 الأعضاء: {group['members_count']}
+   👑 المالكين: {group['owners_count']}
+   🔧 المشرفين: {group['moderators_count']}
+   📝 النوع: {group['type']}
+
+"""
+                    
+                    if len(current_message + group_text) > 4000:
+                        await message.reply(current_message)
+                        current_message = group_text
+                    else:
+                        current_message += group_text
+                
+                if current_message:
+                    await message.reply(current_message + "\n---\n💡 **ملاحظة:** هذه المجموعات مسجلة في نظام إدارة يوكي")
+            else:
+                await message.reply(final_message)
+        else:
+            await message.reply("📝 لا توجد مجموعات متاحة حالياً.")
+            
+    except Exception as e:
+        logging.error(f"خطأ في أمر المجموعات: {e}")
+        await message.reply("❌ حدث خطأ أثناء جلب معلومات المجموعات.")
