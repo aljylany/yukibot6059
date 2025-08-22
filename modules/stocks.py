@@ -157,6 +157,59 @@ async def buy_stock_command(message: Message):
         logging.error(f"خطأ في شراء السهم: {e}")
         await message.reply("❌ حدث خطأ في عملية الشراء")
 
+
+async def buy_stock(message: Message, symbol: str, quantity: int):
+    """تنفيذ عملية شراء الأسهم مباشرة"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        # الحصول على السعر الحالي
+        current_prices = await get_current_stock_prices()
+        stock_info = GAME_STOCKS.get(symbol, {})
+        price = current_prices.get(symbol, stock_info.get('base_price', 100))
+        total_cost = price * quantity
+        
+        if total_cost > user['balance']:
+            await message.reply(
+                f"❌ رصيد غير كافٍ!\n\n"
+                f"💰 التكلفة الإجمالية: ${total_cost:.2f}\n"
+                f"💵 رصيدك الحالي: {format_number(user['balance'])}$"
+            )
+            return
+        
+        # تنفيذ عملية الشراء
+        new_balance = user['balance'] - total_cost
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # إضافة الأسهم إلى محفظة المستخدم
+        await add_user_stocks(message.from_user.id, symbol, quantity, price)
+        
+        # إضافة معاملة
+        await add_transaction(
+            from_user_id=message.from_user.id,
+            to_user_id=0,  # النظام
+            transaction_type="stock_purchase",
+            amount=int(total_cost),
+            description=f"شراء {quantity} سهم من {symbol}"
+        )
+        
+        await message.reply(
+            f"✅ **تم الشراء بنجاح!**\n\n"
+            f"{stock_info.get('emoji', '📊')} السهم: {symbol}\n"
+            f"📊 الكمية: {quantity} سهم\n"
+            f"💰 سعر السهم: ${price:.2f}\n"
+            f"💵 التكلفة الإجمالية: ${total_cost:.2f}\n"
+            f"💰 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+            f"🎉 تم إضافة الأسهم إلى محفظتك!"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في تنفيذ عملية الشراء: {e}")
+        await message.reply("❌ حدث خطأ في عملية الشراء")
+
 async def sell_stock_command(message: Message):
     """معالجة أمر بيع الأسهم"""
     try:
@@ -195,10 +248,10 @@ async def show_buy_stocks(message: Message):
             stocks_text += f"   🔹 اكتب: \"شراء سهم {symbol} [العدد]\"\n\n"
         
         stocks_text += "\n📋 **أمثلة للشراء:**\n"
-        stocks_text += "• شراء سهم AAPL 10\n"
-        stocks_text += "• شراء اسهم ابل 10\n"
-        stocks_text += "• شراء سهم TSLA 5\n"
-        stocks_text += "• شراء اسهم تسلا 5"
+        stocks_text += "• شراء سهم ارامكو 10\n"
+        stocks_text += "• شراء اسهم الراجحي 5\n"
+        stocks_text += "• شراء سهم سابك 20\n"
+        stocks_text += "• شراء اسهم اتصالات 15"
         
         await message.reply(stocks_text)
         
