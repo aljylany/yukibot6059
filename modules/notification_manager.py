@@ -189,17 +189,7 @@ class NotificationManager:
         return await self.send_notification(message.strip())
     
     async def send_startup_notification(self, version: str = "1.0") -> bool:
-        """إشعار بدء تشغيل البوت مع حساب وقت التشغيل"""
-        # حساب وقت التشغيل
-        try:
-            from main import BOT_START_TIME
-            if BOT_START_TIME:
-                uptime = datetime.now() - BOT_START_TIME
-                uptime_text = self._format_uptime(uptime)
-            else:
-                uptime_text = "غير محدد"
-        except:
-            uptime_text = "غير محدد"
+        """إشعار بدء تشغيل البوت مع بدء العد من الصفر"""
         
         message = f"""
 🚀 <b>تم بدء تشغيل البوت بنجاح!</b>
@@ -207,7 +197,7 @@ class NotificationManager:
 📱 <b>اسم البوت:</b> Yuki Economic Bot
 🔖 <b>الإصدار:</b> {version}
 ⏰ <b>وقت التشغيل:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-⏱️ <b>مدة التشغيل الحالية:</b> {uptime_text}
+⏱️ <b>مدة التشغيل الحالية:</b> 0 ثانية (بدء العد الآن)
 
 ✅ <b>جميع الأنظمة تعمل بشكل طبيعي</b>
 🎮 <b>البوت جاهز لاستقبال الأوامر</b>
@@ -220,36 +210,66 @@ class NotificationManager:
         return await self.send_notification(message.strip())
     
     def _format_uptime(self, uptime: timedelta) -> str:
-        """تنسيق وقت التشغيل بشكل مقروء"""
+        """تنسيق وقت التشغيل بشكل مقروء - يبدأ من الصفر ويعد بالثواني والدقائق والساعات"""
         try:
             total_seconds = int(uptime.total_seconds())
+            
+            # التأكد من أن العدد لا يكون سالباً
+            if total_seconds < 0:
+                total_seconds = 0
+            
             days = total_seconds // 86400
             hours = (total_seconds % 86400) // 3600
             minutes = (total_seconds % 3600) // 60
             seconds = total_seconds % 60
             
             if days > 0:
-                return f"{days} يوم، {hours} ساعة، {minutes} دقيقة"
+                return f"{days} يوم، {hours} ساعة، {minutes} دقيقة، {seconds} ثانية"
             elif hours > 0:
                 return f"{hours} ساعة، {minutes} دقيقة، {seconds} ثانية"
             elif minutes > 0:
                 return f"{minutes} دقيقة، {seconds} ثانية"
             else:
                 return f"{seconds} ثانية"
-        except:
-            return "غير محدد"
+        except Exception as e:
+            # في حالة أي خطأ، نعيد الوقت الفعلي من بداية التشغيل
+            try:
+                from main import BOT_START_TIME
+                if BOT_START_TIME:
+                    actual_uptime = datetime.now() - BOT_START_TIME
+                    total_seconds = int(actual_uptime.total_seconds())
+                    if total_seconds < 0:
+                        return "0 ثانية"
+                    
+                    days = total_seconds // 86400
+                    hours = (total_seconds % 86400) // 3600
+                    minutes = (total_seconds % 3600) // 60
+                    seconds = total_seconds % 60
+                    
+                    if days > 0:
+                        return f"{days} يوم، {hours} ساعة، {minutes} دقيقة، {seconds} ثانية"
+                    elif hours > 0:
+                        return f"{hours} ساعة، {minutes} دقيقة، {seconds} ثانية"
+                    elif minutes > 0:
+                        return f"{minutes} دقيقة، {seconds} ثانية"
+                    else:
+                        return f"{seconds} ثانية"
+                else:
+                    return "0 ثانية"
+            except:
+                return "0 ثانية"
     
     async def get_uptime(self) -> str:
-        """حساب وقت التشغيل الحالي"""
+        """حساب وقت التشغيل الحالي - يبدأ من الصفر ويعد تصاعدياً"""
         try:
             from main import BOT_START_TIME
             if BOT_START_TIME:
                 uptime = datetime.now() - BOT_START_TIME
                 return self._format_uptime(uptime)
             else:
-                return "غير محدد"
+                return "0 ثانية"
         except:
-            return "غير محدد"
+            return "0 ثانية"
     
     async def test_notification_channel(self) -> bool:
         """اختبار اتصال القناة الفرعية"""
