@@ -4,6 +4,7 @@ Notification Manager for Sub-channel
 """
 
 import logging
+import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from aiogram import Bot
@@ -189,25 +190,48 @@ class NotificationManager:
         return await self.send_notification(message.strip())
     
     async def send_startup_notification(self, version: str = "1.0") -> bool:
-        """إشعار بدء تشغيل البوت مع بدء العد من الصفر"""
+        """إشعار بدء تشغيل البوت مع عداد تصاعدي يتحديث تلقائياً"""
         
-        message = f"""
+        startup_time = datetime.now()
+        
+        # الرسالة الأولية
+        initial_message = f"""
 🚀 <b>تم بدء تشغيل البوت بنجاح!</b>
 
 📱 <b>اسم البوت:</b> Yuki Economic Bot
 🔖 <b>الإصدار:</b> {version}
-⏰ <b>وقت التشغيل:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-⏱️ <b>مدة التشغيل الحالية:</b> 0 ثانية (بدأ العد الآن...)
+⏰ <b>وقت التشغيل:</b> {startup_time.strftime("%Y-%m-%d %H:%M:%S")}
+⏱️ <b>مدة التشغيل:</b> 0 ثانية
 
 ✅ <b>جميع الأنظمة تعمل بشكل طبيعي</b>
 🎮 <b>البوت جاهز لاستقبال الأوامر</b>
-🔄 <b>آخر إعادة تشغيل:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+🔄 <b>آخر إعادة تشغيل:</b> {startup_time.strftime("%Y-%m-%d %H:%M:%S")}
 
 ---
-💡 <b>استخدم الأمر /uptime لرؤية وقت التشغيل المحدث</b>
+💡 <b>العداد يتحديث تلقائياً كل ثانية</b>
         """
         
-        return await self.send_notification(message.strip())
+        # إرسال الرسالة الأولية
+        if not self.enabled or not self.channel_id:
+            logging.warning("نظام الإشعارات معطل أو معرف القناة غير محدد")
+            return False
+            
+        try:
+            startup_msg = await self.bot.send_message(
+                chat_id=self.channel_id,
+                text=initial_message.strip(),
+                parse_mode="HTML"
+            )
+            
+            # بدء العداد التصاعدي في الخلفية
+            asyncio.create_task(self._update_startup_timer(startup_msg, startup_time, version))
+            
+            logging.info("✅ تم إرسال الإشعار إلى القناة الفرعية وبدء العداد التصاعدي")
+            return True
+            
+        except Exception as e:
+            logging.error(f"❌ خطأ في إرسال الإشعار: {e}")
+            return False
     
     def _format_uptime(self, uptime: timedelta) -> str:
         """تنسيق وقت التشغيل بشكل مقروء - يبدأ من الصفر ويعد بالثواني والدقائق والساعات"""
@@ -270,6 +294,51 @@ class NotificationManager:
                 return "0 ثانية"
         except:
             return "0 ثانية"
+    
+    async def _update_startup_timer(self, startup_msg, startup_time, version: str):
+        """تحديث العداد التصاعدي لوقت التشغيل - نفس آلية العد التنازلي لكن تصاعدياً"""
+        try:
+            # العداد التصاعدي اللانهائي - يعمل مثل العد التنازلي ولكن بالعكس
+            seconds = 1
+            while True:
+                await asyncio.sleep(1)  # نفس آلية العد التنازلي
+                
+                # حساب الوقت المنقضي
+                elapsed_time = datetime.now() - startup_time
+                uptime_text = self._format_uptime(elapsed_time)
+                
+                # الرسالة المحدثة - نفس تنسيق العد التنازلي
+                updated_message = f"""
+🚀 <b>تم بدء تشغيل البوت بنجاح!</b>
+
+📱 <b>اسم البوت:</b> Yuki Economic Bot
+🔖 <b>الإصدار:</b> {version}
+⏰ <b>وقت التشغيل:</b> {startup_time.strftime("%Y-%m-%d %H:%M:%S")}
+⏱️ <b>مدة التشغيل:</b> {uptime_text}
+
+✅ <b>جميع الأنظمة تعمل بشكل طبيعي</b>
+🎮 <b>البوت جاهز لاستقبال الأوامر</b>
+🔄 <b>آخر إعادة تشغيل:</b> {startup_time.strftime("%Y-%m-%d %H:%M:%S")}
+
+---
+💡 <b>العداد يتحديث تلقائياً كل ثانية</b>
+                """
+                
+                try:
+                    # تحديث نفس الرسالة - مثل countdown_msg.edit_text()
+                    await startup_msg.edit_text(
+                        updated_message.strip(),
+                        parse_mode="HTML"
+                    )
+                except Exception as edit_error:
+                    # في حالة فشل التحديث، نتوقف لتجنب الأخطاء المتكررة
+                    logging.warning(f"تعذر تحديث عداد التشغيل: {edit_error}")
+                    break
+                
+                seconds += 1
+                
+        except Exception as e:
+            logging.error(f"خطأ في العداد التصاعدي: {e}")
     
     async def test_notification_channel(self) -> bool:
         """اختبار اتصال القناة الفرعية"""
