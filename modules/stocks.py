@@ -328,6 +328,85 @@ async def show_portfolio(message: Message):
         logging.error(f"خطأ في عرض المحفظة: {e}")
         await message.reply("❌ حدث خطأ في عرض المحفظة")
 
+
+async def show_simple_portfolio(message: Message):
+    """عرض محفظة الأسهم بشكل مبسط - أمر اسهمي"""
+    try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معرف المستخدم")
+            return
+            
+        user_stocks = await get_user_stocks(message.from_user.id)
+        
+        if not user_stocks or not isinstance(user_stocks, list):
+            await message.reply("📊 لا تملك أي أسهم حالياً\n\n💡 اكتب 'اسهم' للبدء في الاستثمار")
+            return
+            
+        current_prices = await get_current_stock_prices()
+        portfolio_text = "📈 **أسهمي:**\n\n"
+        
+        total_current_value = 0
+        total_invested = 0
+        
+        for stock in user_stocks:
+            if not isinstance(stock, dict):
+                continue
+                
+            symbol = stock.get('symbol', '')
+            quantity = stock.get('quantity', 0)
+            purchase_price = stock.get('purchase_price', 0)
+            
+            stock_info = GAME_STOCKS.get(symbol, {})
+            current_price = current_prices.get(symbol, stock_info.get('base_price', 100))
+            
+            # حساب القيم
+            stock_current_value = current_price * quantity
+            stock_invested_value = purchase_price * quantity
+            profit_loss = stock_current_value - stock_invested_value
+            profit_percentage = ((current_price - purchase_price) / purchase_price * 100) if purchase_price > 0 else 0
+            
+            # تحديد الرمز والحالة
+            if profit_loss > 0:
+                status_emoji = "📈"
+                status_text = "ربح"
+                profit_text = f"+${profit_loss:.2f}"
+            elif profit_loss < 0:
+                status_emoji = "📉"
+                status_text = "خسارة"
+                profit_text = f"-${abs(profit_loss):.2f}"
+            else:
+                status_emoji = "➖"
+                status_text = "متعادل"
+                profit_text = "$0.00"
+            
+            portfolio_text += f"{stock_info.get('emoji', '📊')} **{symbol}** | الكمية: {quantity}\n"
+            portfolio_text += f"💰 السعر الحالي: ${current_price:.2f}\n"
+            portfolio_text += f"{status_emoji} {status_text}: {profit_text} ({profit_percentage:+.1f}%)\n\n"
+            
+            total_current_value += stock_current_value
+            total_invested += stock_invested_value
+        
+        # حساب الإجمالي
+        total_profit_loss = total_current_value - total_invested
+        total_percentage = ((total_current_value - total_invested) / total_invested * 100) if total_invested > 0 else 0
+        
+        portfolio_text += "═══════════════════════════\n"
+        portfolio_text += f"💼 **إجمالي القيمة الحالية:** ${total_current_value:.2f}\n"
+        portfolio_text += f"💵 **إجمالي المبلغ المستثمر:** ${total_invested:.2f}\n"
+        
+        if total_profit_loss > 0:
+            portfolio_text += f"📈 **إجمالي الربح:** +${total_profit_loss:.2f} ({total_percentage:+.1f}%)\n"
+        elif total_profit_loss < 0:
+            portfolio_text += f"📉 **إجمالي الخسارة:** -${abs(total_profit_loss):.2f} ({total_percentage:+.1f}%)\n"
+        else:
+            portfolio_text += f"➖ **الوضع:** متعادل (0.00%)\n"
+        
+        await message.reply(portfolio_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض المحفظة البسيطة: {e}")
+        await message.reply("❌ حدث خطأ في عرض أسهمك")
+
 async def show_stock_prices(message: Message):
     """عرض أسعار الأسهم الحالية"""
     try:

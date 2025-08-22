@@ -880,6 +880,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         await stocks.show_sell_stocks(message)
     elif text == 'محفظة الاسهم' or text == 'محفظتي':
         await stocks.show_portfolio(message)
+    elif text == 'اسهمي':
+        await stocks.show_simple_portfolio(message)
     elif text == 'اسعار الاسهم':
         await stocks.show_stock_prices(message)
     elif text == 'قائمة الاسهم':
