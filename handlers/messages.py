@@ -798,6 +798,29 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_withdraw_with_amount(message, words[1])
     elif any(word in words for word in ['بنك', 'ايداع', 'سحب']):
         await banks.show_bank_menu(message)
+    # === أوامر العقارات الجديدة ===
+    elif text.startswith('شراء عقار ') and len(words) >= 4:
+        # معالجة أمر "شراء عقار [النوع] [الكمية]"
+        try:
+            property_name = words[2]
+            quantity = int(words[3])
+            await real_estate.handle_buy_property_text(message, property_name, quantity)
+        except (ValueError, IndexError):
+            await message.reply("❌ استخدم الصيغة الصحيحة: شراء عقار [النوع] [الكمية]\n\nمثال: شراء عقار شقة 2")
+    elif text.startswith('بيع عقار ') and len(words) >= 4:
+        # معالجة أمر "بيع عقار [النوع] [الكمية]"
+        try:
+            property_name = words[2]
+            quantity = int(words[3])
+            await real_estate.handle_sell_property_text(message, property_name, quantity)
+        except (ValueError, IndexError):
+            await message.reply("❌ استخدم الصيغة الصحيحة: بيع عقار [النوع] [الكمية]\n\nمثال: بيع عقار بيت 1")
+    elif text in ['قائمة العقارات', 'انواع العقارات', 'أنواع العقارات']:
+        await real_estate.show_properties_list(message)
+    elif text in ['عقاراتي', 'ممتلكاتي']:
+        await real_estate.show_property_management(message)
+    elif text in ['احصائيات العقارات', 'إحصائيات العقارات']:
+        await real_estate.show_property_management(message)
     elif any(word in words for word in ['عقار', 'بيت']) and not any(castle_word in words for castle_word in ['قلعة', 'موارد']):
         await real_estate.show_property_menu(message)
     elif text.startswith('ترقية امان تأكيد'):
