@@ -516,6 +516,41 @@ async def broadcast_command(message: Message, state: FSMContext):
         await message.reply(SYSTEM_MESSAGES["error"])
 
 
+@router.message(Command("uptime"))
+async def uptime_command(message: Message):
+    """أمر عرض وقت التشغيل الحالي /uptime"""
+    try:
+        from modules.notification_manager import NotificationManager
+        
+        # يمكن استخدامه في أي مكان، ليس مقيد بالقناة الفرعية
+        if not message.bot:
+            await message.reply("❌ خطأ في النظام")
+            return
+            
+        notification_manager = NotificationManager(message.bot)
+        uptime = await notification_manager.get_uptime()
+        
+        from datetime import datetime
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        uptime_message = f"""
+⏱️ **وقت تشغيل بوت يوكي**
+
+🕐 **الوقت الحالي:** {current_time}
+⏰ **مدة التشغيل:** {uptime}
+🚀 **حالة البوت:** يعمل بشكل طبيعي
+
+---
+💡 **نصيحة:** استخدم هذا الأمر في أي وقت لمعرفة مدة تشغيل البوت
+        """
+        
+        await message.reply(uptime_message.strip())
+        
+    except Exception as e:
+        logging.error(f"خطأ في أمر وقت التشغيل: {e}")
+        await message.reply("❌ حدث خطأ أثناء جلب معلومات وقت التشغيل.")
+
+
 @router.message(Command("groups"))
 async def groups_command(message: Message):
     """أمر المجموعات /groups - يعمل فقط في القناة الفرعية للإشعارات"""
