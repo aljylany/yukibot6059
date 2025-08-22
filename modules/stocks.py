@@ -6,7 +6,7 @@ Stocks Module
 import logging
 import random
 from datetime import datetime, timedelta
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from database.operations import get_user, update_user_balance, execute_query, add_transaction
@@ -189,11 +189,12 @@ async def buy_stock(message: Message, symbol: str, quantity: int):
         
         # إضافة معاملة
         await add_transaction(
-            from_user_id=message.from_user.id,
-            to_user_id=0,  # النظام
+            user_id=message.from_user.id,
             transaction_type="stock_purchase",
-            amount=int(total_cost),
-            description=f"شراء {quantity} سهم من {symbol}"
+            amount=total_cost,
+            description=f"شراء {quantity} سهم من {symbol}",
+            from_user_id=message.from_user.id,
+            to_user_id=0  # النظام
         )
         
         await message.reply(
@@ -493,21 +494,7 @@ async def show_buy_stocks(message: Message):
         
         current_prices = await get_current_stock_prices()
         
-        keyboard_buttons = []
-        for symbol, stock_info in GAME_STOCKS.items():
-            current_price = current_prices.get(symbol, stock_info['base_price'])
-            affordable = user['balance'] >= current_price
-            
-            button_text = f"{stock_info['emoji']} {symbol} - ${current_price:.2f}"
-            if not affordable:
-                button_text = f"❌ {button_text}"
-            
-            keyboard_buttons.append([InlineKeyboardButton(
-                text=button_text,
-                callback_data=f"stocks_buy_{symbol}"
-            )])
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        # الأسهم المتاحة للشراء مع الأسعار الحالية
         
         stocks_text = "📈 **الأسهم المتاحة للشراء:**\n\n"
         for symbol, stock_info in GAME_STOCKS.items():
@@ -520,9 +507,11 @@ async def show_buy_stocks(message: Message):
             stocks_text += f"   💰 السعر: ${current_price:.2f}\n"
             stocks_text += f"   {change_emoji} التغيير: {change:+.2f}%\n\n"
         
-        stocks_text += f"💰 رصيدك الحالي: {format_number(user['balance'])}$"
+        stocks_text += f"💰 رصيدك الحالي: {format_number(user['balance'])}$\n\n"
+        stocks_text += "💡 اكتب: 'شراء سهم [الاسم] [الكمية]' للشراء\n"
+        stocks_text += "مثال: شراء سهم ارامكو 10"
         
-        await message.reply(stocks_text, reply_markup=keyboard)
+        await message.reply(stocks_text)
         
     except Exception as e:
         logging.error(f"خطأ في عرض الأسهم للشراء: {e}")
@@ -535,25 +524,10 @@ async def show_sell_stocks(message: Message):
         user_stocks = await get_user_stocks(message.from_user.id)
         
         if not user_stocks:
-            await message.reply("❌ لا تملك أي أسهم للبيع\n\nاستخدم /stocks لشراء أسهم")
+            await message.reply("❌ لا تملك أي أسهم للبيع\n\nاكتب 'اسهم' لشراء أسهم")
             return
         
         current_prices = await get_current_stock_prices()
-        keyboard_buttons = []
-        
-        for stock in user_stocks:
-            symbol = stock['symbol']
-            stock_info = GAME_STOCKS.get(symbol, {})
-            current_price = current_prices.get(symbol, stock_info.get('base_price', 100))
-            total_value = current_price * stock['quantity']
-            
-            button_text = f"{stock_info.get('emoji', '📊')} {symbol} x{stock['quantity']} - ${total_value:.2f}"
-            keyboard_buttons.append([InlineKeyboardButton(
-                text=button_text,
-                callback_data=f"stocks_sell_{symbol}"
-            )])
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
         
         stocks_text = "📉 **أسهمك للبيع:**\n\n"
         total_portfolio_value = 0
@@ -573,9 +547,11 @@ async def show_sell_stocks(message: Message):
             
             total_portfolio_value += total_value
         
-        stocks_text += f"💼 إجمالي قيمة المحفظة: ${total_portfolio_value:.2f}"
+        stocks_text += f"💼 إجمالي قيمة المحفظة: ${total_portfolio_value:.2f}\n\n"
+        stocks_text += "💡 اكتب: 'بيع سهم [الاسم] [الكمية]' للبيع\n"
+        stocks_text += "مثال: بيع سهم ارامكو 5"
         
-        await message.reply(stocks_text, reply_markup=keyboard)
+        await message.reply(stocks_text)
         
     except Exception as e:
         logging.error(f"خطأ في عرض الأسهم للبيع: {e}")
@@ -713,11 +689,12 @@ async def process_buy_quantity(message: Message, state: FSMContext):
         
         # إضافة معاملة
         await add_transaction(
-            from_user_id=message.from_user.id,
-            to_user_id=0,  # النظام
+            user_id=message.from_user.id,
             transaction_type="stock_purchase",
-            amount=int(total_cost),
-            description=f"شراء {quantity} سهم من {symbol}"
+            amount=total_cost,
+            description=f"شراء {quantity} سهم من {symbol}",
+            from_user_id=message.from_user.id,
+            to_user_id=0  # النظام
         )
         
         stock_info = GAME_STOCKS[symbol]
