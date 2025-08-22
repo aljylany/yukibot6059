@@ -120,7 +120,7 @@ async def buy_stock_command(message: Message):
             
         parts = message.text.split()
         if len(parts) < 3:
-            await message.reply("❌ صيغة خاطئة\n\nاستخدم: شراء سهم [الرمز] [الكمية]\nأو: شراء اسهم [الاسم] [الكمية]\nمثال: شراء سهم AAPL 10\nمثال: شراء اسهم ابل 10")
+            await message.reply("❌ صيغة خاطئة\n\nاستخدم: شراء سهم [الرمز] [الكمية]\nأو: شراء اسهم [الاسم] [الكمية]\nمثال: شراء سهم ارامكو 10\nمثال: شراء اسهم الراجحي 5")
             return
         
         # تحديد نوع الأمر (سهم أو اسهم)
@@ -132,7 +132,7 @@ async def buy_stock_command(message: Message):
             quantity_index = 3
         
         if len(parts) <= quantity_index:
-            await message.reply("❌ يرجى تحديد الكمية\n\nمثال: شراء سهم AAPL 10")
+            await message.reply("❌ يرجى تحديد الكمية\n\nمثال: شراء سهم ارامكو 10")
             return
         
         try:
@@ -144,7 +144,7 @@ async def buy_stock_command(message: Message):
         # البحث عن رمز السهم
         symbol = get_stock_symbol_from_name(stock_name)
         if not symbol:
-            await message.reply("❌ اسم أو رمز سهم غير صحيح\n\nالرموز المتاحة: " + ", ".join(GAME_STOCKS.keys()) + "\nأو استخدم الأسماء العربية: ابل، تسلا، مايكروسوفت، إلخ")
+            await message.reply("❌ اسم أو رمز سهم غير صحيح\n\nالرموز المتاحة: " + ", ".join(GAME_STOCKS.keys()) + "\nأو استخدم الأسماء العربية: ارامكو، الراجحي، سابك، اتصالات، إلخ")
             return
         
         if quantity <= 0:
