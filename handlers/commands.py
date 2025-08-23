@@ -29,6 +29,12 @@ async def start_command(message: Message, state: FSMContext):
         if message.chat.type != ChatType.PRIVATE:
             # إذا كان الأمر في مجموعة، لا نفعل شيئاً
             return
+        
+        # فحص إذا كان الأمر مخصص للهمسة
+        if message.text and "whisper_" in message.text:
+            from modules.utility_commands import handle_whisper_start
+            await handle_whisper_start(message, state)
+            return
             
         # رسالة في الخاص - طلب إضافة البوت للمجموعة مع زر
         welcome_text = """

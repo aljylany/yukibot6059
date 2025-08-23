@@ -35,20 +35,7 @@ from modules.utility_commands import WhisperStates
 router = Router()
 
 
-# معالج خاص لبدء الهمسة في الخاص
-@router.message(F.text.startswith("/start whisper_"))
-async def handle_whisper_start_command(message: Message, state: FSMContext):
-    """معالج خاص لبدء الهمسة في الخاص"""
-    try:
-        if message.chat.type != 'private':
-            return  # فقط في الخاص
-            
-        from modules.utility_commands import handle_whisper_start
-        await handle_whisper_start(message, state)
-        
-    except Exception as e:
-        logging.error(f"خطأ في معالج بدء الهمسة: {e}")
-        await message.reply("❌ حدث خطأ أثناء بدء الهمسة")
+# تم نقل معالج الهمسة إلى handlers/commands.py
 
 
 # معالج خاص لنص الهمسة
