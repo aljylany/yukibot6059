@@ -613,6 +613,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # فحص أوامر المسح قبل الردود المخصصة
     if text.startswith('مسح ') or text == 'مسح بالرد' or text == 'مسح':
+        logging.info(f"تم اكتشاف أمر مسح: '{text}' - سيتم توجيهه للمعالج")
+        from modules.clear_commands import handle_clear_command
         await handle_clear_command(message, text)
         return
     
