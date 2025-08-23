@@ -619,6 +619,11 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await handle_music_search(message):
         return
     
+    # فحص تحميل الموسيقى
+    from modules.music_search import handle_music_download
+    if await handle_music_download(message):
+        return
+    
     # فحص إضافة موسيقى (للمديرين)
     if await handle_add_music_command(message):
         return

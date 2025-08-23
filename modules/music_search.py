@@ -179,7 +179,8 @@ async def handle_music_search(message: Message) -> bool:
         music_commands = [
             'ابحث عن اغنية', 'ابحث اغنية', 'بحث اغنية', 'بحث عن اغنية',
             'ابحث عن أغنية', 'ابحث أغنية', 'بحث أغنية', 'بحث عن أغنية',
-            'شغل اغنية', 'شغل أغنية', 'تشغيل اغنية', 'تشغيل أغنية'
+            'شغل اغنية', 'شغل أغنية', 'تشغيل اغنية', 'تشغيل أغنية',
+            'بحث'
         ]
         
         found_command = None
@@ -282,6 +283,144 @@ def is_valid_music_url(url: str) -> bool:
         return any(domain in url.lower() for domain in music_domains)
         
     except Exception:
+        return False
+
+
+async def download_youtube_audio(url: str, title: str) -> Optional[str]:
+    """تحميل الصوت من يوتيوب وإرجاع مسار الملف"""
+    try:
+        import yt_dlp
+        import tempfile
+        import os
+        
+        # إنشاء مجلد مؤقت للتحميل
+        temp_dir = tempfile.mkdtemp()
+        
+        # تنظيف اسم الملف
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:50]
+        
+        # خيارات التحميل
+        ydl_opts = {
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'outtmpl': os.path.join(temp_dir, f'{safe_title}.%(ext)s'),
+            'extractaudio': True,
+            'audioformat': 'mp3',
+            'audioquality': '192K',
+            'quiet': True,
+            'no_warnings': True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # تحميل الفيديو
+            info = ydl.extract_info(url, download=True)
+            
+            # العثور على الملف المحمل
+            for file in os.listdir(temp_dir):
+                if file.endswith(('.mp3', '.m4a', '.webm', '.ogg')):
+                    return os.path.join(temp_dir, file)
+        
+        return None
+        
+    except Exception as e:
+        logging.error(f"خطأ في تحميل الصوت: {e}")
+        return None
+
+
+async def handle_music_download(message: Message) -> bool:
+    """معالج تحميل الموسيقى"""
+    try:
+        if not message.text:
+            return False
+        
+        text = message.text.strip()
+        
+        # البحث عن أوامر التحميل
+        download_commands = [
+            'تحميل اغنية', 'تحميل أغنية', 'تحميل'
+        ]
+        
+        found_command = None
+        query = None
+        
+        for cmd in download_commands:
+            if text.startswith(cmd):
+                found_command = cmd
+                query = text[len(cmd):].strip()
+                break
+        
+        if not found_command or not query:
+            return False
+        
+        # إرسال رسالة انتظار
+        wait_msg = await message.reply("🎵 جاري البحث والتحميل...")
+        
+        # البحث في قاعدة البيانات المحلية أولاً
+        local_result = None
+        for song_name, url in MUSIC_DATABASE.items():
+            if song_name.lower() in query.lower() or query.lower() in song_name.lower():
+                local_result = {"name": song_name, "url": url, "title": song_name}
+                break
+        
+        if local_result:
+            # تحميل من قاعدة البيانات المحلية
+            file_path = await download_youtube_audio(local_result['url'], local_result['title'])
+            
+            if file_path and os.path.exists(file_path):
+                # إرسال الملف الصوتي
+                from aiogram.types import FSInputFile
+                audio_file = FSInputFile(file_path)
+                await message.reply_audio(audio=audio_file)
+                
+                # حذف الملف المؤقت
+                os.unlink(file_path)
+                # حذف المجلد المؤقت
+                import shutil
+                shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+            else:
+                await wait_msg.edit_text("❌ فشل في تحميل الملف الصوتي")
+            
+            # حذف رسالة الانتظار
+            try:
+                await wait_msg.delete()
+            except:
+                pass
+            
+            return True
+        
+        # البحث باستخدام YouTube API
+        video_info = await search_youtube_api(query)
+        
+        if video_info:
+            # تحميل الملف الصوتي
+            file_path = await download_youtube_audio(video_info['url'], video_info['title'])
+            
+            if file_path and os.path.exists(file_path):
+                # إرسال الملف الصوتي بدون نص إضافي
+                from aiogram.types import FSInputFile
+                audio_file = FSInputFile(file_path)
+                await message.reply_audio(audio=audio_file)
+                
+                # حذف الملف المؤقت
+                os.unlink(file_path)
+                # حذف المجلد المؤقت
+                import shutil
+                shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+            else:
+                await wait_msg.edit_text("❌ فشل في تحميل الملف الصوتي")
+            
+            # حذف رسالة الانتظار
+            try:
+                await wait_msg.delete()
+            except:
+                pass
+            
+            return True
+        else:
+            await wait_msg.edit_text(f"❌ لم أتمكن من العثور على: `{query}`")
+            return True
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج تحميل الموسيقى: {e}")
         return False
 
 
