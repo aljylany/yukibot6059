@@ -1284,6 +1284,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         await entertainment.handle_marriage(message, "زواج")
     elif text == 'طلاق':
         await entertainment.handle_marriage(message, "طلاق")
+    elif text == 'خلع':
+        await entertainment.handle_marriage(message, "خلع")
     elif text == 'موافقة':
         await entertainment.handle_marriage_response(message, "موافقة")
     elif text == 'رفض':

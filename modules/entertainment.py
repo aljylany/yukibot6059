@@ -207,7 +207,7 @@ async def handle_marriage(message: Message, action: str):
                     "1️⃣ رد على رسالة من تريد/ين الزواج منه/ها\n"
                     "2️⃣ اكتب: زواج [مبلغ المهر]\n\n"
                     "**مثال:** زواج 5000\n"
-                    "💰 المهر يجب أن يكون بين 1000 و 100000"
+                    "💰 المهر يجب أن يكون 1000 أو أكثر"
                 )
                 return
             
@@ -217,8 +217,8 @@ async def handle_marriage(message: Message, action: str):
                 await message.reply("❌ يرجى كتابة مبلغ مهر صحيح\n\n**مثال:** زواج 5000")
                 return
             
-            if dowry_amount < 1000 or dowry_amount > 100000:
-                await message.reply("❌ مبلغ المهر يجب أن يكون بين 1,000 و 100,000")
+            if dowry_amount < 1000:
+                await message.reply("❌ مبلغ المهر يجب أن يكون 1,000 أو أكثر")
                 return
             
             target_user = None
@@ -291,7 +291,7 @@ async def handle_marriage(message: Message, action: str):
                 f"🚫 أو **رفض** لرفض الطلب"
             )
         
-        elif action == "طلاق":
+        elif action == "طلاق" or action == "خلع":
             # البحث عن الزواج
             marriage = await execute_query(
                 "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
@@ -303,13 +303,107 @@ async def handle_marriage(message: Message, action: str):
                 await message.reply("😔 أنت لست متزوجاً!")
                 return
 
+            # تحديد الطرفين
+            user1_id = marriage['user1_id'] if isinstance(marriage, dict) else marriage[1]
+            user2_id = marriage['user2_id'] if isinstance(marriage, dict) else marriage[2]
+            
+            from database.operations import get_user, update_user_balance, add_transaction
+            
+            # جلب بيانات الطرفين
+            user1 = await get_user(user1_id)
+            user2 = await get_user(user2_id)
+            
+            if not user1 or not user2:
+                await message.reply("❌ خطأ في الحصول على بيانات الأطراف")
+                return
+            
+            # التحقق من أن كلا الطرفين لديهما 500 على الأقل
+            divorce_fee = 500
+            if user1['balance'] < divorce_fee:
+                user1_name = user1.get('first_name', f'المستخدم #{user1_id}')
+                await message.reply(f"❌ {user1_name} لا يملك {divorce_fee}$ للطلاق")
+                return
+                
+            if user2['balance'] < divorce_fee:
+                user2_name = user2.get('first_name', f'المستخدم #{user2_id}')
+                await message.reply(f"❌ {user2_name} لا يملك {divorce_fee}$ للطلاق")
+                return
+            
+            # معرف الشيخ
+            JUDGE_ID = 7155814194
+            JUDGE_USERNAME = "@Hacker20263"
+            JUDGE_NAME = "ردفان"
+            
+            # خصم 500 من كل طرف
+            new_user1_balance = user1['balance'] - divorce_fee
+            new_user2_balance = user2['balance'] - divorce_fee
+            
+            await update_user_balance(user1_id, new_user1_balance)
+            await update_user_balance(user2_id, new_user2_balance)
+            
+            # إعطاء الشيخ 1000 (500+500)
+            judge = await get_user(JUDGE_ID)
+            if judge:
+                new_judge_balance = judge['balance'] + (divorce_fee * 2)
+                await update_user_balance(JUDGE_ID, new_judge_balance)
+                
+                # إضافة معاملة للقاضي
+                await add_transaction(
+                    JUDGE_ID,
+                    f"أتعاب طلاق {user1.get('first_name', 'مستخدم')} و {user2.get('first_name', 'مستخدم')}",
+                    divorce_fee * 2,
+                    "divorce_fee"
+                )
+            
+            # إضافة المعاملات للطرفين
+            divorce_type = "طلاق" if action == "طلاق" else "خلع"
+            await add_transaction(
+                user1_id,
+                f"رسوم {divorce_type}",
+                -divorce_fee,
+                "divorce_fee"
+            )
+            await add_transaction(
+                user2_id,
+                f"رسوم {divorce_type}",
+                -divorce_fee,
+                "divorce_fee"
+            )
+
             # حذف الزواج
             await execute_query(
                 "DELETE FROM entertainment_marriages WHERE id = ?",
                 (marriage['id'] if isinstance(marriage, dict) else marriage[0],)
             )
             
-            await message.reply("💔 تم الطلاق بنجاح! وداعاً أيها الحب 😢")
+            from utils.helpers import format_number
+            divorce_message = (
+                f"💔 **تم {divorce_type} بنجاح!**\n\n"
+                f"👤 الطرف الأول: {user1.get('first_name', 'مستخدم')}\n"
+                f"👤 الطرف الثاني: {user2.get('first_name', 'مستخدم')}\n"
+                f"💰 رسوم {divorce_type}: {format_number(divorce_fee)}$ من كل طرف\n"
+                f"⚖️ أتعاب الشيخ: {format_number(divorce_fee * 2)}$\n\n"
+                f"🕌 **تم الطلاق بحضور فضيلة الشيخ:**\n"
+                f"📜 الشيخ {JUDGE_NAME} {JUDGE_USERNAME}\n\n"
+                f"😢 وداعاً أيها الحب!"
+            )
+            
+            await message.reply(divorce_message)
+            
+            # إشعار القاضي إذا كان متاح
+            if judge:
+                try:
+                    await message.bot.send_message(
+                        JUDGE_ID,
+                        f"⚖️ **تم {divorce_type} جديد بحضرتكم**\n\n"
+                        f"👤 الطرف الأول: {user1.get('first_name', 'مستخدم')}\n"
+                        f"👤 الطرف الثاني: {user2.get('first_name', 'مستخدم')}\n"
+                        f"💰 الأتعاب المستحقة: {format_number(divorce_fee * 2)}$\n"
+                        f"💳 رصيدكم الجديد: {format_number(new_judge_balance)}$\n\n"
+                        f"🌟 جزاكم الله خيراً على خدمة المسلمين"
+                    )
+                except:
+                    pass  # إذا فشل إرسال الإشعار
 
     except Exception as e:
         logging.error(f"خطأ في الزواج/الطلاق: {e}")
