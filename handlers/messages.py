@@ -98,6 +98,53 @@ async def handle_bank_selection_state(message: Message, state: FSMContext):
         await message.reply("❌ حدث خطأ أثناء اختيار البنك")
 
 
+# معالج خاص للنداء على الشيخ
+@router.message(F.text.contains("يا شيخ") | F.text.contains("يا الشيخ") | F.text.contains("ياشيخ"))
+@group_only
+async def handle_sheikh_call(message: Message):
+    """معالج النداء على الشيخ - يرسل إشعار خاص للشيخ"""
+    try:
+        SHEIKH_ID = 7155814194  # معرف الشيخ ردفان
+        
+        caller_name = message.from_user.first_name or "شخص"
+        group_name = message.chat.title or "مجموعة"
+        group_id = message.chat.id
+        
+        # إرسال رسالة للشيخ في الخاص
+        try:
+            await message.bot.send_message(
+                SHEIKH_ID,
+                f"🕌 **السلام عليكم فضيلة الشيخ**\n\n"
+                f"👤 **ينادي عليكم:** {caller_name}\n"
+                f"📱 **المعرف:** @{message.from_user.username if message.from_user.username else 'غير محدد'}\n"
+                f"🏠 **في المجموعة:** {group_name}\n"
+                f"🔗 **رابط المجموعة:** [انقر هنا](https://t.me/c/{str(group_id)[4:]}/{message.message_id})\n\n"
+                f"📝 **نص الرسالة:** {message.text}\n\n"
+                f"🌟 بارك الله فيكم وفي خدمتكم للمسلمين"
+            )
+            
+            # رد في المجموعة
+            await message.reply(
+                f"🕌 **تم إشعار فضيلة الشيخ**\n\n"
+                f"📨 تم إرسال إشعار خاص لفضيلة الشيخ الكريم\n"
+                f"⏰ سيرد عليكم في أقرب وقت إن شاء الله\n"
+                f"🤲 جزاكم الله خيراً لاحترامكم للشيخ المحترم"
+            )
+            
+        except Exception as send_error:
+            logging.error(f"فشل في إرسال الإشعار للشيخ: {send_error}")
+            await message.reply(
+                f"🕌 **تم استلام النداء**\n\n"
+                f"📞 لم أتمكن من الوصول للشيخ الآن\n"
+                f"💬 يمكنكم التواصل معه مباشرة: @Hacker20263\n"
+                f"🤲 بارك الله فيكم"
+            )
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالج نداء الشيخ: {e}")
+        await message.reply("❌ حدث خطأ أثناء النداء على الشيخ")
+
+
 @router.message(F.text)
 @user_required
 async def handle_text_messages(message: Message, state: FSMContext):
