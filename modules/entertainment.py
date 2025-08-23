@@ -303,9 +303,16 @@ async def handle_marriage(message: Message, action: str):
                 await message.reply("😔 أنت لست متزوجاً!")
                 return
 
-            # تحديد الطرفين
-            user1_id = marriage['user1_id'] if isinstance(marriage, dict) else marriage[1]
-            user2_id = marriage['user2_id'] if isinstance(marriage, dict) else marriage[2]
+            # تحديد الطرفين - الآن نضمن أن نحصل على المعرفات بشكل صحيح
+            if isinstance(marriage, dict):
+                user1_id = marriage['user1_id']
+                user2_id = marriage['user2_id']
+                marriage_id = marriage['id']
+            else:
+                # إذا كانت النتيجة tuple أو list
+                marriage_id = marriage[0]
+                user1_id = marriage[1]
+                user2_id = marriage[2]
             
             from database.operations import get_user, update_user_balance, add_transaction
             
@@ -373,7 +380,7 @@ async def handle_marriage(message: Message, action: str):
             # حذف الزواج
             await execute_query(
                 "DELETE FROM entertainment_marriages WHERE id = ?",
-                (marriage['id'] if isinstance(marriage, dict) else marriage[0],)
+                (marriage_id,)
             )
             
             from utils.helpers import format_number
@@ -421,12 +428,20 @@ async def show_marriage_status(message: Message):
             fetch_one=True
         )
         
+        # تسجيل لمراقبة حالة الزواج
+        logging.info(f"البحث عن زواج للمستخدم {user_id} في المجموعة {message.chat.id}: {marriage}")
+        
         if not marriage:
             await message.reply("💔 أنت أعزب/عزباء حالياً")
             return
 
         # تحديد الشريك
-        partner_id = marriage['user2_id'] if marriage['user1_id'] == user_id else marriage['user1_id']
+        if isinstance(marriage, dict):
+            partner_id = marriage['user2_id'] if marriage['user1_id'] == user_id else marriage['user1_id']
+        else:
+            # إذا كانت النتيجة tuple أو list
+            partner_id = marriage[2] if marriage[1] == user_id else marriage[1]
+        
         partner = await get_user(partner_id)
         
         if partner:
@@ -577,10 +592,13 @@ async def handle_marriage_response(message: Message, response_type: str):
             )
             
             # إجراء الزواج
-            await execute_query(
+            marriage_saved = await execute_query(
                 "INSERT INTO entertainment_marriages (user1_id, user2_id, chat_id, dowry_amount, judge_commission, married_at) VALUES (?, ?, ?, ?, ?, ?)",
                 (proposer_id, user_id, message.chat.id, dowry_amount, judge_commission, datetime.now().isoformat())
             )
+            
+            # تسجيل لوحظة حفظ الزواج
+            logging.info(f"تم حفظ الزواج بين {proposer_id} و {user_id} في المجموعة {message.chat.id}: {marriage_saved}")
             
             # تحديث حالة الطلب
             await execute_query(
