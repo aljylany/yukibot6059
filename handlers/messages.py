@@ -586,6 +586,11 @@ async def handle_general_message(message: Message, state: FSMContext):
     #     await handle_simple_progress_command(message)
     #     return
     
+    # فحص السباب والكتم التلقائي (أولوية عالية جداً)
+    from modules.profanity_filter import handle_profanity_detection
+    if await handle_profanity_detection(message):
+        return
+    
     # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)
     from modules.permission_handler import handle_permission_check
     if await handle_permission_check(message):
