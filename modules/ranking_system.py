@@ -102,7 +102,7 @@ async def show_ranking_list(message: Message):
             )
             return
             
-        ranking_text = "🏆 **قائمة التصنيف الذهبي**\n\n"
+        ranking_text = "🏆 **التصنيف الذهبي**\n\n"
         
         medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
         
@@ -110,15 +110,8 @@ async def show_ranking_list(message: Message):
             rank_icon = medals[i] if i < len(medals) else f"{i+1}️⃣"
             name = player.get('first_name', 'غير معروف')
             gold_points = player.get('gold_points', 0)
-            current_money = player.get('balance', 0) + player.get('bank_balance', 0)
             
-            ranking_text += (
-                f"{rank_icon} **{name}**\n"
-                f"   💰 النقاط الذهبية: {gold_points:,}\n"
-                f"   🪙 الأموال الحالية: {current_money:,}\n\n"
-            )
-        
-        ranking_text += f"\n💡 **اجمع {MAX_MONEY_LIMIT:,} كوين لتحصل على {GOLD_POINTS_PER_RESET} نقطة ذهبية!**"
+            ranking_text += f"{rank_icon} **{name}** - {gold_points:,} نقطة\n"
         
         await message.reply(ranking_text)
         
