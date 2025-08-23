@@ -569,7 +569,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         return
     
     # فحص أوامر المستوى أولاً
-    if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp", "تفاعلي"]):
+    if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp"]):
         try:
             from modules.enhanced_xp_handler import handle_level_command
             await handle_level_command(message)
