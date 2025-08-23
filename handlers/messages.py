@@ -611,6 +611,11 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await handle_custom_commands_message(message):
         return
     
+    # فحص أوامر المسح قبل الردود المخصصة
+    if text.startswith('مسح ') or text == 'مسح بالرد' or text == 'مسح':
+        await handle_clear_command(message, text)
+        return
+    
     # فحص الردود المخصصة
     from modules.custom_replies import check_for_custom_replies, handle_show_custom_replies
     if await check_for_custom_replies(message):
@@ -991,9 +996,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'تنزيل الكل':
         await admin_management.handle_rank_promotion(message, "", "تنزيل الكل")
     
-    # === أوامر المسح ===
-    elif text.startswith('مسح ') or text == 'مسح بالرد':
-        await handle_clear_command(message, text)
+    # === أوامر المسح === (تم نقلها لأعلى)
     
     # === أوامر الطرد والحظر ===
     elif text == 'حظر' or text.startswith('حظر '):
