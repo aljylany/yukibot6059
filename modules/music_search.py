@@ -215,13 +215,58 @@ async def handle_music_search(message: Message) -> bool:
         video_info = await search_youtube_api(query)
         
         if video_info:
-            await message.reply(
-                f"🎵 **تم العثور على الأغنية!**\n\n"
-                f"🎤 **العنوان:** {video_info['title']}\n"
-                f"📺 **القناة:** {video_info['channel']}\n"
-                f"📝 **الوصف:** {video_info['description']}\n"
-                f"\n🔗 **الرابط:** {video_info['url']}"
-            )
+            # إرسال رسالة انتظار
+            wait_msg = await message.reply("🎥 جاري البحث وتحميل الفيديو...")
+            
+            # تحميل الفيديو
+            file_path = await download_youtube_video(video_info['url'], video_info['title'])
+            
+            if file_path and os.path.exists(file_path):
+                # إرسال الفيديو
+                from aiogram.types import FSInputFile
+                video_file = FSInputFile(file_path)
+                
+                try:
+                    await message.reply_video(
+                        video=video_file,
+                        caption=f"🎥 **{video_info['title']}**\n📺 {video_info['channel']}"
+                    )
+                    
+                    # حذف الملف المؤقت
+                    import os, shutil
+                    os.unlink(file_path)
+                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+                    
+                except Exception as send_error:
+                    logging.error(f"خطأ في إرسال الفيديو: {send_error}")
+                    await wait_msg.edit_text("❌ الفيديو كبير جداً للإرسال. جاري إرسال الرابط...")
+                    await message.reply(
+                        f"🎵 **تم العثور على الأغنية!**\n\n"
+                        f"🎤 **العنوان:** {video_info['title']}\n"
+                        f"📺 **القناة:** {video_info['channel']}\n"
+                        f"📝 **الوصف:** {video_info['description']}\n"
+                        f"\n🔗 **الرابط:** {video_info['url']}"
+                    )
+                    # حذف الملف المؤقت
+                    import os, shutil
+                    os.unlink(file_path)
+                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+            else:
+                await wait_msg.edit_text("❌ فشل في تحميل الفيديو. جاري إرسال الرابط...")
+                await message.reply(
+                    f"🎵 **تم العثور على الأغنية!**\n\n"
+                    f"🎤 **العنوان:** {video_info['title']}\n"
+                    f"📺 **القناة:** {video_info['channel']}\n"
+                    f"📝 **الوصف:** {video_info['description']}\n"
+                    f"\n🔗 **الرابط:** {video_info['url']}"
+                )
+            
+            # حذف رسالة الانتظار
+            try:
+                await wait_msg.delete()
+            except:
+                pass
+            
             return True
         
         # البحث الاحتياطي في المنصات الخارجية
@@ -323,6 +368,43 @@ async def download_youtube_audio(url: str, title: str) -> Optional[str]:
         
     except Exception as e:
         logging.error(f"خطأ في تحميل الصوت: {e}")
+        return None
+
+
+async def download_youtube_video(url: str, title: str) -> Optional[str]:
+    """تحميل الفيديو من يوتيوب وإرجاع مسار الملف"""
+    try:
+        import yt_dlp
+        import tempfile
+        import os
+        
+        # إنشاء مجلد مؤقت للتحميل
+        temp_dir = tempfile.mkdtemp()
+        
+        # تنظيف اسم الملف
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:50]
+        
+        # خيارات التحميل للفيديو
+        ydl_opts = {
+            'format': 'best[height<=720][ext=mp4]/best[ext=mp4]/best',
+            'outtmpl': os.path.join(temp_dir, f'{safe_title}.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # تحميل الفيديو
+            info = ydl.extract_info(url, download=True)
+            
+            # العثور على الملف المحمل
+            for file in os.listdir(temp_dir):
+                if file.endswith(('.mp4', '.mkv', '.webm', '.avi')):
+                    return os.path.join(temp_dir, file)
+        
+        return None
+        
+    except Exception as e:
+        logging.error(f"خطأ في تحميل الفيديو: {e}")
         return None
 
 
