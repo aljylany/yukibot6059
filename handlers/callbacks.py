@@ -29,6 +29,17 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_whisper_callback(callback)
             return
         
+        # معالجة callbacks الترقية والرتب
+        if (data.startswith('promote_') or data == 'cancel_promotion' or 
+            data == 'show_entertainment_ranks' or data == 'show_all_admin_ranks' or 
+            data == 'show_all_ent_ranks'):
+            from handlers.admin_callbacks import handle_promotion_callback, handle_rank_info_callback
+            if data.startswith('promote_') or data == 'cancel_promotion' or data == 'show_entertainment_ranks':
+                await handle_promotion_callback(callback, state)
+            else:
+                await handle_rank_info_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         

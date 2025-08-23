@@ -256,15 +256,32 @@ class RankManager:
             
             if ranks and isinstance(ranks, (list, tuple)):
                 for rank in ranks:
-                    if isinstance(rank, tuple) and len(rank) >= 3:
-                        user_id = int(rank[0]) if rank[0] is not None else None
-                        chat_id = int(rank[1]) if rank[1] is not None else None
-                        rank_name = str(rank[2]) if rank[2] is not None else None
-                    elif hasattr(rank, 'get'):
-                        user_id = rank.get('user_id')
-                        chat_id = rank.get('chat_id')
-                        rank_name = rank.get('rank_name')
-                    else:
+                    try:
+                        # التعامل مع dict أو Row objects من قاعدة البيانات
+                        if isinstance(rank, dict):
+                            user_id = rank.get('user_id')
+                            chat_id = rank.get('chat_id') 
+                            rank_name = rank.get('rank_name')
+                        elif hasattr(rank, 'user_id'):  # Row object
+                            user_id = rank.user_id
+                            chat_id = rank.chat_id
+                            rank_name = rank.rank_name
+                        elif isinstance(rank, (tuple, list)) and len(rank) >= 3:
+                            user_id = rank[0] if rank[0] is not None else None
+                            chat_id = rank[1] if rank[1] is not None else None
+                            rank_name = rank[2] if rank[2] is not None else None
+                        else:
+                            continue
+                        
+                        # تحويل إلى الأنواع الصحيحة
+                        if user_id is not None:
+                            user_id = int(user_id)
+                        if chat_id is not None:
+                            chat_id = int(chat_id)
+                        if rank_name is not None:
+                            rank_name = str(rank_name)
+                            
+                    except (ValueError, TypeError, AttributeError):
                         continue
                     
                     if user_id and chat_id and rank_name:

@@ -38,7 +38,7 @@ async def mute_user(message: Message):
         
         # فحص إذا كان المستخدم المستهدف مشرف أعلى
         target_rank = rank_manager.get_user_rank(target_user.id, message.chat.id)
-        user_rank = rank_manager.get_user_rank(message.from_user.id, message.chat.id)
+        user_rank = rank_manager.get_user_rank(message.from_user.id, message.chat.id) if message.from_user else None
         
         if (target_rank and user_rank and 
             target_rank.rank_type == RankType.ADMINISTRATIVE and
@@ -49,12 +49,12 @@ async def mute_user(message: Message):
         # تنفيذ الكتم (هنا يمكن إضافة منطق الكتم الفعلي)
         await message.reply(
             f"✅ تم كتم المستخدم {target_user.first_name}\n"
-            f"👤 بواسطة: {message.from_user.first_name}\n"
+            f"👤 بواسطة: {message.from_user.first_name if message.from_user else 'مجهول'}\n"
             f"🔇 المستخدم لن يتمكن من إرسال الرسائل"
         )
         
         # تسجيل العملية
-        logging.info(f"تم كتم المستخدم {target_user.id} بواسطة {message.from_user.id}")
+        logging.info(f"تم كتم المستخدم {target_user.id} بواسطة {message.from_user.id if message.from_user else 'مجهول'}")
         
     except Exception as e:
         logging.error(f"خطأ في كتم المستخدم: {e}")
@@ -86,11 +86,11 @@ async def kick_user(message: Message):
         
         await message.reply(
             f"✅ تم طرد المستخدم {target_user.first_name}\n"
-            f"👤 بواسطة: {message.from_user.first_name}\n"
+            f"👤 بواسطة: {message.from_user.first_name if message.from_user else 'مجهول'}\n"
             f"🚪 يمكن للمستخدم العودة عبر الرابط"
         )
         
-        logging.info(f"تم طرد المستخدم {target_user.id} بواسطة {message.from_user.id}")
+        logging.info(f"تم طرد المستخدم {target_user.id} بواسطة {message.from_user.id if message.from_user else 'مجهول'}")
         
     except Exception as e:
         logging.error(f"خطأ في طرد المستخدم: {e}")
@@ -122,11 +122,11 @@ async def ban_user(message: Message):
         
         await message.reply(
             f"🚫 تم حظر المستخدم {target_user.first_name}\n"
-            f"👤 بواسطة: {message.from_user.first_name}\n"
+            f"👤 بواسطة: {message.from_user.first_name if message.from_user else 'مجهول'}\n"
             f"⛔ المستخدم محظور نهائياً من المجموعة"
         )
         
-        logging.info(f"تم حظر المستخدم {target_user.id} بواسطة {message.from_user.id}")
+        logging.info(f"تم حظر المستخدم {target_user.id} بواسطة {message.from_user.id if message.from_user else 'مجهول'}")
         
     except Exception as e:
         logging.error(f"خطأ في حظر المستخدم: {e}")
@@ -188,7 +188,7 @@ async def handle_rank_selection(message: Message, state: FSMContext):
             await state.clear()
             return
         
-        rank_name = message.text.strip()
+        rank_name = message.text.strip() if message.text else ""
         
         # البحث عن الرتبة بالاسم المعروض أو الاسم الأصلي
         selected_rank = None
@@ -234,29 +234,33 @@ async def handle_promotion_reason(message: Message, state: FSMContext):
         target_user_name = data.get('target_user_name')
         selected_rank = data.get('selected_rank')
         
-        reason = message.text.strip() if message.text.strip().lower() != 'تخطي' else None
+        reason_text = message.text.strip() if message.text else ""
+        reason = reason_text if reason_text.lower() != 'تخطي' else None
         
         # تنفيذ الترقية
-        success = await rank_manager.promote_user(
-            target_user_id, 
-            message.chat.id, 
-            selected_rank, 
-            message.from_user.id,
-            reason
-        )
-        
-        if success:
-            rank_info = ALL_RANKS[selected_rank]
-            await message.reply(
-                f"🎉 **تم ترقية المستخدم بنجاح!**\n\n"
-                f"👤 **المستخدم:** {target_user_name}\n"
-                f"🏆 **الرتبة الجديدة:** {rank_info.display_name}\n"
-                f"👨‍💼 **تم بواسطة:** {message.from_user.first_name}\n"
-                f"📝 **السبب:** {reason if reason else 'لم يتم تحديد سبب'}\n\n"
-                f"📋 **صلاحيات الرتبة:**\n{rank_info.description}"
+        if target_user_id and selected_rank and message.from_user:
+            success = await rank_manager.promote_user(
+                target_user_id, 
+                message.chat.id, 
+                selected_rank, 
+                message.from_user.id,
+                reason
             )
+            
+            if success:
+                rank_info = ALL_RANKS[selected_rank]
+                await message.reply(
+                    f"🎉 **تم ترقية المستخدم بنجاح!**\n\n"
+                    f"👤 **المستخدم:** {target_user_name}\n"
+                    f"🏆 **الرتبة الجديدة:** {rank_info.display_name}\n"
+                    f"👨‍💼 **تم بواسطة:** {message.from_user.first_name}\n"
+                    f"📝 **السبب:** {reason if reason else 'لم يتم تحديد سبب'}\n\n"
+                    f"📋 **صلاحيات الرتبة:**\n{rank_info.description}"
+                )
+            else:
+                await message.reply("❌ فشل في ترقية المستخدم، يرجى المحاولة لاحقاً")
         else:
-            await message.reply("❌ فشل في ترقية المستخدم، يرجى المحاولة لاحقاً")
+            await message.reply("❌ معلومات غير مكتملة للترقية")
         
         await state.clear()
         

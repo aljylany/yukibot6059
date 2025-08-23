@@ -14,6 +14,7 @@ from database.operations import get_or_create_user, update_user_activity
 from modules import banks, real_estate, theft, stocks, investment, ranking, administration, farm, castle
 from utils.decorators import user_required, admin_required, group_only
 from config.settings import SYSTEM_MESSAGES, ADMIN_IDS, NOTIFICATION_CHANNEL
+from handlers.advanced_admin_handler import handle_advanced_admin_commands
 
 router = Router()
 

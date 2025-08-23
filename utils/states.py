@@ -241,3 +241,11 @@ class CustomReplyStates(StatesGroup):
     waiting_for_keyword = State()
     waiting_for_response = State()
     waiting_for_scope = State()
+
+
+class RankManagementStates(StatesGroup):
+    """حالات إدارة الرتب المتقدمة"""
+    waiting_for_rank_name = State()
+    waiting_for_reason = State()
+    waiting_for_target_user = State()
+    waiting_for_confirmation = State()

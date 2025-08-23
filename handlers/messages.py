@@ -131,6 +131,9 @@ async def handle_text_messages(message: Message, state: FSMContext):
             await handle_castle_message(message, state, current_state)
         elif current_state.startswith("Admin"):
             await handle_admin_message(message, state, current_state)
+        elif current_state.startswith("RankManagement"):
+            from handlers.advanced_admin_handler import handle_advanced_admin_commands
+            await handle_advanced_admin_commands(message, state)
         elif current_state.startswith("CustomCommands"):
             await handle_custom_commands_states(message, state, current_state)
         elif current_state.startswith("CustomReply"):
@@ -544,6 +547,11 @@ async def attempt_theft_on_target(message: Message, thief: dict, target: dict, t
 
 async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
+    # التحقق من الأوامر الإدارية المتقدمة أولاً
+    from handlers.advanced_admin_handler import handle_advanced_admin_commands
+    if await handle_advanced_admin_commands(message, state):
+        return  # تم التعامل مع الأمر الإداري
+    
     text = message.text.lower() if message.text else ""
     
     # تتبع عدد الرسائل الحقيقي في المجموعات
