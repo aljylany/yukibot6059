@@ -148,12 +148,17 @@ async def show_target_user_info(message: Message):
             level_name = get_admin_level_name(admin_level)
             info_text += f"\n⭐ **الرتبة:** {level_name}"
             
+            # الحصول على عدد رسائل المستخدم في المجموعة
+            from database.operations import get_user_message_count
+            message_count = await get_user_message_count(target_user.id, chat.id)
+            info_text += f"\n📊 **عدد الرسائل:** {message_count}"
+            
             # إضافة تمييز خاص للأسياد
             if target_user.id in MASTERS:
                 info_text += "\n\n👑 **مستخدم مميز: السيد**"
-        
-        # عدد الرسائل (افتراضي للآن)
-        info_text += f"\n📊 **عدد الرسائل:** غير متوفر"
+        else:
+            # في المحادثات الخاصة لا يمكن حساب الرسائل
+            info_text += f"\n📊 **عدد الرسائل:** غير متوفر في المحادثات الخاصة"
         
         await message.reply(info_text)
         

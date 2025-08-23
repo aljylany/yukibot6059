@@ -218,6 +218,46 @@ async def execute_query(query: str, params: tuple = (), fetch_one: bool = False,
         return None
 
 
+async def get_user_message_count(user_id: int, chat_id: int) -> int:
+    """الحصول على عدد رسائل المستخدم في المجموعة"""
+    try:
+        # حساب عدد الأنشطة من نوع message أو daily_active للمستخدم في المجموعة
+        result = await execute_query(
+            """
+            SELECT COUNT(*) as message_count 
+            FROM activity_logs 
+            WHERE user_id = ? AND chat_id = ? 
+            AND (activity_type LIKE '%message%' OR activity_type = 'daily_active')
+            """,
+            (user_id, chat_id),
+            fetch_one=True
+        )
+        
+        if result and 'message_count' in result:
+            return result['message_count']
+        
+        # إذا لم نجد بيانات في activity_logs، نحاول من daily_stats
+        daily_result = await execute_query(
+            """
+            SELECT SUM(messages_count) as total_messages 
+            FROM daily_stats 
+            WHERE chat_id = ?
+            """,
+            (chat_id,),
+            fetch_one=True
+        )
+        
+        if daily_result and daily_result.get('total_messages'):
+            # تقدير تقريبي لعدد رسائل المستخدم (لا يمكن الحصول على عدد دقيق من daily_stats)
+            return max(1, int(daily_result['total_messages'] * 0.1))  # تقدير 10% من إجمالي الرسائل
+        
+        return 0
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على عدد رسائل المستخدم {user_id} في المجموعة {chat_id}: {e}")
+        return 0
+
+
 async def get_all_group_members(group_id: int) -> list:
     """الحصول على جميع الأعضاء المسجلين في المجموعة"""
     try:
