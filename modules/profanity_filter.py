@@ -79,20 +79,105 @@ BANNED_VARIATIONS = [
 # دمج جميع الكلمات المحظورة
 ALL_BANNED_WORDS = BANNED_WORDS + BANNED_VARIATIONS
 
+def clean_text_for_profanity_check(text: str) -> str:
+    """
+    تنظيف النص لإزالة التشفير والتمويه
+    """
+    if not text:
+        return ""
+    
+    # تحويل لأحرف صغيرة
+    cleaned = text.lower().strip()
+    
+    # إزالة المسافات الزائدة
+    cleaned = ' '.join(cleaned.split())
+    
+    # إزالة الرموز الشائعة المستخدمة للتمويه
+    symbols_to_remove = ['*', '_', '-', '+', '=', '|', '\\', '/', '.', ',', '!', '@', '#', '$', '%', '^', '&', '(', ')', '[', ']', '{', '}', '<', '>', '?', '~', '`', '"', "'"]
+    for symbol in symbols_to_remove:
+        cleaned = cleaned.replace(symbol, '')
+    
+    # إزالة المسافات التي قد تكون بين الحروف
+    cleaned = cleaned.replace(' ', '')
+    
+    # تحويل الأرقام الشائعة إلى حروف
+    number_replacements = {
+        '0': 'o',
+        '1': 'i',
+        '2': 'z',
+        '3': 'e',
+        '4': 'a',
+        '5': 's',
+        '6': 'g',
+        '7': 't',
+        '8': 'b',
+        '9': 'g'
+    }
+    
+    for number, letter in number_replacements.items():
+        cleaned = cleaned.replace(number, letter)
+    
+    # إزالة التكرارات الزائدة للحروف (مثل كككك -> كك)
+    import re
+    cleaned = re.sub(r'(.)\1{2,}', r'\1\1', cleaned)
+    
+    return cleaned
+
+def generate_text_variations(text: str) -> list:
+    """
+    توليد تنويعات مختلفة للنص للفحص
+    """
+    variations = [text]
+    
+    # إضافة النص المنظف
+    cleaned = clean_text_for_profanity_check(text)
+    if cleaned and cleaned != text:
+        variations.append(cleaned)
+    
+    # إزالة المسافات فقط
+    no_spaces = text.replace(' ', '')
+    if no_spaces != text:
+        variations.append(no_spaces)
+    
+    # إزالة الرموز الأساسية فقط
+    basic_clean = text
+    for symbol in ['*', '_', '-', '.']:
+        basic_clean = basic_clean.replace(symbol, '')
+    if basic_clean != text:
+        variations.append(basic_clean)
+    
+    return list(set(variations))  # إزالة التكرارات
+
 async def check_for_profanity(message: Message) -> bool:
     """
-    فحص الرسالة للكشف عن السباب
+    فحص الرسالة للكشف عن السباب مع كشف التشفير والتمويه
     Returns True إذا وُجد سباب
     """
     if not message.text:
         return False
     
-    text = message.text.lower().strip()
+    # الحصول على تنويعات النص للفحص
+    text_variations = generate_text_variations(message.text.lower().strip())
     
-    # فحص كل كلمة محظورة
+    # فحص كل تنويعة مع كل كلمة محظورة
+    for text_variant in text_variations:
+        for banned_word in ALL_BANNED_WORDS:
+            if banned_word.lower() in text_variant:
+                logging.info(f"تم كشف سباب: '{banned_word}' في النص المنظف: '{text_variant}' (النص الأصلي: '{message.text[:50]}...')")
+                return True
+    
+    # فحص إضافي للكلمات المقسمة بمسافات أو رموز
+    original_text = message.text.lower()
     for banned_word in ALL_BANNED_WORDS:
-        if banned_word.lower() in text:
-            logging.info(f"تم كشف سباب: '{banned_word}' في النص: '{text[:50]}...'")
+        # تحويل الكلمة المحظورة إلى نمط regex للبحث مع رموز التمويه
+        import re
+        word_pattern = ""
+        for char in banned_word.lower():
+            word_pattern += char + r"[\*\_\-\.\s\+\=\|\\\/\,\!\@\#\$\%\^\&\(\)\[\]\{\}\<\>\?\~\`\"\'0-9]*"
+        
+        # البحث عن النمط في النص الأصلي
+        if re.search(word_pattern, original_text):
+            logging.info(f"تم كشف سباب مُشفر: '{banned_word}' في النص: '{message.text[:50]}...'")
             return True
     
     return False
