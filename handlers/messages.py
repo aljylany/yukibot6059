@@ -992,7 +992,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         await admin_management.handle_rank_promotion(message, "", "تنزيل الكل")
     
     # === أوامر المسح ===
-    elif text.startswith('مسح '):
+    elif text.startswith('مسح ') or text == 'مسح بالرد':
         await handle_clear_command(message, text)
     
     # === أوامر الطرد والحظر ===

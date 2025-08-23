@@ -211,27 +211,194 @@ async def clear_all_data(message: Message):
         await message.reply("❌ حدث خطأ أثناء مسح البيانات")
 
 
-async def clear_messages(message: Message, count: int = 1):
-    """مسح عدد من الرسائل"""
+@admin_required
+async def handle_clear_command(message: Message, text: str):
+    """معالج أوامر المسح الرئيسي"""
+    try:
+        text = text.strip()
+        
+        # مسح بالرد - حذف الرسالة المردود عليها
+        if (text == "مسح بالرد" or text == "مسح") and message.reply_to_message:
+            await delete_replied_message(message)
+            return
+        
+        # مسح عدد معين من الرسائل
+        if text.startswith("مسح ") and len(text.split()) == 2:
+            try:
+                count = int(text.split()[1])
+                await delete_multiple_messages(message, count)
+                return
+            except ValueError:
+                pass
+        
+        # أوامر مسح البيانات المختلفة
+        if text == "مسح المحظورين":
+            await clear_banned(message)
+        elif text == "مسح المكتومين":
+            await clear_muted(message)
+        elif text == "مسح قائمة المنع" or text == "مسح قائمه المنع":
+            await clear_ban_words(message)
+        elif text == "مسح الردود":
+            await clear_replies(message)
+        elif text == "مسح الاوامر المضافه" or text == "مسح الأوامر المضافة":
+            await clear_custom_commands(message)
+        elif text == "مسح الايدي" or text == "مسح الأيدي":
+            await clear_id_template(message)
+        elif text == "مسح الترحيب":
+            await clear_welcome(message)
+        elif text == "مسح الرابط":
+            await clear_link(message)
+        elif text == "مسح الكل":
+            await clear_all_data(message)
+        else:
+            await message.reply("""
+❓ **أوامر المسح المتاحة:**
+
+🗑️ **مسح الرسائل:**
+• `مسح بالرد` - حذف الرسالة المردود عليها
+• `مسح [العدد]` - حذف عدد معين من الرسائل (1-100)
+
+📋 **مسح البيانات:**
+• `مسح المحظورين` - مسح قائمة المحظورين
+• `مسح المكتومين` - مسح قائمة المكتومين
+• `مسح قائمة المنع` - مسح الكلمات المحظورة
+• `مسح الردود` - مسح الردود المخصصة
+• `مسح الاوامر المضافه` - مسح الأوامر المخصصة
+• `مسح الايدي` - مسح قالب الهوية
+• `مسح الترحيب` - مسح رسالة الترحيب
+• `مسح الرابط` - مسح رابط المجموعة
+• `مسح الكل` - مسح جميع البيانات
+
+📝 **مثال:** للرد على رسالة واكتب `مسح بالرد`
+            """)
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالج أوامر المسح: {e}")
+        await message.reply("❌ حدث خطأ في تنفيذ أمر المسح")
+
+
+@admin_required
+async def delete_replied_message(message: Message):
+    """حذف الرسالة المردود عليها"""
+    try:
+        if not message.reply_to_message:
+            await message.reply("❌ يجب الرد على رسالة لحذفها")
+            return
+        
+        # التحقق من صلاحيات البوت
+        try:
+            bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            if bot_member.status not in ['administrator', 'creator']:
+                await message.reply("❌ البوت يحتاج صلاحيات إدارية لحذف الرسائل")
+                return
+            
+            if not bot_member.can_delete_messages:
+                await message.reply("❌ البوت لا يملك صلاحية حذف الرسائل")
+                return
+        
+        except Exception as perm_error:
+            logging.error(f"خطأ في فحص الصلاحيات: {perm_error}")
+            await message.reply("❌ لا يمكن فحص صلاحيات البوت")
+            return
+        
+        # حذف الرسالة المردود عليها
+        try:
+            await message.bot.delete_message(
+                chat_id=message.chat.id,
+                message_id=message.reply_to_message.message_id
+            )
+            
+            # حذف رسالة الأمر أيضاً
+            try:
+                await message.bot.delete_message(
+                    chat_id=message.chat.id,
+                    message_id=message.message_id
+                )
+            except:
+                pass  # لا نفشل إذا لم نتمكن من حذف رسالة الأمر
+                
+            # إرسال تأكيد مؤقت
+            confirmation = await message.reply("✅ تم حذف الرسالة بنجاح")
+            
+            # حذف رسالة التأكيد بعد 3 ثوان
+            import asyncio
+            await asyncio.sleep(3)
+            try:
+                await confirmation.delete()
+            except:
+                pass
+                
+        except Exception as delete_error:
+            if "Bad Request: message to delete not found" in str(delete_error):
+                await message.reply("❌ الرسالة محذوفة مسبقاً أو لا يمكن العثور عليها")
+            elif "Bad Request: not enough rights" in str(delete_error):
+                await message.reply("❌ البوت لا يملك صلاحيات كافية لحذف هذه الرسالة")
+            else:
+                await message.reply("❌ فشل في حذف الرسالة")
+                logging.error(f"خطأ في حذف الرسالة: {delete_error}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في حذف الرسالة المردود عليها: {e}")
+        await message.reply("❌ حدث خطأ أثناء حذف الرسالة")
+
+
+@admin_required
+async def delete_multiple_messages(message: Message, count: int):
+    """حذف عدد معين من الرسائل"""
     try:
         if count <= 0 or count > 100:
             await message.reply("❌ يجب أن يكون العدد بين 1 و 100")
             return
+        
+        # التحقق من صلاحيات البوت
+        try:
+            bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            if bot_member.status not in ['administrator', 'creator']:
+                await message.reply("❌ البوت يحتاج صلاحيات إدارية لحذف الرسائل")
+                return
             
-        # في البوتات العادية، لا يمكن مسح رسائل المستخدمين
-        # لكن يمكن توضيح كيفية المسح للإدارة
-        await message.reply(f"""
-🗑️ **طلب مسح {count} رسالة**
-
-⚠️ **ملاحظة:** البوتات العادية لا تستطيع مسح رسائل المستخدمين
-
-🔧 **للإدارة:**
-• اختر الرسائل المراد مسحها يدوياً
-• أو استخدم الأدوات الإدارية في تيليجرام
-
-💡 **نصيحة:** يمكن للبوت مسح رسائله الخاصة فقط
-        """)
+            if not bot_member.can_delete_messages:
+                await message.reply("❌ البوت لا يملك صلاحية حذف الرسائل")
+                return
+        
+        except Exception as perm_error:
+            logging.error(f"خطأ في فحص الصلاحيات: {perm_error}")
+            await message.reply("❌ لا يمكن فحص صلاحيات البوت")
+            return
+        
+        # حذف الرسائل
+        current_message_id = message.message_id
+        deleted_count = 0
+        
+        # حذف الرسائل من الأحدث للأقدم
+        for i in range(count + 1):  # +1 لتضمين رسالة الأمر
+            try:
+                await message.bot.delete_message(
+                    chat_id=message.chat.id,
+                    message_id=current_message_id - i
+                )
+                deleted_count += 1
+            except Exception as delete_error:
+                if "message to delete not found" not in str(delete_error):
+                    logging.error(f"خطأ في حذف الرسالة {current_message_id - i}: {delete_error}")
+                continue
+        
+        # إرسال تأكيد مؤقت
+        confirmation = await message.reply(f"✅ تم حذف {deleted_count} رسالة بنجاح")
+        
+        # حذف رسالة التأكيد بعد 5 ثوان
+        import asyncio
+        await asyncio.sleep(5)
+        try:
+            await confirmation.delete()
+        except:
+            pass
         
     except Exception as e:
-        logging.error(f"خطأ في مسح الرسائل: {e}")
-        await message.reply("❌ حدث خطأ أثناء معالجة طلب المسح")
+        logging.error(f"خطأ في حذف الرسائل المتعددة: {e}")
+        await message.reply("❌ حدث خطأ أثناء حذف الرسائل")
+
+
+async def clear_messages(message: Message, count: int = 1):
+    """مسح عدد من الرسائل - وظيفة مساعدة للتوافق مع الأنظمة الأخرى"""
+    await delete_multiple_messages(message, count)
