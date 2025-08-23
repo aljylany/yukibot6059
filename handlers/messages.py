@@ -81,7 +81,7 @@ async def handle_bank_selection_state(message: Message, state: FSMContext):
         current_state = await state.get_state()
         
         # التحقق من أن المستخدم في حالة اختيار البنك فقط
-        if current_state == "BanksStates:waiting_bank_selection":
+        if current_state == BanksStates.waiting_bank_selection.state:
             # التحقق من أن الرسالة في مجموعة وليس في الخاص
             if message.chat.type == 'private':
                 await message.reply("🚫 **هذا الأمر متاح في المجموعات فقط!**")
@@ -112,7 +112,7 @@ async def handle_text_messages(message: Message, state: FSMContext):
         
         # معالجة الرسائل حسب الحالة
         if current_state.startswith("Banks"):
-            if current_state == "BanksStates:waiting_bank_selection":
+            if current_state == BanksStates.waiting_bank_selection.state:
                 from modules.manual_registration import handle_bank_selection
                 await handle_bank_selection(message, state)
             else:
@@ -138,9 +138,9 @@ async def handle_text_messages(message: Message, state: FSMContext):
             await handle_custom_commands_states(message, state, current_state)
         elif current_state.startswith("CustomReply"):
             from modules.custom_replies import handle_keyword_input, handle_response_input
-            if current_state == "CustomReplyStates:waiting_for_keyword":
+            if current_state == CustomReplyStates.waiting_for_keyword.state:
                 await handle_keyword_input(message, state)
-            elif current_state == "CustomReplyStates:waiting_for_response":
+            elif current_state == CustomReplyStates.waiting_for_response.state:
                 await handle_response_input(message, state)
         else:
             await handle_general_message(message, state)
@@ -1441,9 +1441,9 @@ async def handle_custom_reply_states(message: Message, state: FSMContext, curren
     try:
         from modules.custom_replies import handle_keyword_input, handle_response_input
         
-        if current_state == "CustomReplyStates:waiting_for_keyword":
+        if current_state == CustomReplyStates.waiting_for_keyword.state:
             await handle_keyword_input(message, state)
-        elif current_state == "CustomReplyStates:waiting_for_response":
+        elif current_state == CustomReplyStates.waiting_for_response.state:
             await handle_response_input(message, state)
     except Exception as e:
         logging.error(f"خطأ في معالجة حالات الردود المخصصة: {e}")

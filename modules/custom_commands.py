@@ -289,7 +289,7 @@ async def handle_list_commands(message: Message):
 async def handle_custom_commands_states(message: Message, state: FSMContext, current_state: str):
     """معالج حالات إضافة الأوامر المخصصة"""
     try:
-        if current_state == "CustomCommandsStates:waiting_keyword":
+        if current_state == CustomCommandsStates.waiting_keyword.state:
             # حفظ الكلمة المفتاحية وانتظار الرد
             keyword = message.text.strip()
             
@@ -308,7 +308,7 @@ async def handle_custom_commands_states(message: Message, state: FSMContext, cur
                 f"🚫 **ألغِ العملية:** `/cancel`"
             )
         
-        elif current_state == "CustomCommandsStates:waiting_response":
+        elif current_state == CustomCommandsStates.waiting_response.state:
             # حفظ الرد واكتمال العملية
             response = message.text.strip()
             

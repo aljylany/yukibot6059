@@ -988,9 +988,11 @@ async def process_stock_symbol(message: Message, state: FSMContext):
 async def handle_state_message(message: Message, state: FSMContext, current_state: str):
     """معالج رسائل الأسهم حسب الحالة"""
     try:
-        if current_state == "StocksStates:waiting_buy_quantity":
+        from utils.states import StocksStates
+        
+        if current_state == StocksStates.waiting_buy_quantity.state:
             await handle_buy_quantity(message, state)
-        elif current_state == "StocksStates:waiting_sell_quantity":
+        elif current_state == StocksStates.waiting_sell_quantity.state:
             await handle_sell_quantity(message, state)
         else:
             await message.reply("❌ حالة غير معروفة")
