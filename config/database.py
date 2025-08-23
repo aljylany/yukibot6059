@@ -517,6 +517,21 @@ async def init_database():
             await db.execute('CREATE INDEX IF NOT EXISTS idx_daily_stats_chat_date ON daily_stats(chat_id, date)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_performance_metrics_chat_date ON performance_metrics(chat_id, date_only)')
             
+            # إنشاء جدول تتبع عدد الرسائل الحقيقي لكل مستخدم في كل مجموعة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS user_message_count (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    message_count INTEGER DEFAULT 0,
+                    first_message_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    last_message_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, chat_id)
+                )
+            ''')
+            
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_user_message_count ON user_message_count(user_id, chat_id)')
+            
             await db.commit()
             logger.info("✅ تم تهيئة قاعدة البيانات بنجاح")
             

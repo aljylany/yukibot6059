@@ -525,6 +525,14 @@ async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     text = message.text.lower() if message.text else ""
     
+    # تتبع عدد الرسائل الحقيقي في المجموعات
+    if message.chat.type in ['group', 'supergroup'] and message.from_user:
+        try:
+            from database.operations import increment_user_message_count
+            await increment_user_message_count(message.from_user.id, message.chat.id)
+        except Exception as msg_count_error:
+            logging.error(f"خطأ في تتبع عدد الرسائل: {msg_count_error}")
+    
     # تحديث نشاط المستخدم وإضافة XP للرسائل
     try:
         await update_user_activity(message.from_user.id)

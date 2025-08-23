@@ -219,81 +219,60 @@ async def execute_query(query: str, params: tuple = (), fetch_one: bool = False,
 
 
 async def get_user_message_count(user_id: int, chat_id: int) -> int:
-    """الحصول على عدد رسائل المستخدم في المجموعة"""
+    """الحصول على عدد رسائل المستخدم الحقيقي في المجموعة"""
     try:
-        # أولاً: البحث في activity_logs عن أي نشاط للمستخدم
-        activity_result = await execute_query(
+        result = await execute_query(
             """
-            SELECT COUNT(*) as activity_count 
-            FROM activity_logs 
+            SELECT message_count 
+            FROM user_message_count 
             WHERE user_id = ? AND chat_id = ?
             """,
             (user_id, chat_id),
             fetch_one=True
         )
         
-        activity_count = activity_result.get('activity_count', 0) if activity_result else 0
-        
-        # ثانياً: البحث عن المعاملات (تشير لنشاط المستخدم)
-        transaction_result = await execute_query(
-            """
-            SELECT COUNT(*) as transaction_count 
-            FROM transactions 
-            WHERE user_id = ?
-            """,
-            (user_id,),
-            fetch_one=True
-        )
-        
-        transaction_count = transaction_result.get('transaction_count', 0) if transaction_result else 0
-        
-        # ثالثاً: التحقق من معلومات المستخدم الأساسية
-        user_result = await execute_query(
-            """
-            SELECT level, xp, total_earned, total_spent, created_at, updated_at 
-            FROM users 
-            WHERE user_id = ?
-            """,
-            (user_id,),
-            fetch_one=True
-        )
-        
-        if user_result:
-            # حساب تقديري بناءً على نشاط المستخدم
-            level = user_result.get('level', 1)
-            xp = user_result.get('xp', 0)
-            total_earned = user_result.get('total_earned', 0)
-            total_spent = user_result.get('total_spent', 0)
-            
-            # تقدير عدد الرسائل بناءً على النشاط
-            estimated_messages = 0
-            
-            # كل مستوى = تقريباً 10 رسالة
-            estimated_messages += (level - 1) * 10
-            
-            # كل 100 XP = تقريباً 5 رسائل
-            estimated_messages += xp // 20
-            
-            # كل معاملة مالية = نشاط = رسائل محتملة
-            estimated_messages += transaction_count * 2
-            
-            # النشاط في activity_logs
-            estimated_messages += activity_count * 3
-            
-            # حد أدنى للمستخدمين النشطين
-            if total_earned > 0 or total_spent > 0 or level > 1:
-                estimated_messages = max(estimated_messages, 15)
-            
-            # حد أقصى معقول
-            estimated_messages = min(estimated_messages, 9999)
-            
-            return estimated_messages
+        if result:
+            return result.get('message_count', 0)
         
         return 0
         
     except Exception as e:
         logging.error(f"خطأ في الحصول على عدد رسائل المستخدم {user_id} في المجموعة {chat_id}: {e}")
         return 0
+
+
+async def increment_user_message_count(user_id: int, chat_id: int) -> bool:
+    """زيادة عدد رسائل المستخدم في المجموعة"""
+    try:
+        from datetime import datetime
+        current_time = datetime.now().isoformat()
+        
+        # محاولة التحديث أولاً
+        result = await execute_query(
+            """
+            UPDATE user_message_count 
+            SET message_count = message_count + 1, last_message_date = ?
+            WHERE user_id = ? AND chat_id = ?
+            """,
+            (current_time, user_id, chat_id)
+        )
+        
+        # إذا لم يتم التحديث (السجل غير موجود)، أنشئ سجل جديد
+        if result == 0:
+            await execute_query(
+                """
+                INSERT OR IGNORE INTO user_message_count 
+                (user_id, chat_id, message_count, first_message_date, last_message_date)
+                VALUES (?, ?, 1, ?, ?)
+                """,
+                (user_id, chat_id, current_time, current_time)
+            )
+        
+        return True
+        
+    except Exception as e:
+        logging.error(f"خطأ في زيادة عدد رسائل المستخدم {user_id} في المجموعة {chat_id}: {e}")
+        return False
 
 
 async def get_all_group_members(group_id: int) -> list:
