@@ -1435,8 +1435,29 @@ async def handle_clear_command(message: Message, text: str):
             count = int(clear_text)
             await group_settings.handle_delete_messages(message, count)
         elif clear_text == 'بالرد' and message.reply_to_message:
-            # مسح رسالة واحدة بالرد
-            await group_settings.handle_delete_messages(message, 1)
+            # مسح الرسالة المرد عليها
+            try:
+                # التحقق من أن البوت لديه صلاحيات الحذف
+                chat_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+                if not chat_member.can_delete_messages:
+                    await message.reply("❌ البوت لا يملك صلاحيات حذف الرسائل")
+                    return
+                
+                # حذف الرسالة المرد عليها
+                await message.bot.delete_message(
+                    chat_id=message.chat.id, 
+                    message_id=message.reply_to_message.message_id
+                )
+                
+                # حذف أمر المسح أيضاً للتنظيف
+                try:
+                    await message.delete()
+                except:
+                    pass  # إذا فشل حذف أمر المسح فلا مشكلة
+                    
+            except Exception as e:
+                logging.error(f"خطأ في حذف الرسالة بالرد: {e}")
+                await message.reply("❌ حدث خطأ أثناء حذف الرسالة")
             
     except Exception as e:
         logging.error(f"خطأ في معالجة أمر المسح: {e}")
