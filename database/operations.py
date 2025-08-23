@@ -221,35 +221,73 @@ async def execute_query(query: str, params: tuple = (), fetch_one: bool = False,
 async def get_user_message_count(user_id: int, chat_id: int) -> int:
     """الحصول على عدد رسائل المستخدم في المجموعة"""
     try:
-        # حساب عدد الأنشطة من نوع message أو daily_active للمستخدم في المجموعة
-        result = await execute_query(
+        # أولاً: البحث في activity_logs عن أي نشاط للمستخدم
+        activity_result = await execute_query(
             """
-            SELECT COUNT(*) as message_count 
+            SELECT COUNT(*) as activity_count 
             FROM activity_logs 
-            WHERE user_id = ? AND chat_id = ? 
-            AND (activity_type LIKE '%message%' OR activity_type = 'daily_active')
+            WHERE user_id = ? AND chat_id = ?
             """,
             (user_id, chat_id),
             fetch_one=True
         )
         
-        if result and 'message_count' in result:
-            return result['message_count']
+        activity_count = activity_result.get('activity_count', 0) if activity_result else 0
         
-        # إذا لم نجد بيانات في activity_logs، نحاول من daily_stats
-        daily_result = await execute_query(
+        # ثانياً: البحث عن المعاملات (تشير لنشاط المستخدم)
+        transaction_result = await execute_query(
             """
-            SELECT SUM(messages_count) as total_messages 
-            FROM daily_stats 
-            WHERE chat_id = ?
+            SELECT COUNT(*) as transaction_count 
+            FROM transactions 
+            WHERE user_id = ?
             """,
-            (chat_id,),
+            (user_id,),
             fetch_one=True
         )
         
-        if daily_result and daily_result.get('total_messages'):
-            # تقدير تقريبي لعدد رسائل المستخدم (لا يمكن الحصول على عدد دقيق من daily_stats)
-            return max(1, int(daily_result['total_messages'] * 0.1))  # تقدير 10% من إجمالي الرسائل
+        transaction_count = transaction_result.get('transaction_count', 0) if transaction_result else 0
+        
+        # ثالثاً: التحقق من معلومات المستخدم الأساسية
+        user_result = await execute_query(
+            """
+            SELECT level, xp, total_earned, total_spent, created_at, updated_at 
+            FROM users 
+            WHERE user_id = ?
+            """,
+            (user_id,),
+            fetch_one=True
+        )
+        
+        if user_result:
+            # حساب تقديري بناءً على نشاط المستخدم
+            level = user_result.get('level', 1)
+            xp = user_result.get('xp', 0)
+            total_earned = user_result.get('total_earned', 0)
+            total_spent = user_result.get('total_spent', 0)
+            
+            # تقدير عدد الرسائل بناءً على النشاط
+            estimated_messages = 0
+            
+            # كل مستوى = تقريباً 10 رسالة
+            estimated_messages += (level - 1) * 10
+            
+            # كل 100 XP = تقريباً 5 رسائل
+            estimated_messages += xp // 20
+            
+            # كل معاملة مالية = نشاط = رسائل محتملة
+            estimated_messages += transaction_count * 2
+            
+            # النشاط في activity_logs
+            estimated_messages += activity_count * 3
+            
+            # حد أدنى للمستخدمين النشطين
+            if total_earned > 0 or total_spent > 0 or level > 1:
+                estimated_messages = max(estimated_messages, 15)
+            
+            # حد أقصى معقول
+            estimated_messages = min(estimated_messages, 9999)
+            
+            return estimated_messages
         
         return 0
         
