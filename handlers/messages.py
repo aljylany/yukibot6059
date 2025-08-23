@@ -568,6 +568,17 @@ async def handle_general_message(message: Message, state: FSMContext):
         await show_levels_guide(message)
         return
     
+    # أوامر الترتيب والمتصدرين
+    if text in ['الأغنياء', 'الاغنياء', 'المتصدرين', 'المتصدرون', 'قائمة الأغنياء']:
+        from modules.ranking import show_leaderboard
+        await show_leaderboard(message)
+        return
+    
+    if text in ['ترتيبي', 'مركزي', 'ترتيبي الشخصي', 'مرتبتي']:
+        from modules.ranking import show_user_ranking
+        await show_user_ranking(message)
+        return
+    
     # فحص أوامر المستوى أولاً
     if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp"]):
         try:
