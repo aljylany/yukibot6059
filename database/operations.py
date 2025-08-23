@@ -282,7 +282,7 @@ async def get_group_message_ranking(chat_id: int, limit: int = 10) -> list:
             """
             SELECT umc.user_id, umc.message_count, u.first_name, u.username
             FROM user_message_count umc
-            LEFT JOIN users u ON umc.user_id = u.user_id AND umc.chat_id = u.chat_id
+            LEFT JOIN users u ON umc.user_id = u.user_id
             WHERE umc.chat_id = ? AND umc.message_count > 0
             ORDER BY umc.message_count DESC
             LIMIT ?
