@@ -25,11 +25,15 @@ async def handle_advanced_admin_commands(message: Message, state: FSMContext):
         elif current_state == RankManagementStates.waiting_for_reason.state:
             await handle_promotion_reason(message, state)
         elif current_state == RankManagementStates.waiting_for_target_user.state:
-            await message.reply("❌ يرجى اختيار مستخدم للإجراء")
+            await message.reply("❌ انتهت صلاحية الجلسة، يرجى إعادة المحاولة")
+            await state.clear()
         elif current_state == RankManagementStates.waiting_for_confirmation.state:
-            await message.reply("❌ يرجى تأكيد الإجراء")
+            await message.reply("❌ انتهت صلاحية الجلسة، يرجى إعادة المحاولة")
+            await state.clear()
         else:
-            await message.reply("❌ حالة غير معروفة")
+            # إذا كانت حالة غير متوقعة، نمسح الحالة ونطلب إعادة المحاولة
+            await message.reply("❌ حدث خطأ في النظام، يرجى إعادة المحاولة")
+            await state.clear()
             
     except Exception as e:
         logging.error(f"خطأ في معالج الأوامر الإدارية المتقدمة: {e}")

@@ -995,7 +995,8 @@ async def handle_state_message(message: Message, state: FSMContext, current_stat
         elif current_state == StocksStates.waiting_sell_quantity.state:
             await handle_sell_quantity(message, state)
         else:
-            await message.reply("❌ حالة غير معروفة")
+            # حالة غير متوقعة في نظام الأسهم
+            await message.reply("❌ حدث خطأ في نظام الأسهم، يرجى إعادة المحاولة")
             await state.clear()
             
     except Exception as e:
