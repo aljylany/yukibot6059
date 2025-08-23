@@ -224,6 +224,7 @@ async def handle_music_search(message: Message) -> bool:
             if file_path and os.path.exists(file_path):
                 # إرسال الفيديو
                 from aiogram.types import FSInputFile
+                import shutil
                 video_file = FSInputFile(file_path)
                 
                 try:
@@ -233,7 +234,6 @@ async def handle_music_search(message: Message) -> bool:
                     )
                     
                     # حذف الملف المؤقت
-                    import os, shutil
                     os.unlink(file_path)
                     shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
                     
@@ -248,7 +248,7 @@ async def handle_music_search(message: Message) -> bool:
                         f"\n🔗 **الرابط:** {video_info['url']}"
                     )
                     # حذف الملف المؤقت
-                    import os, shutil
+                    import shutil
                     os.unlink(file_path)
                     shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
             else:

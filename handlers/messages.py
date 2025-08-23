@@ -1121,7 +1121,6 @@ async def handle_general_message(message: Message, state: FSMContext):
         from modules.media_download import download_soundcloud
         await download_soundcloud(message)
     elif text.startswith('بحث '):
-        from modules.music_search import handle_music_search
         await handle_music_search(message)
     
     # === أوامر قفل الوسائط ===
