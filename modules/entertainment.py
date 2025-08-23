@@ -353,7 +353,8 @@ async def show_marriage_status(message: Message):
             
             if judge_commission > 0:
                 from utils.helpers import format_number
-                marriage_info += f"⚖️ عمولة القاضي: {format_number(judge_commission)}$\n"
+                marriage_info += f"⚖️ أتعاب الشيخ: {format_number(judge_commission)}$\n"
+                marriage_info += f"🕌 كتب العقد: الشيخ المحترم ردفان @Hacker20263\n"
             
             marriage_info += f"❤️ دام الحب!"
             
@@ -415,8 +416,10 @@ async def handle_marriage_response(message: Message, response_type: str):
                 )
                 return
             
-            # الآن نحتاج للقاضي - معرف القاضي المحدد
+            # الآن نحتاج للقاضي - معرف القاضي المحدد (الشيخ ردفان)
             JUDGE_ID = 7155814194
+            JUDGE_USERNAME = "@Hacker20263"
+            JUDGE_NAME = "ردفان"
             
             # حساب عمولة القاضي (بين 100-1000 حسب المهر)
             judge_commission = max(100, min(1000, int(dowry_amount * 0.05)))  # 5% من المهر
@@ -497,8 +500,10 @@ async def handle_marriage_response(message: Message, response_type: str):
                 f"👰 العروس: {target_name}\n"
                 f"🤵 العريس: {proposer_name}\n"
                 f"💎 المهر: {format_number(dowry_amount)}$\n"
-                f"⚖️ عمولة القاضي: {format_number(judge_commission)}$\n\n"
-                f"🎊 **أقيم العقد بحضور القاضي**\n"
+                f"⚖️ أتعاب الشيخ: {format_number(judge_commission)}$\n\n"
+                f"🕌 **شهد على العقد وكتبه فضيلة الشيخ المحترم:**\n"
+                f"📜 الشيخ {JUDGE_NAME} {JUDGE_USERNAME}\n"
+                f"🌟 بارك الله للعروسين وجمع بينهما في خير\n\n"
                 f"💕 ألف مبروك للعروسين!\n"
                 f"🌹 دام الحب والهناء!"
             )
@@ -510,11 +515,13 @@ async def handle_marriage_response(message: Message, response_type: str):
                 try:
                     await message.bot.send_message(
                         JUDGE_ID,
-                        f"⚖️ **عمولة جديدة من الزواج**\n\n"
+                        f"🕌 **بارك الله في فضيلة الشيخ**\n\n"
+                        f"📜 تم إتمام عقد زواج جديد بحضرتكم المباركة\n"
                         f"👰 العروس: {target_name}\n"
                         f"🤵 العريس: {proposer_name}\n"
-                        f"💰 عمولتك: {format_number(judge_commission)}$\n"
-                        f"💳 رصيدك الجديد: {format_number(new_judge_balance)}$"
+                        f"💰 الأتعاب المستحقة: {format_number(judge_commission)}$\n"
+                        f"💳 رصيدكم الجديد: {format_number(new_judge_balance)}$\n\n"
+                        f"🌟 جزاكم الله خيراً على خدمة المسلمين"
                     )
                 except:
                     pass  # إذا فشل إرسال الإشعار

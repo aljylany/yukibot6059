@@ -153,6 +153,16 @@ ADMINISTRATIVE_RANKS = {
         permissions=set(Permission),  # جميع الصلاحيات
         color="🔴",
         description="مالك المجموعة - صلاحيات كاملة"
+    ),
+    
+    "شيخ": RankInfo(
+        name="شيخ",
+        display_name="🕌 الشيخ",
+        rank_type=RankType.ADMINISTRATIVE,
+        level=6,
+        permissions=set(Permission),  # جميع الصلاحيات
+        color="🕌",
+        description="الشيخ القاضي - مقدس ومحترم، قاضي الزواج المعتمد"
     )
 }
 
