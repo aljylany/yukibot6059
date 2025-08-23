@@ -78,6 +78,13 @@ async def main():
     # تهيئة قاعدة البيانات
     await init_database()
     
+    # تهيئة نظام التصنيف
+    try:
+        from modules.ranking_system import init_ranking_system
+        await init_ranking_system()
+    except Exception as e:
+        logging.error(f"خطأ في تهيئة نظام التصنيف: {e}")
+    
     # تحميل الرتب من قاعدة البيانات
     from config.hierarchy import load_ranks_from_database
     await load_ranks_from_database()

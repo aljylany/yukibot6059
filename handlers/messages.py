@@ -1243,6 +1243,11 @@ async def handle_general_message(message: Message, state: FSMContext):
     # === أوامر معلومات المستخدم والتفاعل ===
     elif text == 'كشف' and message.reply_to_message:
         await utility_commands.show_target_user_info(message)
+    # قائمة التصنيف الذهبي
+    elif text in ['قائمة التصنيف', 'التصنيف', 'الترتيب الذهبي', 'النقاط الذهبية']:
+        from modules.ranking_system import show_ranking_list
+        await show_ranking_list(message)
+        return
     elif text in ['تفاعلي', 'ترتيب التفاعل', 'ترتيب المجموعة']:
         await utility_commands.show_group_activity_ranking(message)
     elif text in ['رسائلي', 'عدد رسائلي']:

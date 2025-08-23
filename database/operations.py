@@ -92,7 +92,7 @@ async def update_user_activity(user_id: int) -> bool:
 
 
 async def update_user_balance(user_id: int, new_balance: float) -> bool:
-    """تحديث رصيد المستخدم"""
+    """تحديث رصيد المستخدم مع فحص الحد الأقصى"""
     try:
         async with aiosqlite.connect(DATABASE_URL) as db:
             await db.execute(
@@ -100,6 +100,14 @@ async def update_user_balance(user_id: int, new_balance: float) -> bool:
                 (new_balance, datetime.now().isoformat(), user_id)
             )
             await db.commit()
+            
+            # فحص الحد الأقصى للأموال
+            try:
+                from modules.ranking_system import check_money_limit_and_convert
+                await check_money_limit_and_convert(user_id)
+            except Exception as ranking_error:
+                logging.error(f"خطأ في فحص نظام التصنيف: {ranking_error}")
+                
             return True
             
     except Exception as e:
@@ -108,7 +116,7 @@ async def update_user_balance(user_id: int, new_balance: float) -> bool:
 
 
 async def update_user_bank_balance(user_id: int, new_bank_balance: float) -> bool:
-    """تحديث رصيد البنك للمستخدم"""
+    """تحديث رصيد البنك للمستخدم مع فحص الحد الأقصى"""
     try:
         async with aiosqlite.connect(DATABASE_URL) as db:
             await db.execute(
@@ -116,6 +124,14 @@ async def update_user_bank_balance(user_id: int, new_bank_balance: float) -> boo
                 (new_bank_balance, datetime.now().isoformat(), user_id)
             )
             await db.commit()
+            
+            # فحص الحد الأقصى للأموال
+            try:
+                from modules.ranking_system import check_money_limit_and_convert
+                await check_money_limit_and_convert(user_id)
+            except Exception as ranking_error:
+                logging.error(f"خطأ في فحص نظام التصنيف: {ranking_error}")
+            
             return True
             
     except Exception as e:
