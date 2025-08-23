@@ -67,7 +67,7 @@ async def check_money_limit_and_convert(user_id: int) -> bool:
     
     return False
 
-async def get_ranking_list(limit: int = 10) -> list:
+async def get_ranking_list(limit: int = 30) -> list:
     """الحصول على قائمة التصنيف حسب النقاط الذهبية"""
     try:
         result = await execute_query(
@@ -91,7 +91,7 @@ async def get_ranking_list(limit: int = 10) -> list:
 async def show_ranking_list(message: Message):
     """عرض قائمة التصنيف"""
     try:
-        ranking_data = await get_ranking_list(20)
+        ranking_data = await get_ranking_list(30)
         
         if not ranking_data:
             await message.reply(
@@ -104,7 +104,9 @@ async def show_ranking_list(message: Message):
             
         ranking_text = "🏆 **التصنيف الذهبي**\n\n"
         
-        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟",
+                 "1️⃣1️⃣", "1️⃣2️⃣", "1️⃣3️⃣", "1️⃣4️⃣", "1️⃣5️⃣", "1️⃣6️⃣", "1️⃣7️⃣", "1️⃣8️⃣", "1️⃣9️⃣", "2️⃣0️⃣",
+                 "2️⃣1️⃣", "2️⃣2️⃣", "2️⃣3️⃣", "2️⃣4️⃣", "2️⃣5️⃣", "2️⃣6️⃣", "2️⃣7️⃣", "2️⃣8️⃣", "2️⃣9️⃣", "3️⃣0️⃣"]
         
         for i, player in enumerate(ranking_data):
             rank_icon = medals[i] if i < len(medals) else f"{i+1}️⃣"
