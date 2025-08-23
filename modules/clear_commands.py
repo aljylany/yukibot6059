@@ -216,9 +216,11 @@ async def handle_clear_command(message: Message, text: str):
     """معالج أوامر المسح الرئيسي"""
     try:
         text = text.strip()
+        logging.info(f"تم استلام أمر المسح: '{text}' - يوجد رد: {message.reply_to_message is not None}")
         
         # مسح بالرد - حذف الرسالة المردود عليها
         if (text == "مسح بالرد" or text == "مسح") and message.reply_to_message:
+            logging.info("بدء معالجة أمر مسح بالرد")
             await delete_replied_message(message)
             return
         
@@ -281,18 +283,26 @@ async def handle_clear_command(message: Message, text: str):
 async def delete_replied_message(message: Message):
     """حذف الرسالة المردود عليها"""
     try:
+        logging.info("بدء دالة حذف الرسالة المردود عليها")
+        
         if not message.reply_to_message:
+            logging.warning("لا يوجد رد على رسالة")
             await message.reply("❌ يجب الرد على رسالة لحذفها")
             return
+        
+        logging.info(f"معرف الرسالة المراد حذفها: {message.reply_to_message.message_id}")
         
         # التحقق من صلاحيات البوت
         try:
             bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+            logging.info(f"حالة البوت في المجموعة: {bot_member.status}")
+            
             if bot_member.status not in ['administrator', 'creator']:
                 await message.reply("❌ البوت يحتاج صلاحيات إدارية لحذف الرسائل")
                 return
             
-            if not bot_member.can_delete_messages:
+            # فحص صلاحية حذف الرسائل للمشرفين فقط
+            if bot_member.status == 'administrator' and hasattr(bot_member, 'can_delete_messages') and not bot_member.can_delete_messages:
                 await message.reply("❌ البوت لا يملك صلاحية حذف الرسائل")
                 return
         
@@ -303,10 +313,12 @@ async def delete_replied_message(message: Message):
         
         # حذف الرسالة المردود عليها
         try:
+            logging.info("محاولة حذف الرسالة المردود عليها")
             await message.bot.delete_message(
                 chat_id=message.chat.id,
                 message_id=message.reply_to_message.message_id
             )
+            logging.info("تم حذف الرسالة المردود عليها بنجاح")
             
             # حذف رسالة الأمر أيضاً
             try:
@@ -314,8 +326,9 @@ async def delete_replied_message(message: Message):
                     chat_id=message.chat.id,
                     message_id=message.message_id
                 )
-            except:
-                pass  # لا نفشل إذا لم نتمكن من حذف رسالة الأمر
+                logging.info("تم حذف رسالة الأمر أيضاً")
+            except Exception as cmd_error:
+                logging.warning(f"لم نتمكن من حذف رسالة الأمر: {cmd_error}")
                 
             # إرسال تأكيد مؤقت
             confirmation = await message.reply("✅ تم حذف الرسالة بنجاح")
