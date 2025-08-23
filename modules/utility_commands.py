@@ -4,8 +4,19 @@ Utility Commands and General Tools
 """
 
 import logging
-from aiogram.types import Message
+import asyncio
+import uuid
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from config.hierarchy import get_user_admin_level, get_admin_level_name, MASTERS
+
+# حالات محادثة الهمسة
+class WhisperStates(StatesGroup):
+    waiting_for_text = State()
+
+# تخزين مؤقت للهمسات
+whisper_storage = {}
 
 
 async def check_bot_permissions(message: Message):
@@ -486,23 +497,185 @@ async def who_added_me(message: Message):
 
 
 async def send_message_private(message: Message):
-    """إرسال رسالة خاصة (همسة)"""
+    """إرسال رسالة خاصة (همسة) - نظام متقدم مثل مايكي"""
     try:
         if not message.reply_to_message:
             await message.reply("❌ قم بالرد على رسالة الشخص المراد إرسال همسة له")
             return
         
-        whisper_text = "💬 **همسة خاصة**\n\n"
-        whisper_text += "🔒 هذه رسالة خاصة من "
-        whisper_text += f"{message.from_user.first_name or 'مجهول'}\n\n"
-        whisper_text += "📝 **الرسالة:** مرحباً! هذه همسة خاصة 💫\n\n"
-        whisper_text += "💡 لإرسال همسة مخصصة، اكتب: همسة [النص]"
+        sender = message.from_user
+        target_user = message.reply_to_message.from_user
         
-        await message.reply(whisper_text)
+        if not target_user:
+            await message.reply("❌ لا يمكن الحصول على معلومات المستخدم المستهدف")
+            return
+        
+        sender_name = sender.first_name or "مجهول"
+        target_name = target_user.first_name or "مجهول"
+        
+        # الحالة الأولى: همس لنفسه
+        if sender.id == target_user.id:
+            await message.reply("يا غبي تبي تهمس لنفسك ؟!")
+            return
+        
+        # الحالة الثانية: همس للبوت
+        if target_user.is_bot:
+            await message.reply("يا غبي ذا بوتتتت")
+            return
+        
+        # الحالة الثالثة: همس لشخص آخر - النظام المتقدم
+        whisper_id = str(uuid.uuid4())
+        
+        # تخزين بيانات الهمسة
+        whisper_storage[whisper_id] = {
+            'sender_id': sender.id,
+            'sender_name': sender_name,
+            'target_id': target_user.id,
+            'target_name': target_name,
+            'chat_id': message.chat.id,
+            'text': None
+        }
+        
+        # إنشاء زر للتوجه للخاص
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="💌 اكتب الهمسة",
+                url=f"https://t.me/{(await message.bot.get_me()).username}?start=whisper_{whisper_id}"
+            )]
+        ])
+        
+        whisper_text = f"• تم تحديد الهمسه لـ ↤︎ {target_name}\n"
+        whisper_text += "• اضغط الزر لكتابة الهمسة\n-"
+        
+        await message.reply(whisper_text, reply_markup=keyboard)
         
     except Exception as e:
         logging.error(f"خطأ في send_message_private: {e}")
         await message.reply("❌ حدث خطأ أثناء إرسال الهمسة")
+
+
+async def handle_whisper_start(message: Message, state: FSMContext):
+    """معالج بدء محادثة الهمسة في الخاص"""
+    try:
+        if not message.text.startswith('/start whisper_'):
+            return
+        
+        whisper_id = message.text.replace('/start whisper_', '')
+        
+        if whisper_id not in whisper_storage:
+            await message.reply("❌ لم يتم العثور على الهمسة أو انتهت صلاحيتها")
+            return
+        
+        whisper_data = whisper_storage[whisper_id]
+        
+        if message.from_user.id != whisper_data['sender_id']:
+            await message.reply("❌ هذه الهمسة ليست لك!")
+            return
+        
+        # حفظ معرف الهمسة في حالة المحادثة
+        await state.update_data(whisper_id=whisper_id)
+        await state.set_state(WhisperStates.waiting_for_text)
+        
+        await message.reply(
+            f"💌 اكتب نص الهمسة لـ {whisper_data['target_name']}:\n\n"
+            "📝 ارسل النص الذي تريد همسه..."
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في handle_whisper_start: {e}")
+        await message.reply("❌ حدث خطأ أثناء بدء الهمسة")
+
+
+async def handle_whisper_text(message: Message, state: FSMContext):
+    """معالج استقبال نص الهمسة"""
+    try:
+        data = await state.get_data()
+        whisper_id = data.get('whisper_id')
+        
+        if not whisper_id or whisper_id not in whisper_storage:
+            await message.reply("❌ جلسة الهمسة منتهية الصلاحية")
+            await state.clear()
+            return
+        
+        whisper_data = whisper_storage[whisper_id]
+        
+        # حفظ نص الهمسة
+        whisper_data['text'] = message.text
+        
+        # إرسال تأكيد للمرسل
+        await message.reply(f"تم ارسال همستك لـ {whisper_data['target_name']} بنجاح")
+        
+        # إنشاء أزرار رؤية الهمسة
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="👁️ رؤية الهمسة",
+                callback_data=f"view_whisper_{whisper_id}"
+            )],
+            [InlineKeyboardButton(
+                text=f"💌 همس لـ {whisper_data['sender_name']}",
+                callback_data=f"reply_whisper_{whisper_data['sender_id']}"
+            )]
+        ])
+        
+        # إرسال إشعار في المجموعة
+        notification_text = f"• الهمسه لـ ↤︎ {whisper_data['target_name']}\n"
+        notification_text += f"• من ↤︎ {whisper_data['sender_name']}\n-"
+        
+        await message.bot.send_message(
+            chat_id=whisper_data['chat_id'],
+            text=notification_text,
+            reply_markup=keyboard
+        )
+        
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في handle_whisper_text: {e}")
+        await message.reply("❌ حدث خطأ أثناء إرسال الهمسة")
+        await state.clear()
+
+
+async def handle_whisper_callback(callback_query: CallbackQuery):
+    """معالج أزرار الهمسة"""
+    try:
+        data = callback_query.data
+        user_id = callback_query.from_user.id
+        
+        if data.startswith('view_whisper_'):
+            whisper_id = data.replace('view_whisper_', '')
+            
+            if whisper_id not in whisper_storage:
+                await callback_query.answer("❌ الهمسة منتهية الصلاحية", show_alert=True)
+                return
+            
+            whisper_data = whisper_storage[whisper_id]
+            
+            # فقط المستقبل يمكنه رؤية الهمسة
+            if user_id != whisper_data['target_id']:
+                await callback_query.answer("❌ الامر لا يخصك", show_alert=True)
+                return
+            
+            # عرض الهمسة في نافذة منبثقة
+            whisper_text = f"💌 همسة من {whisper_data['sender_name']}:\n\n"
+            whisper_text += f"📝 {whisper_data['text']}"
+            
+            await callback_query.answer(whisper_text, show_alert=True)
+            
+        elif data.startswith('reply_whisper_'):
+            # توجيه لهمس للمرسل الأصلي
+            target_id = data.replace('reply_whisper_', '')
+            bot_username = (await callback_query.bot.get_me()).username
+            
+            await callback_query.answer(
+                f"سيتم توجيهك لهمس للمرسل...",
+                show_alert=True
+            )
+            
+            # يمكن إضافة منطق إضافي هنا للتوجيه
+        
+    except Exception as e:
+        logging.error(f"خطأ في handle_whisper_callback: {e}")
+        await callback_query.answer("❌ حدث خطأ", show_alert=True)
 
 
 async def clear_muted_users(message: Message):

@@ -30,8 +30,42 @@ from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
 from config.hierarchy import MASTERS
+from modules.utility_commands import WhisperStates
 
 router = Router()
+
+
+# معالج خاص لبدء الهمسة في الخاص
+@router.message(F.text.startswith("/start whisper_"))
+async def handle_whisper_start_command(message: Message, state: FSMContext):
+    """معالج خاص لبدء الهمسة في الخاص"""
+    try:
+        if message.chat.type != 'private':
+            return  # فقط في الخاص
+            
+        from modules.utility_commands import handle_whisper_start
+        await handle_whisper_start(message, state)
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج بدء الهمسة: {e}")
+        await message.reply("❌ حدث خطأ أثناء بدء الهمسة")
+
+
+# معالج خاص لنص الهمسة
+@router.message(WhisperStates.waiting_for_text)
+async def handle_whisper_text_input(message: Message, state: FSMContext):
+    """معالج خاص لنص الهمسة"""
+    try:
+        if message.chat.type != 'private':
+            return  # فقط في الخاص
+            
+        from modules.utility_commands import handle_whisper_text
+        await handle_whisper_text(message, state)
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج نص الهمسة: {e}")
+        await message.reply("❌ حدث خطأ أثناء معالجة الهمسة")
+        await state.clear()
 
 
 # معالج خاص لإنشاء الحساب البنكي بدون فحص التسجيل

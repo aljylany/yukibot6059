@@ -23,6 +23,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_scope_callback(callback, state)
             return
         
+        # معالجة callbacks الهمسة
+        if data.startswith('view_whisper_') or data.startswith('reply_whisper_'):
+            from modules.utility_commands import handle_whisper_callback
+            await handle_whisper_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         
