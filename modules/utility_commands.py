@@ -121,6 +121,47 @@ async def show_user_info(message: Message):
         await message.reply("❌ حدث خطأ أثناء عرض المعلومات")
 
 
+async def show_target_user_info(message: Message):
+    """عرض معلومات المستخدم المراد كشفه بالرد"""
+    try:
+        if not message.reply_to_message or not message.reply_to_message.from_user:
+            await message.reply("❌ يرجى الرد على رسالة المستخدم المراد كشفه")
+            return
+        
+        target_user = message.reply_to_message.from_user
+        chat = message.chat
+        
+        # العنوان الرئيسي
+        info_text = f"📋 **كشف معلومات المستخدم**\n\n"
+        
+        # معلومات المستخدم الأساسية
+        info_text += f"👤 **الاسم:** {target_user.first_name}"
+        if target_user.last_name:
+            info_text += f" {target_user.last_name}"
+        info_text += f"\n🆔 **معرف المستخدم:** `{target_user.id}`"
+        if target_user.username:
+            info_text += f"\n📧 **اليوزرنيم:** @{target_user.username}"
+        
+        # إذا كانت مجموعة، عرض الرتبة والمستوى الإداري
+        if chat.type in ['group', 'supergroup']:
+            admin_level = get_user_admin_level(target_user.id, chat.id)
+            level_name = get_admin_level_name(admin_level)
+            info_text += f"\n⭐ **الرتبة:** {level_name}"
+            
+            # إضافة تمييز خاص للأسياد
+            if target_user.id in MASTERS:
+                info_text += "\n\n👑 **مستخدم مميز: السيد**"
+        
+        # عدد الرسائل (افتراضي للآن)
+        info_text += f"\n📊 **عدد الرسائل:** غير متوفر"
+        
+        await message.reply(info_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في show_target_user_info: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض معلومات المستخدم")
+
+
 async def show_help_command(message: Message):
     """عرض مساعدة أوامر النظام الإداري"""
     try:

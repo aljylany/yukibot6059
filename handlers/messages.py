@@ -1202,6 +1202,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         await fun_commands.magic_yuki(message, question)
     
     # === أوامر معلومات المستخدم ===
+    elif text == 'كشف' and message.reply_to_message:
+        await utility_commands.show_target_user_info(message)
     elif text == 'رتبتي':
         from modules import user_info
         await user_info.show_my_rank(message)
