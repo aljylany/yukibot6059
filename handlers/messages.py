@@ -994,7 +994,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         await castle.create_castle_command(message, state)
     elif text.strip() == 'قلعة':
         await castle.show_castle_menu(message)
-    elif text in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز'] or text.startswith('بحث عن كنز') or text.startswith('بحث كنز') or text.startswith('ابحث كنز'):
+    elif any(phrase in text for phrase in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز']):
         await castle.treasure_hunt_command(message)
     elif any(phrase in text for phrase in ['طور القلعة', 'تطوير القلعة', 'ترقية القلعة']):
         await castle.upgrade_castle_command(message)
