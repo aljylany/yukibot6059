@@ -42,7 +42,7 @@ async def search_youtube_api(query: str) -> Optional[Dict[str, Any]]:
             'part': 'snippet',
             'q': clean_query,
             'type': 'video',
-            'maxResults': 5,
+            'maxResults': 10,  # زيادة عدد النتائج للحصول على بدائل
             'key': api_key,
             'regionCode': 'SA',  # السعودية للنتائج العربية
             'relevanceLanguage': 'ar'  # اللغة العربية
@@ -54,17 +54,19 @@ async def search_youtube_api(query: str) -> Optional[Dict[str, Any]]:
                     data = await response.json()
                     
                     if 'items' in data and len(data['items']) > 0:
-                        # أخذ أول نتيجة
-                        first_result = data['items'][0]
-                        video_info = {
-                            'title': first_result['snippet']['title'],
-                            'video_id': first_result['id']['videoId'],
-                            'url': f"https://www.youtube.com/watch?v={first_result['id']['videoId']}",
-                            'thumbnail': first_result['snippet']['thumbnails']['default']['url'],
-                            'description': first_result['snippet']['description'][:200] + "..." if len(first_result['snippet']['description']) > 200 else first_result['snippet']['description'],
-                            'channel': first_result['snippet']['channelTitle']
-                        }
-                        return video_info
+                        # إرجاع جميع النتائج
+                        results = []
+                        for item in data['items']:
+                            video_info = {
+                                'title': item['snippet']['title'],
+                                'video_id': item['id']['videoId'],
+                                'url': f"https://www.youtube.com/watch?v={item['id']['videoId']}",
+                                'thumbnail': item['snippet']['thumbnails']['default']['url'],
+                                'description': item['snippet']['description'][:200] + "..." if len(item['snippet']['description']) > 200 else item['snippet']['description'],
+                                'channel': item['snippet']['channelTitle']
+                            }
+                            results.append(video_info)
+                        return {'results': results}
                 else:
                     logging.error(f"خطأ في YouTube API: {response.status}")
                     return None
@@ -212,54 +214,90 @@ async def handle_music_search(message: Message) -> bool:
             return True
         
         # البحث باستخدام YouTube API الحقيقي
-        video_info = await search_youtube_api(query)
+        search_results = await search_youtube_api(query)
         
-        if video_info:
+        if search_results and 'results' in search_results:
             # إرسال رسالة انتظار
             wait_msg = await message.reply("🎥 جاري البحث وتحميل الفيديو...")
             
-            # تحميل الفيديو
-            file_path = await download_youtube_video(video_info['url'], video_info['title'])
+            # محاولة تحميل كل فيديو حتى ينجح واحد
+            successful_video = None
+            successful_file_path = None
             
-            if file_path and os.path.exists(file_path):
+            for video_info in search_results['results']:
+                # تحميل الفيديو
+                file_path = await download_youtube_video(video_info['url'], video_info['title'])
+                
+                if file_path and os.path.exists(file_path):
+                    successful_video = video_info
+                    successful_file_path = file_path
+                    break
+                    
+            if successful_video and successful_file_path:
                 # إرسال الفيديو
                 from aiogram.types import FSInputFile
                 import shutil
-                video_file = FSInputFile(file_path)
+                video_file = FSInputFile(successful_file_path)
                 
                 try:
                     await message.reply_video(
                         video=video_file,
-                        caption=f"🎥 **{video_info['title']}**\n📺 {video_info['channel']}"
+                        caption=f"🎥 **{successful_video['title']}**\n📺 {successful_video['channel']}"
                     )
                     
                     # حذف الملف المؤقت
-                    os.unlink(file_path)
-                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+                    os.unlink(successful_file_path)
+                    shutil.rmtree(os.path.dirname(successful_file_path), ignore_errors=True)
                     
                 except Exception as send_error:
                     logging.error(f"خطأ في إرسال الفيديو: {send_error}")
-                    await wait_msg.edit_text("❌ الفيديو كبير جداً للإرسال. جاري إرسال الرابط...")
-                    await message.reply(
-                        f"🎵 **تم العثور على الأغنية!**\n\n"
-                        f"🎤 **العنوان:** {video_info['title']}\n"
-                        f"📺 **القناة:** {video_info['channel']}\n"
-                        f"📝 **الوصف:** {video_info['description']}\n"
-                        f"\n🔗 **الرابط:** {video_info['url']}"
-                    )
                     # حذف الملف المؤقت
                     import shutil
-                    os.unlink(file_path)
-                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+                    os.unlink(successful_file_path)
+                    shutil.rmtree(os.path.dirname(successful_file_path), ignore_errors=True)
+                    
+                    # إرسال رسالة بعدم إمكانية إرسال الفيديو
+                    await wait_msg.edit_text("❌ الفيديو كبير جداً للإرسال")
+                    return True
             else:
-                await wait_msg.edit_text("❌ فشل في تحميل الفيديو. جاري إرسال الرابط...")
-                await message.reply(
-                    f"🎵 **تم العثور على الأغنية!**\n\n"
-                    f"🎤 **العنوان:** {video_info['title']}\n"
-                    f"📺 **القناة:** {video_info['channel']}\n"
-                    f"📝 **الوصف:** {video_info['description']}\n"
-                    f"\n🔗 **الرابط:** {video_info['url']}"
-                )
+                # فشل تحميل جميع الفيديوهات - محاولة بحث بديل
+                await wait_msg.edit_text("🔍 جاري البحث عن بديل...")
+                
+                # بحث بديل بإضافة كلمات مفاتيح
+                alternative_queries = [
+                    f"{query} اغنية",
+                    f"{query} موسيقى",
+                    f"{query} فيديو",
+                    f"{query} cover",
+                    f"{query} remix"
+                ]
+                
+                for alt_query in alternative_queries:
+                    alt_results = await search_youtube_api(alt_query)
+                    if alt_results and 'results' in alt_results:
+                        for video_info in alt_results['results']:
+                            file_path = await download_youtube_video(video_info['url'], video_info['title'])
+                            if file_path and os.path.exists(file_path):
+                                try:
+                                    from aiogram.types import FSInputFile
+                                    import shutil
+                                    video_file = FSInputFile(file_path)
+                                    await message.reply_video(
+                                        video=video_file,
+                                        caption=f"🎥 **{video_info['title']}**\n📺 {video_info['channel']}"
+                                    )
+                                    os.unlink(file_path)
+                                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+                                    await wait_msg.delete()
+                                    return True
+                                except Exception:
+                                    os.unlink(file_path)
+                                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+                                    continue
+                
+                # إذا فشل في كل شيء
+                await wait_msg.edit_text("❌ عذراً، لم أتمكن من إيجاد فيديو قابل للتحميل. جرب بحث آخر.")
+                return True
             
             # حذف رسالة الانتظار
             try:
@@ -390,6 +428,11 @@ async def download_youtube_video(url: str, title: str) -> Optional[str]:
             'outtmpl': os.path.join(temp_dir, f'{safe_title}.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
+            'geo_bypass': True,
+            'geo_bypass_country': 'AE',  # الإمارات العربية المتحدة
+            'geo_bypass_ip_block': None,
+            'prefer_free_formats': True,
+            'youtube_include_dash_manifest': False,
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
