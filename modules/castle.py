@@ -1282,7 +1282,7 @@ async def show_player_profile(message: Message):
         logging.error(f"خطأ في عرض حساب اللاعب: {e}")
         await message.reply("❌ حدث خطأ في عرض حساب اللاعب")
 
-async def delete_castle_command(message: Message):
+async def delete_castle_command(message: Message, state: FSMContext = None):
     """أمر حذف القلعة"""
     try:
         user = await get_user(message.from_user.id)
@@ -1295,13 +1295,17 @@ async def delete_castle_command(message: Message):
             await message.reply("❌ لا تملك قلعة لحذفها!")
             return
         
+        # تعيين حالة انتظار تأكيد الحذف
+        if state:
+            await state.set_state(CastleStates.waiting_delete_confirmation)
+        
         await message.reply(
-            f"⚠️ **تحذير! حذف القلعة نهائي!**\\n\\n"
-            f"🏰 ستفقد قلعة: **{castle['name']}**\\n"
-            f"👑 المستوى: {castle['level']}/10\\n"
-            f"💎 جميع الموارد والإحصائيات\\n\\n"
-            f"❓ هل أنت متأكد من الحذف؟\\n"
-            f"✅ للتأكيد اكتب: **تأكيد** أو **نعم**\\n"
+            f"⚠️ **تحذير! حذف القلعة نهائي!**\n\n"
+            f"🏰 ستفقد قلعة: **{castle['name']}**\n"
+            f"👑 المستوى: {castle['level']}/10\n"
+            f"💎 جميع الموارد والإحصائيات\n\n"
+            f"❓ هل أنت متأكد من الحذف؟\n"
+            f"✅ للتأكيد اكتب: **تأكيد** أو **نعم**\n"
             f"❌ لإلغاء العملية اكتب: **لا**"
         )
         
@@ -1309,7 +1313,7 @@ async def delete_castle_command(message: Message):
         logging.error(f"خطأ في أمر حذف القلعة: {e}")
         await message.reply("❌ حدث خطأ في أمر حذف القلعة")
 
-async def confirm_delete_castle_command(message: Message):
+async def confirm_delete_castle_command(message: Message, state: FSMContext = None):
     """تأكيد حذف القلعة"""
     try:
         user = await get_user(message.from_user.id)
@@ -1334,10 +1338,14 @@ async def confirm_delete_castle_command(message: Message):
             (message.from_user.id,)
         )
         
+        # إنهاء الحالة
+        if state:
+            await state.clear()
+        
         await message.reply(
-            f"✅ **تم حذف القلعة بنجاح!**\\n\\n"
-            f"🗑️ تم حذف قلعة: **{castle['name']}**\\n"
-            f"💔 تم فقدان جميع الموارد والإحصائيات\\n\\n"
+            f"✅ **تم حذف القلعة بنجاح!**\n\n"
+            f"🗑️ تم حذف قلعة: **{castle['name']}**\n"
+            f"💔 تم فقدان جميع الموارد والإحصائيات\n\n"
             f"🔄 يمكنك إنشاء قلعة جديدة باستخدام: **انشاء قلعة**"
         )
             
@@ -1346,9 +1354,13 @@ async def confirm_delete_castle_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء حذف القلعة")
 
 
-async def cancel_delete_castle_command(message: Message):
+async def cancel_delete_castle_command(message: Message, state: FSMContext = None):
     """إلغاء حذف القلعة"""
     try:
+        # إنهاء الحالة
+        if state:
+            await state.clear()
+            
         await message.reply(
             "✅ **تم إلغاء حذف القلعة**\n\n"
             "🏰 قلعتك آمنة ولم يتم حذف أي شيء!\n"

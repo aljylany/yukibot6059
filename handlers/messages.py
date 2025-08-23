@@ -1007,11 +1007,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text.startswith('شراء '):
         await real_estate.show_property_menu(message)
     elif any(phrase in text for phrase in ['حذف قلعتي', 'احذف قلعتي']):
-        await castle.delete_castle_command(message)
-    elif text.strip() in ['تأكيد', 'نعم']:
-        await castle.confirm_delete_castle_command(message)
-    elif text.strip() == 'لا':
-        await castle.cancel_delete_castle_command(message)
+        await castle.delete_castle_command(message, state)
+    # تم نقل معالجة تأكيد/إلغاء حذف القلعة إلى نظام الحالات
     elif any(phrase in text for phrase in ['حسابي', 'حساب اللاعب', 'معلوماتي', 'تفاصيلي']):
         await castle.show_player_profile(message)
     elif any(phrase in text for phrase in ['اخفاء قلعتي', 'إخفاء قلعتي', 'اخفي قلعتي']):
@@ -1668,6 +1665,19 @@ async def handle_castle_message(message: Message, state: FSMContext, current_sta
         await castle.handle_castle_name_input(message, state)
     elif current_state == CastleStates.waiting_upgrade_confirmation.state:
         await castle.process_upgrade_confirmation(message, state)
+    elif current_state == CastleStates.waiting_delete_confirmation.state:
+        # معالجة تأكيد أو إلغاء حذف القلعة
+        text = message.text.strip()
+        if text in ['تأكيد', 'نعم']:
+            await castle.confirm_delete_castle_command(message, state)
+        elif text == 'لا':
+            await castle.cancel_delete_castle_command(message, state)
+        else:
+            await message.reply(
+                "❓ يرجى الإجابة بوضوح:\n"
+                "✅ **تأكيد** أو **نعم** للموافقة على حذف القلعة\n"
+                "❌ **لا** لإلغاء العملية"
+            )
 
 
 async def handle_admin_message(message: Message, state: FSMContext, current_state: str):

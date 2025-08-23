@@ -61,6 +61,7 @@ class CastleStates(StatesGroup):
     waiting_upgrade_confirmation = State()
     waiting_attack_target = State()
     waiting_defense_strategy = State()
+    waiting_delete_confirmation = State()
 
 
 class AdminStates(StatesGroup):
