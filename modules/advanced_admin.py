@@ -16,11 +16,7 @@ from utils.permission_decorators import (
 )
 from database.operations import execute_query
 from config.hierarchy import is_master
-
-
-class RankManagementStates(StatesGroup):
-    waiting_for_rank_name = State()
-    waiting_for_reason = State()
+from utils.states import RankManagementStates
 
 
 @can_mute_users
