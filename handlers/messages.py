@@ -1209,9 +1209,17 @@ async def handle_general_message(message: Message, state: FSMContext):
         question = text.replace('مايكي السحري', '').strip()
         await fun_commands.magic_yuki(message, question)
     
-    # === أوامر معلومات المستخدم ===
+    # === أوامر معلومات المستخدم والتفاعل ===
     elif text == 'كشف' and message.reply_to_message:
         await utility_commands.show_target_user_info(message)
+    elif text in ['تفاعلي', 'ترتيب التفاعل', 'ترتيب المجموعة']:
+        await utility_commands.show_group_activity_ranking(message)
+    elif text in ['رسائلي', 'عدد رسائلي']:
+        await utility_commands.show_my_messages_count(message)
+    elif text in ['رسائله', 'عدد رسائله'] and message.reply_to_message:
+        await utility_commands.show_target_user_messages(message)
+    elif text in ['تفاعله', 'نشاطه'] and message.reply_to_message:
+        await utility_commands.show_target_user_activity(message)
     elif text == 'رتبتي':
         from modules import user_info
         await user_info.show_my_rank(message)

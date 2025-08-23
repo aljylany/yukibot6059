@@ -275,6 +275,63 @@ async def increment_user_message_count(user_id: int, chat_id: int) -> bool:
         return False
 
 
+async def get_group_message_ranking(chat_id: int, limit: int = 10) -> list:
+    """الحصول على ترتيب المستخدمين حسب عدد الرسائل في المجموعة"""
+    try:
+        result = await execute_query(
+            """
+            SELECT umc.user_id, umc.message_count, u.first_name, u.username
+            FROM user_message_count umc
+            LEFT JOIN users u ON umc.user_id = u.user_id AND umc.chat_id = u.chat_id
+            WHERE umc.chat_id = ? AND umc.message_count > 0
+            ORDER BY umc.message_count DESC
+            LIMIT ?
+            """,
+            (chat_id, limit),
+            fetch_all=True
+        )
+        
+        return result if result else []
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على ترتيب الرسائل للمجموعة {chat_id}: {e}")
+        return []
+
+
+async def get_user_message_rank(user_id: int, chat_id: int) -> tuple:
+    """الحصول على ترتيب المستخدم وعدد رسائله في المجموعة"""
+    try:
+        # الحصول على عدد رسائل المستخدم
+        user_count = await get_user_message_count(user_id, chat_id)
+        
+        # الحصول على ترتيب المستخدم
+        rank_result = await execute_query(
+            """
+            SELECT COUNT(*) + 1 as user_rank
+            FROM user_message_count 
+            WHERE chat_id = ? AND message_count > (
+                SELECT COALESCE(message_count, 0)
+                FROM user_message_count 
+                WHERE user_id = ? AND chat_id = ?
+            )
+            """,
+            (chat_id, user_id, chat_id),
+            fetch_one=True
+        )
+        
+        user_rank = rank_result.get('user_rank', 0) if rank_result else 0
+        
+        # إذا كان عدد الرسائل 0، الترتيب يكون 0 أيضاً
+        if user_count == 0:
+            user_rank = 0
+            
+        return user_count, user_rank
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على ترتيب المستخدم {user_id} في المجموعة {chat_id}: {e}")
+        return 0, 0
+
+
 async def get_all_group_members(group_id: int) -> list:
     """الحصول على جميع الأعضاء المسجلين في المجموعة"""
     try:

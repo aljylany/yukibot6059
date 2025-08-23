@@ -167,6 +167,183 @@ async def show_target_user_info(message: Message):
         await message.reply("❌ حدث خطأ أثناء عرض معلومات المستخدم")
 
 
+async def show_group_activity_ranking(message: Message):
+    """عرض ترتيب تفاعل المجموعة حسب عدد الرسائل"""
+    try:
+        if message.chat.type not in ['group', 'supergroup']:
+            await message.reply("❌ هذا الأمر يعمل في المجموعات فقط!")
+            return
+        
+        from database.operations import get_group_message_ranking
+        from utils.helpers import format_number
+        
+        # الحصول على أفضل 15 مستخدم
+        ranking = await get_group_message_ranking(message.chat.id, 15)
+        
+        if not ranking:
+            await message.reply("📊 **ترتيب التفاعل**\n\n❌ لا توجد بيانات تفاعل متاحة بعد!")
+            return
+        
+        # بناء رسالة الترتيب
+        activity_text = "📊 **ترتيب التفاعل في المجموعة**\n\n"
+        
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for i, user_data in enumerate(ranking):
+            rank = i + 1
+            user_id = user_data.get('user_id')
+            message_count = user_data.get('message_count', 0)
+            first_name = user_data.get('first_name', 'مستخدم')
+            username = user_data.get('username')
+            
+            # اختيار الأيقونة المناسبة
+            if rank <= 3:
+                icon = medals[rank - 1]
+            elif rank <= 10:
+                icon = "🔹"
+            else:
+                icon = "▫️"
+            
+            # تنسيق اسم المستخدم
+            display_name = first_name[:15] if first_name else "مستخدم"
+            if username:
+                display_name += f" (@{username[:10]})"
+            
+            activity_text += f"{icon} **{rank}.** {display_name}\n"
+            activity_text += f"    📨 **{format_number(message_count)}** رسالة\n\n"
+        
+        activity_text += "━━━━━━━━━━━━━━━━━━━━\n"
+        activity_text += "💡 **للتحقق من تفاعلك:** اكتب `رسائلي`\n"
+        activity_text += "👥 **للتحقق من تفاعل آخر:** ارد عليه واكتب `تفاعله`"
+        
+        await message.reply(activity_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض ترتيب التفاعل: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض ترتيب التفاعل")
+
+
+async def show_my_messages_count(message: Message):
+    """عرض عدد رسائل المستخدم الحالي"""
+    try:
+        if message.chat.type not in ['group', 'supergroup']:
+            await message.reply("❌ هذا الأمر يعمل في المجموعات فقط!")
+            return
+        
+        from database.operations import get_user_message_rank
+        from utils.helpers import format_number
+        
+        user_count, user_rank = await get_user_message_rank(message.from_user.id, message.chat.id)
+        
+        user_name = message.from_user.first_name or "مستخدم"
+        
+        if user_count == 0:
+            rank_text = "غير مرتب"
+        else:
+            rank_text = f"#{user_rank}"
+        
+        result_text = (
+            f"📨 **رسائل {user_name}**\n\n"
+            f"📊 **عدد الرسائل:** {format_number(user_count)}\n"
+            f"🏆 **الترتيب:** {rank_text}\n\n"
+            f"💡 **لرؤية ترتيب المجموعة:** اكتب `تفاعلي`"
+        )
+        
+        await message.reply(result_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض عدد رسائل المستخدم: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض عدد الرسائل")
+
+
+async def show_target_user_messages(message: Message):
+    """عرض عدد رسائل المستخدم المحدد بالرد"""
+    try:
+        if message.chat.type not in ['group', 'supergroup']:
+            await message.reply("❌ هذا الأمر يعمل في المجموعات فقط!")
+            return
+        
+        if not message.reply_to_message or not message.reply_to_message.from_user:
+            await message.reply("❌ قم بالرد على رسالة المستخدم المطلوب مع كتابة 'رسائله'")
+            return
+        
+        from database.operations import get_user_message_rank
+        from utils.helpers import format_number
+        
+        target_user = message.reply_to_message.from_user
+        user_count, user_rank = await get_user_message_rank(target_user.id, message.chat.id)
+        
+        target_name = target_user.first_name or "مستخدم"
+        
+        if user_count == 0:
+            rank_text = "غير مرتب"
+        else:
+            rank_text = f"#{user_rank}"
+        
+        result_text = (
+            f"📨 **رسائل {target_name}**\n\n"
+            f"📊 **عدد الرسائل:** {format_number(user_count)}\n"
+            f"🏆 **الترتيب:** {rank_text}\n\n"
+            f"💡 **لرؤية ترتيب المجموعة:** اكتب `تفاعلي`"
+        )
+        
+        await message.reply(result_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض عدد رسائل المستخدم المحدد: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض عدد الرسائل")
+
+
+async def show_target_user_activity(message: Message):
+    """عرض تفاعل المستخدم المحدد بالرد"""
+    try:
+        if message.chat.type not in ['group', 'supergroup']:
+            await message.reply("❌ هذا الأمر يعمل في المجموعات فقط!")
+            return
+        
+        if not message.reply_to_message or not message.reply_to_message.from_user:
+            await message.reply("❌ قم بالرد على رسالة المستخدم المطلوب مع كتابة 'تفاعله'")
+            return
+        
+        from database.operations import get_user_message_rank
+        from utils.helpers import format_number
+        
+        target_user = message.reply_to_message.from_user
+        user_count, user_rank = await get_user_message_rank(target_user.id, message.chat.id)
+        
+        target_name = target_user.first_name or "مستخدم"
+        target_username = f"@{target_user.username}" if target_user.username else ""
+        
+        if user_count == 0:
+            rank_text = "غير مرتب"
+            activity_level = "🔇 خامل"
+        else:
+            rank_text = f"#{user_rank}"
+            if user_count >= 100:
+                activity_level = "🔥 نشط جداً"
+            elif user_count >= 50:
+                activity_level = "⚡ نشط"
+            elif user_count >= 20:
+                activity_level = "📈 متوسط النشاط"
+            else:
+                activity_level = "📊 نشاط قليل"
+        
+        result_text = (
+            f"📊 **تفاعل {target_name}**\n\n"
+            f"👤 **المستخدم:** {target_name} {target_username}\n"
+            f"📨 **عدد الرسائل:** {format_number(user_count)}\n"
+            f"🏆 **الترتيب:** {rank_text}\n"
+            f"📈 **مستوى التفاعل:** {activity_level}\n\n"
+            f"💡 **لرؤية ترتيب المجموعة:** اكتب `تفاعلي`"
+        )
+        
+        await message.reply(result_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض تفاعل المستخدم المحدد: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض التفاعل")
+
+
 async def show_help_command(message: Message):
     """عرض مساعدة أوامر النظام الإداري"""
     try:
@@ -240,6 +417,23 @@ async def handle_utility_commands(message: Message) -> bool:
     
     elif text in ['المساعدة الإدارية', 'مساعدة النظام', 'admin help']:
         await show_help_command(message)
+        return True
+    
+    # أوامر التفاعل والإحصائيات
+    elif text in ['تفاعلي', 'ترتيب التفاعل', 'ترتيب المجموعة']:
+        await show_group_activity_ranking(message)
+        return True
+    
+    elif text in ['رسائلي', 'عدد رسائلي']:
+        await show_my_messages_count(message)
+        return True
+    
+    elif text in ['رسائله', 'عدد رسائله'] and message.reply_to_message:
+        await show_target_user_messages(message)
+        return True
+    
+    elif text in ['تفاعله', 'نشاطه'] and message.reply_to_message:
+        await show_target_user_activity(message)
         return True
     
     return False
