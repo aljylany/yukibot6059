@@ -6,7 +6,7 @@
 import logging
 from aiogram.types import Message, ChatPermissions
 from aiogram.exceptions import TelegramBadRequest
-from utils.decorators import ensure_group_only
+# from utils.decorators import ensure_group_only  # مُعطل مؤقتاً
 from datetime import datetime, timedelta
 
 # قائمة الكلمات المحظورة (السباب)
@@ -110,13 +110,22 @@ async def mute_user_for_profanity(message: Message) -> bool:
         logging.error(f"خطأ غير متوقع في كتم المستخدم: {e}")
         return False
 
-@ensure_group_only
 async def handle_profanity_detection(message: Message) -> bool:
     """
     معالج كشف السباب الرئيسي
     Returns True إذا تم العثور على سباب وتمت معالجته
     """
     try:
+        # التأكد من أن الرسالة في مجموعة وليس خاص
+        if message.chat.type == 'private':
+            return False
+        
+        # استثناء أوامر المسح من فحص السباب
+        if message.text:
+            text = message.text.strip()
+            if text.startswith('مسح ') or text == 'مسح بالرد' or text == 'مسح':
+                return False
+        
         # فحص وجود سباب
         if not await check_for_profanity(message):
             return False
