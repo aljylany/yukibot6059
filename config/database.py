@@ -203,6 +203,21 @@ async def init_database():
                 except Exception:
                     pass  # العمود موجود بالفعل
             
+            # إضافة أعمدة الزواج المفقودة
+            try:
+                await db.execute("ALTER TABLE entertainment_marriages ADD COLUMN judge_commission REAL DEFAULT 0")
+                logging.info("✅ تم إضافة عمود أتعاب الشيخ")
+            except Exception as e:
+                if "duplicate column name" not in str(e).lower():
+                    logging.warning(f"خطأ في إضافة عمود أتعاب الشيخ: {e}")
+            
+            try:
+                await db.execute("ALTER TABLE entertainment_marriages ADD COLUMN dowry_amount REAL DEFAULT 0")
+                logging.info("✅ تم إضافة عمود المهر")
+            except Exception as e:
+                if "duplicate column name" not in str(e).lower():
+                    logging.warning(f"خطأ في إضافة عمود المهر: {e}")
+            
             # إنشاء جدول موارد المستخدمين
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS user_resources (
