@@ -428,8 +428,13 @@ async def download_youtube_audio(url: str, title: str) -> Optional[str]:
                 return None
         
         except yt_dlp.DownloadError as download_error:
-            logging.error(f"خطأ في تحميل يوتيوب: {download_error}")
-            return None
+            error_msg = str(download_error)
+            if "not made this video available in your country" in error_msg or "geo" in error_msg.lower():
+                logging.error(f"فيديو محجوب جغرافياً: {download_error}")
+                return "GEO_BLOCKED"  # إرجاع علامة خاصة للحجب الجغرافي
+            else:
+                logging.error(f"خطأ في تحميل يوتيوب: {download_error}")
+                return None
         except Exception as ydl_error:
             logging.error(f"خطأ في yt-dlp: {ydl_error}")
             return None
@@ -588,43 +593,93 @@ async def handle_music_download(message: Message) -> bool:
         search_results = await search_youtube_api(query)
         
         if search_results and 'results' in search_results and len(search_results['results']) > 0:
-            # أخذ أول نتيجة من البحث
-            video_info = search_results['results'][0]
+            # محاولة تحميل كل فيديو حتى ينجح واحد (لتجنب الفيديوهات المحجوبة)
+            successful_download = None
+            geo_blocked_count = 0
             
-            logging.info(f"تم العثور على الفيديو: {video_info['title']} - {video_info['url']}")
+            for i, video_info in enumerate(search_results['results']):
+                logging.info(f"تجربة الفيديو {i+1}: {video_info['title']} - {video_info['url']}")
+                
+                try:
+                    # تحديث رسالة الانتظار لإظهار التقدم
+                    await wait_msg.edit_text(f"🎵 تجربة الفيديو {i+1} من {len(search_results['results'])}\n🔽 جاري تحميل: {video_info['title'][:40]}...")
+                    
+                    # تحميل الملف الصوتي
+                    file_path = await download_youtube_audio(video_info['url'], video_info['title'])
+                    
+                    if file_path == "GEO_BLOCKED":
+                        geo_blocked_count += 1
+                        logging.warning(f"الفيديو {i+1} محجوب جغرافياً، جاري المحاولة مع التالي...")
+                        continue
+                    elif file_path and os.path.exists(file_path):
+                        logging.info(f"تم تحميل الملف بنجاح: {file_path}")
+                        successful_download = file_path
+                        break
+                    else:
+                        logging.warning(f"فشل تحميل الفيديو {i+1}، جاري المحاولة مع التالي...")
+                        continue
+                        
+                except Exception as download_error:
+                    logging.error(f"خطأ في تحميل الفيديو {i+1}: {download_error}")
+                    continue
             
-            try:
-                # تحديث رسالة الانتظار لإظهار التقدم
-                await wait_msg.edit_text(f"🎵 تم العثور على الأغنية!\n🔽 جاري تحميل: {video_info['title'][:50]}...")
+            if successful_download:
+                # تحديث الرسالة لإظهار أنه يتم الإرسال
+                await wait_msg.edit_text("📤 جاري إرسال الملف الصوتي...")
                 
-                # تحميل الملف الصوتي
-                file_path = await download_youtube_audio(video_info['url'], video_info['title'])
+                # إرسال الملف الصوتي
+                from aiogram.types import FSInputFile
+                audio_file = FSInputFile(successful_download)
+                await message.reply_audio(audio=audio_file)
                 
-                if file_path and os.path.exists(file_path):
-                    logging.info(f"تم تحميل الملف بنجاح: {file_path}")
+                # حذف الملف المؤقت
+                os.unlink(successful_download)
+                import shutil
+                shutil.rmtree(os.path.dirname(successful_download), ignore_errors=True)
+                
+                logging.info("تم إرسال الملف الصوتي بنجاح")
+            else:
+                # فشل تحميل جميع الفيديوهات
+                if geo_blocked_count > 0:
+                    # البحث عن بدائل بكلمات مختلفة
+                    await wait_msg.edit_text("🔍 بعض الفيديوهات محجوبة، جاري البحث عن بدائل...")
                     
-                    # تحديث الرسالة لإظهار أنه يتم الإرسال
-                    await wait_msg.edit_text("📤 جاري إرسال الملف الصوتي...")
+                    alternative_queries = [
+                        f"{query} غير محجوب",
+                        f"{query} اغنية",
+                        f"{query} موسيقى", 
+                        f"{query} فيديو",
+                        f"{query} cover",
+                        f"{query} remix",
+                        f"{query} كاملة"
+                    ]
                     
-                    # إرسال الملف الصوتي بدون نص إضافي
-                    from aiogram.types import FSInputFile
-                    audio_file = FSInputFile(file_path)
-                    await message.reply_audio(audio=audio_file)
+                    found_alternative = False
+                    for alt_query in alternative_queries:
+                        alt_results = await search_youtube_api(alt_query)
+                        if alt_results and 'results' in alt_results:
+                            for alt_video in alt_results['results'][:3]:  # جرب أول 3 فقط
+                                file_path = await download_youtube_audio(alt_video['url'], alt_video['title'])
+                                if file_path and file_path != "GEO_BLOCKED" and os.path.exists(file_path):
+                                    await wait_msg.edit_text("📤 تم العثور على بديل! جاري الإرسال...")
+                                    
+                                    from aiogram.types import FSInputFile
+                                    audio_file = FSInputFile(file_path)
+                                    await message.reply_audio(audio=audio_file)
+                                    
+                                    os.unlink(file_path)
+                                    import shutil
+                                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
+                                    
+                                    found_alternative = True
+                                    break
+                        if found_alternative:
+                            break
                     
-                    # حذف الملف المؤقت
-                    os.unlink(file_path)
-                    # حذف المجلد المؤقت
-                    import shutil
-                    shutil.rmtree(os.path.dirname(file_path), ignore_errors=True)
-                    
-                    logging.info("تم إرسال الملف الصوتي بنجاح")
+                    if not found_alternative:
+                        await wait_msg.edit_text("❌ جميع النتائج محجوبة جغرافياً\n💡 جرب البحث بكلمات مختلفة أو استخدم رابط مباشر")
                 else:
-                    logging.error(f"فشل في تحميل الملف: file_path={file_path}")
-                    await wait_msg.edit_text("❌ فشل في تحميل الملف الصوتي\n💡 جرب مرة أخرى أو استخدم كلمات بحث مختلفة")
-                
-            except Exception as download_error:
-                logging.error(f"خطأ في عملية التحميل: {download_error}")
-                await wait_msg.edit_text("❌ حدث خطأ أثناء التحميل\n💡 جرب مرة أخرى لاحقاً")
+                    await wait_msg.edit_text("❌ فشل في تحميل جميع الملفات\n💡 جرب كلمات بحث مختلفة")
             
             # حذف رسالة الانتظار
             try:
