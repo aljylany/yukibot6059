@@ -141,9 +141,12 @@ async def check_for_profanity(message: Message) -> bool:
     text_variations = generate_text_variations(message.text.lower().strip())
     
     # فحص كل تنويعة مع كل كلمة محظورة
+    import re
     for text_variant in text_variations:
         for banned_word in ALL_BANNED_WORDS:
-            if banned_word.lower() in text_variant:
+            # استخدام regex للتأكد من أن الكلمة المحظورة منفصلة وليست جزء من كلمة أخرى
+            pattern = r'\b' + re.escape(banned_word.lower()) + r'\b'
+            if re.search(pattern, text_variant):
                 logging.info(f"تم كشف سباب: '{banned_word}' في النص المنظف: '{text_variant}' (النص الأصلي: '{message.text[:50]}...')")
                 return True
     
@@ -152,9 +155,10 @@ async def check_for_profanity(message: Message) -> bool:
     for banned_word in ALL_BANNED_WORDS:
         # تحويل الكلمة المحظورة إلى نمط regex للبحث مع رموز التمويه
         import re
-        word_pattern = ""
+        word_pattern = r'\b'
         for char in banned_word.lower():
-            word_pattern += char + r"[\*\_\-\.\s\+\=\|\\\/\,\!\@\#\$\%\^\&\(\)\[\]\{\}\<\>\?\~\`\"\'0-9]*"
+            word_pattern += re.escape(char) + r"[\*\_\-\.\s\+\=\|\\\/\,\!\@\#\$\%\^\&\(\)\[\]\{\}\<\>\?\~\`\"\'0-9]*"
+        word_pattern += r'\b'
         
         # البحث عن النمط في النص الأصلي
         if re.search(word_pattern, original_text):
