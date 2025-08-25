@@ -899,6 +899,14 @@ async def handle_general_message(message: Message, state: FSMContext):
                 await message.reply("❌ هذا الأمر يعمل في المجموعات فقط!")
                 return
             
+            # فحص رتبة المستخدم - يجب أن يكون مشرف أو أعلى
+            from config.hierarchy import get_user_admin_level, AdminLevel
+            user_level = get_user_admin_level(message.from_user.id, message.chat.id)
+            
+            if user_level == AdminLevel.MEMBER:
+                await message.reply("❌ هذا الأمر مخصص للمشرفين والمالكين فقط!")
+                return
+            
             # الحصول على قائمة أعضاء المجموعة
             chat_members = []
             mentions_text = "📢 **نداء عام لجميع الأعضاء:**\n\n"
