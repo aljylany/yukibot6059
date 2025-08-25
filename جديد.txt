@@ -1,0 +1,298 @@
+import logging
+import sqlite3
+import pandas as pd
+import numpy as np
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+import nltk
+import re
+
+# تحميل بيانات NLTK (للمرة الأولى فقط)
+nltk.download('punkt')
+nltk.download('stopwords')
+
+# إعدادات البوت
+TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+BOT_USERNAME = "@YOUR_BOT_USERNAME"
+
+# إعداد اللوغ
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# تهيئة قاعدة البيانات
+def init_db():
+    conn = sqlite3.connect('abusive_words.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS abusive_words (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        word TEXT UNIQUE,
+        severity INTEGER DEFAULT 1
+    )
+    ''')
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS user_warnings (
+        user_id INTEGER,
+        chat_id INTEGER,
+        warnings INTEGER DEFAULT 0,
+        last_warning TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, chat_id)
+    )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# إضافة كلمات مسيئة إلى قاعدة البيانات
+def add_abusive_words():
+    default_words = [
+        ('كلب', 2), ('حيوان', 2), ('عاهة', 3), ('قذر', 1),
+        ('خنزير', 3), ('سافل', 2), ('حقير', 2), ('وضيع', 1),
+        ('ساقط', 2), ('منحط', 2), ('عاهر', 3), ('زاني', 3)
+    ]
+    
+    conn = sqlite3.connect('abusive_words.db')
+    cursor = conn.cursor()
+    
+    for word, severity in default_words:
+        try:
+            cursor.execute('INSERT INTO abusive_words (word, severity) VALUES (?, ?)', (word, severity))
+        except sqlite3.IntegrityError:
+            pass
+    
+    conn.commit()
+    conn.close()
+
+# تهيئة نموذج تعلم الآلة
+def init_ml_model():
+    # بيانات تدريب عينة (يجب استبدالها ببيانات حقيقية)
+    data = {
+        'text': [
+            "أنت شخص لطيف",
+            "أحب التحدث معك",
+            "أنت غبي جدا",
+            "اخرس يا أحمق",
+            "شكرا لك على مساعدتك",
+            "أنت عديم الفائدة",
+            "هذا عمل رائع",
+            "أنت فاشل في حياتك"
+        ],
+        'label': [0, 0, 1, 1, 0, 1, 0, 1]
+    }
+    
+    df = pd.DataFrame(data)
+    
+    # تنظيف النص
+    stop_words = set(stopwords.words('arabic'))
+    
+    def clean_text(text):
+        text = re.sub(r'[^\w\s]', '', text)
+        tokens = word_tokenize(text)
+        tokens = [word for word in tokens if word not in stop_words]
+        return ' '.join(tokens)
+    
+    df['cleaned_text'] = df['text'].apply(clean_text)
+    
+    # تحويل النص إلى متجهات
+    vectorizer = TfidfVectorizer(max_features=1000)
+    X = vectorizer.fit_transform(df['cleaned_text'])
+    y = df['label']
+    
+    # تدريب النموذج
+    model = LogisticRegression()
+    model.fit(X, y)
+    
+    return vectorizer, model
+
+# تهيئة النظام
+init_db()
+add_abusive_words()
+vectorizer, model = init_ml_model()
+
+# أوامر البوت
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('مرحباً! أنا بوت متطور للكشف عن الألفاظ المسيئة. أرسل لي رسالة وسأتحقق منها باستخدام قاعدة بيانات ونموذج ذكاء اصطناعي.')
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = """
+/start - بدء استخدام البوت
+/help - عرض هذه المساعدة
+/add_word <كلمة> <درجة الخطورة> - إضافة كلمة مسيئة إلى قاعدة البيانات (للمشرفين فقط)
+/check <نص> - التحقق من نص معين
+/stats - إحصائيات الاستخدام
+"""
+    await update.message.reply_text(help_text)
+
+async def add_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+
+if user_id != YOUR_ADMIN_ID:  # استبدل بآيدي المشرف
+        await update.message.reply_text("⚠️ ليس لديك صلاحية تنفيذ هذا الأمر.")
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("استخدام: /add_word <كلمة> <درجة الخطورة (1-3)>")
+        return
+    
+    word = context.args[0]
+    try:
+        severity = int(context.args[1])
+        if severity < 1 or severity > 3:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("درجة الخطورة يجب أن تكون رقم بين 1 و 3")
+        return
+    
+    conn = sqlite3.connect('abusive_words.db')
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('INSERT INTO abusive_words (word, severity) VALUES (?, ?)', (word, severity))
+        conn.commit()
+        await update.message.reply_text(f"تمت إضافة الكلمة '{word}' بدرجة خطورة {severity} بنجاح.")
+    except sqlite3.IntegrityError:
+        await update.message.reply_text(f"الكلمة '{word}' موجودة بالفعل في قاعدة البيانات.")
+    
+    conn.close()
+
+async def check_message(text, user_id, chat_id):
+    # التحقق من قاعدة البيانات أولاً
+    conn = sqlite3.connect('abusive_words.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT word, severity FROM abusive_words')
+    abusive_words = cursor.fetchall()
+    
+    found_words = []
+    for word, severity in abusive_words:
+        if word in text.lower():
+            found_words.append((word, severity))
+    
+    # إذا وجدنا كلمات مسيئة معروفة، نرجع النتيجة فوراً
+    if found_words:
+        conn.close()
+        return {
+            'is_abusive': True,
+            'words': found_words,
+            'ml_score': None,
+            'reason': 'known_words'
+        }
+    
+    conn.close()
+    
+    # إذا لم نجد كلمات معروفة، نستخدم نموذج تعلم الآلة
+    cleaned_text = re.sub(r'[^\w\s]', '', text.lower())
+    X = vectorizer.transform([cleaned_text])
+    proba = model.predict_proba(X)[0][1]
+    
+    if proba > 0.7:  # حد الثقة
+        return {
+            'is_abusive': True,
+            'words': [],
+            'ml_score': proba,
+            'reason': 'ml_model'
+        }
+    
+    return {
+        'is_abusive': False,
+        'words': [],
+        'ml_score': proba,
+        'reason': 'clean'
+    }
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message_type = update.message.chat.type
+    text = update.message.text
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat.id
+    
+    if message_type == 'group' or message_type == 'supergroup':
+        if BOT_USERNAME not in text:
+            return
+    
+    if not text or text.startswith('/'):
+        return
+    
+    result = await check_message(text, user_id, chat_id)
+    
+    if result['is_abusive']:
+        # تحديث التحذيرات في قاعدة البيانات
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        INSERT OR IGNORE INTO user_warnings (user_id, chat_id, warnings)
+        VALUES (?, ?, 0)
+        ''', (user_id, chat_id))
+        
+        cursor.execute('''
+        UPDATE user_warnings 
+        SET warnings = warnings + 1, last_warning = CURRENT_TIMESTAMP
+        WHERE user_id = ? AND chat_id = ?
+        ''', (user_id, chat_id))
+        
+        cursor.execute('SELECT warnings FROM user_warnings WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+        warnings = cursor.fetchone()[0]
+        
+        conn.commit()
+        conn.close()
+        
+        # بناء رسالة التحذير
+        warning_msg = "⚠️ تحذير: "
+        
+        if result['reason'] == 'known_words':
+            words = [f"{word} (خطورة: {severity})" for word, severity in result['words']]
+            warning_msg += "عثرت على كلمات مسيئة معروفة:\n" + "\n".join(words)
+        else:
+
+warning_msg += f"يبدو أن رسالتك تحتوي على لغة مسيئة (ثقة النموذج: {result['ml_score']:.2f})"
+        
+        warning_msg += f"\n\nعدد تحذيراتك: {warnings}"
+        
+        if warnings >= 3:
+            warning_msg += "\n\nلقد تجاوزت الحد المسموح من التحذيرات. سيتم إبلاغ المشرفين."
+            try:
+                await context.bot.ban_chat_member(chat_id, user_id)
+                warning_msg += "\nتم حظرك من المجموعة."
+            except Exception as e:
+                logging.error(f"Error banning user: {e}")
+        
+        await update.message.reply_text(warning_msg)
+        
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logging.error(f"Error deleting message: {e}")
+    else:
+        if message_type == 'private':
+            await update.message.reply_text("✅ رسالتك نظيفة من الألفاظ المسيئة. شكراً لأدبك!")
+
+async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.error(f"Update {update} caused error {context.error}")
+
+if name == 'main':
+    print('Starting advanced abusive language detection bot...')
+    app = Application.builder().token(TOKEN).build()
+    
+    # الأوامر
+    app.add_handler(CommandHandler('start', start_command))
+    app.add_handler(CommandHandler('help', help_command))
+    app.add_handler(CommandHandler('add_word', add_word_command))
+    
+    # الرسائل
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # الأخطاء
+    app.add_error_handler(error)
+    
+    # تشغيل البوت
+    print('Polling...')
+    app.run_polling(poll_interval=3)
