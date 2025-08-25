@@ -80,6 +80,11 @@ AVAILABLE_GAMES = {
 async def show_games_list(message: Message):
     """عرض قائمة الألعاب المتاحة بشكل أفقي مع التنقل"""
     try:
+        # التحقق من وجود from_user
+        if not message.from_user:
+            await message.reply("❌ حدث خطأ في التعرف على المستخدم")
+            return
+            
         user_id = message.from_user.id
         
         # تهيئة الفهرس للمستخدم إذا لم يكن موجوداً
@@ -181,43 +186,60 @@ async def show_game_carousel(message_or_callback, user_id: int, game_index: int)
 async def handle_game_start_callback(callback_query, game_command: str):
     """معالجة بدء اللعبة من الأزرار"""
     try:
+        # إنشاء رسالة وهمية شاملة للجميع
+        import types
+        fake_message = types.SimpleNamespace()
+        fake_message.chat = callback_query.message.chat
+        fake_message.from_user = callback_query.from_user
+        fake_message.text = game_command
+        
+        # إضافة دالة reply للرسالة الوهمية
+        async def fake_reply(text, **kwargs):
+            return await callback_query.bot.send_message(
+                chat_id=callback_query.message.chat.id,
+                text=text,
+                **kwargs
+            )
+        fake_message.reply = fake_reply
+        
         # محاكاة رسالة جديدة لبدء اللعبة
         if game_command in ["اكس اوه", "xo"]:
             from modules.xo_game import start_xo_game
-            # إنشاء رسالة وهمية لبدء اللعبة
-            fake_message = callback_query.message
-            fake_message.text = game_command
             await start_xo_game(fake_message)
             await callback_query.answer("🎮 تم بدء لعبة اكس اوه!")
             
         elif game_command in ["رويال", "royal"]:
             from modules.royal_game import start_royal_game  
-            fake_message = callback_query.message
-            fake_message.text = game_command
             await start_royal_game(fake_message)
             await callback_query.answer("👑 تم بدء لعبة الرويال!")
             
         elif game_command in ["الكلمة", "كلمة", "word"]:
             from modules.word_game import start_word_game
-            # إنشاء رسالة وهمية محاكاة للضغط على الزر
-            import types
-            fake_message = types.SimpleNamespace()
-            fake_message.chat = callback_query.message.chat
-            fake_message.from_user = callback_query.from_user
-            fake_message.text = game_command
             await start_word_game(fake_message)
             await callback_query.answer("💭 تم بدء لعبة الكلمة!")
             
         elif game_command in ["الرموز", "رموز", "symbols"]:
             from modules.symbols_game import start_symbols_game
-            # إنشاء رسالة وهمية محاكاة للضغط على الزر
-            import types
-            fake_message = types.SimpleNamespace()
-            fake_message.chat = callback_query.message.chat
-            fake_message.from_user = callback_query.from_user
-            fake_message.text = game_command
             await start_symbols_game(fake_message)
             await callback_query.answer("🔤 تم بدء لعبة الرموز!")
+            
+        elif game_command in ["ساحة الموت", "battle", "معركة"]:
+            await callback_query.answer("⚔️ ساحة الموت الأخيرة - قريباً!", show_alert=True)
+            
+        elif game_command in ["عجلة الحظ", "عجلة", "wheel"]:
+            from modules.luck_wheel_game import start_luck_wheel
+            await start_luck_wheel(fake_message)
+            await callback_query.answer("🎲 تم بدء عجلة الحظ!")
+            
+        elif game_command in ["خمن الرقم", "تخمين", "رقم"]:
+            from modules.number_guess_game import start_number_guess_game
+            await start_number_guess_game(fake_message)
+            await callback_query.answer("🔢 تم بدء لعبة خمن الرقم!")
+            
+        elif game_command in ["سؤال وجواب", "مسابقة", "quiz"]:
+            from modules.quick_quiz_game import start_quick_quiz_game
+            await start_quick_quiz_game(fake_message)
+            await callback_query.answer("🧠 تم بدء سؤال وجواب!")
             
         else:
             await callback_query.answer("❌ هذه اللعبة غير متاحة حالياً", show_alert=True)
