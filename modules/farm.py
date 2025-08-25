@@ -157,10 +157,22 @@ async def plant_crop_command(message: Message):
             
         parts = message.text.split()
         if len(parts) < 2:
-            await message.reply("❌ يرجى كتابة نوع المحصول\n\nمثال: زراعة قمح")
+            await message.reply("❌ يرجى كتابة نوع المحصول والكمية\n\nمثال: زراعة قمح 10")
             return
-            
+        
         crop_name = parts[1].lower()
+        
+        # قراءة الكمية إذا تم تحديدها
+        quantity = 1  # كمية افتراضية
+        if len(parts) >= 3:
+            try:
+                quantity = int(parts[2])
+                if quantity <= 0:
+                    await message.reply("❌ الكمية يجب أن تكون أكبر من صفر")
+                    return
+            except ValueError:
+                await message.reply("❌ الكمية يجب أن تكون رقم صحيح\n\nمثال: زراعة قمح 10")
+                return
         
         # البحث عن المحصول
         crop_type = None
@@ -174,7 +186,11 @@ async def plant_crop_command(message: Message):
             return
         
         crop_info = CROP_TYPES[crop_type]
-        quantity = 1  # كمية افتراضية
+        
+        # التحقق من الحد الأقصى للكمية
+        if quantity > crop_info['max_quantity']:
+            await message.reply(f"❌ الكمية أكبر من الحد الأقصى!\n\n🌾 {crop_info['name']}\n📊 الحد الأقصى: {crop_info['max_quantity']} وحدة")
+            return
         total_cost = crop_info['cost_per_unit'] * quantity
         
         # التحقق من الرصيد
