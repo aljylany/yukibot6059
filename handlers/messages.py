@@ -601,6 +601,60 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     text = message.text.lower() if message.text else ""
     
+    # معالج خاص لحرف "ا" منفرداً في المجموعات - عرض معلومات الملف الشخصي
+    if (message.text and message.text.strip() == "ا" and 
+        message.chat.type in ['group', 'supergroup'] and message.from_user):
+        try:
+            user = message.from_user
+            
+            # بناء نص معلومات المستخدم
+            profile_text = f"👤 **الملف الشخصي**\n\n"
+            profile_text += f"🏷️ **الاسم:** {user.first_name}"
+            if user.last_name:
+                profile_text += f" {user.last_name}"
+            
+            if user.username:
+                profile_text += f"\n📧 **اليوزرنيم:** @{user.username}"
+            else:
+                profile_text += f"\n📧 **اليوزرنيم:** غير محدد"
+            
+            profile_text += f"\n🆔 **المعرف:** `{user.id}`"
+            
+            # محاولة الحصول على معلومات إضافية من المجموعة
+            try:
+                chat_member = await message.bot.get_chat_member(message.chat.id, user.id)
+                if hasattr(chat_member.user, 'bio') and chat_member.user.bio:
+                    profile_text += f"\n📝 **السيرة الذاتية:** {chat_member.user.bio}"
+                else:
+                    profile_text += f"\n📝 **السيرة الذاتية:** غير محددة"
+            except:
+                profile_text += f"\n📝 **السيرة الذاتية:** غير محددة"
+            
+            # محاولة إرسال صورة الملف الشخصي مع النص
+            try:
+                # الحصول على صور الملف الشخصي
+                photos = await message.bot.get_user_profile_photos(user.id, limit=1)
+                if photos.photos:
+                    # إرسال الصورة مع النص
+                    photo_file_id = photos.photos[0][-1].file_id
+                    await message.reply_photo(photo=photo_file_id, caption=profile_text)
+                else:
+                    # لا توجد صورة ملف شخصي، إرسال النص فقط
+                    profile_text += "\n\n📷 **صورة الملف الشخصي:** غير محددة"
+                    await message.reply(profile_text)
+            except Exception as photo_error:
+                # في حال فشل في الحصول على الصورة، إرسال النص فقط
+                logging.error(f"خطأ في الحصول على صورة الملف الشخصي: {photo_error}")
+                profile_text += "\n\n📷 **صورة الملف الشخصي:** غير متاحة"
+                await message.reply(profile_text)
+            
+            return  # انتهى التعامل مع الرسالة
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض الملف الشخصي للحرف 'ا': {e}")
+            await message.reply("❌ حدث خطأ أثناء عرض معلومات الملف الشخصي")
+            return
+    
     # تتبع عدد الرسائل الحقيقي في المجموعات
     if message.chat.type in ['group', 'supergroup'] and message.from_user:
         try:
