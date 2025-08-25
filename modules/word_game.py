@@ -438,8 +438,9 @@ async def handle_word_guess(message: Message):
                 await update_user_balance(user_id, new_balance)
                 
                 # تحديث XP للفائز
-                from database.operations import get_db_connection
-                async with get_db_connection() as conn:
+                import aiosqlite
+                from config.database import DATABASE_URL
+                async with aiosqlite.connect(DATABASE_URL) as conn:
                     await conn.execute(
                         "UPDATE users SET xp = ? WHERE user_id = ?",
                         (new_xp, user_id)
@@ -451,7 +452,7 @@ async def handle_word_guess(message: Message):
                 # إعطاء 50 XP لمنشئ اللعبة
                 if creator_data and game.creator_id != user_id:
                     creator_new_xp = creator_data.get('xp', 0) + 50
-                    async with get_db_connection() as conn:
+                    async with aiosqlite.connect(DATABASE_URL) as conn:
                         await conn.execute(
                             "UPDATE users SET xp = ? WHERE user_id = ?",
                             (creator_new_xp, game.creator_id)
@@ -482,23 +483,25 @@ async def handle_word_guess(message: Message):
         elif "استنفدت محاولاتك" in result:
             return  # لا نرد على من استنفد محاولاته
         
-        # التحقق من انتهاء المحاولات أو الوقت
+        # التحقق من انتهاء اللعبة (فقط مرة واحدة عند الانتهاء الفعلي)
         if game.game_ended and not game.winner:
+            # التحقق أن اللعبة انتهت للتو وليس منذ قبل
             elapsed_time = time.time() - game.start_time
-            if elapsed_time >= game.game_duration:
-                end_reason = "⏰ انتهى الوقت!"
-            else:
-                end_reason = "📊 انتهت جميع المحاولات!"
-            
-            end_text = (
-                f"🔚 **انتهت لعبة الكلمة!**\n\n"
-                f"{end_reason}\n"
-                f"✅ **الإجابة كانت:** {game.current_word['word']}\n"
-                f"😔 **لم يتمكن أحد من التخمين**\n"
-                f"📊 **عدد المحاولات:** {len(game.attempts)}\n\n"
-                f"🎮 جرب لعبة جديدة!"
-            )
-            await message.reply(end_text, reply_markup=game.get_game_keyboard())
+            if elapsed_time >= game.game_duration or len(game.attempts) >= game.max_attempts:
+                if elapsed_time >= game.game_duration:
+                    end_reason = "⏰ انتهى الوقت!"
+                else:
+                    end_reason = "📊 انتهت جميع المحاولات!"
+                
+                end_text = (
+                    f"🔚 **انتهت لعبة الكلمة!**\n\n"
+                    f"{end_reason}\n"
+                    f"✅ **الإجابة كانت:** {game.current_word['word']}\n"
+                    f"😔 **لم يتمكن أحد من التخمين**\n"
+                    f"📊 **عدد المحاولات:** {len(game.attempts)}\n\n"
+                    f"🎮 جرب لعبة جديدة!"
+                )
+                await message.reply(end_text, reply_markup=game.get_game_keyboard())
         
     except Exception as e:
         logging.error(f"خطأ في معالجة تخمين الكلمة: {e}")
