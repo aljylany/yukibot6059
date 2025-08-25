@@ -742,6 +742,125 @@ async def auto_update_crop_status():
         return 0
 
 
+async def handle_harvest_callback(callback):
+    """معالج زر حصاد الآن"""
+    try:
+        user_id = callback.from_user.id
+        
+        # الحصول على المحاصيل الجاهزة
+        ready_crops = await get_ready_crops(user_id)
+        
+        if not ready_crops:
+            await callback.answer("❌ لا توجد محاصيل جاهزة للحصاد!")
+            return
+        
+        # حصاد جميع المحاصيل الجاهزة
+        total_yield = 0
+        harvested_count = 0
+        
+        for crop in ready_crops:
+            crop_info = CROP_TYPES.get(crop['crop_type'], {})
+            yield_amount = crop_info.get('yield_per_unit', 0) * crop['quantity']
+            total_yield += yield_amount
+            harvested_count += 1
+            
+            # تحديث حالة المحصول إلى محصود
+            await execute_query(
+                "UPDATE farm SET status = 'harvested' WHERE id = ?",
+                (crop['id'],)
+            )
+        
+        # إضافة المال للمستخدم
+        from database.operations import update_user_balance
+        await update_user_balance(user_id, total_yield)
+        
+        # إضافة XP للمستخدم
+        from modules.simple_level_display import add_simple_xp
+        await add_simple_xp(user_id, harvested_count * 10)  # 10 XP لكل محصول
+        
+        await callback.answer(f"🎉 تم حصاد {harvested_count} محصول بقيمة {format_number(total_yield)}$!")
+        
+        # تحديث عرض حالة المزرعة
+        await show_farm_status(callback.message)
+        
+    except Exception as e:
+        logging.error(f"خطأ في حصاد المحاصيل: {e}")
+        await callback.answer("❌ حدث خطأ أثناء الحصاد")
+
+
+async def handle_plant_callback(callback):
+    """معالج زر زراعة جديدة"""
+    try:
+        # عرض قائمة المحاصيل المتاحة للزراعة
+        crops_text = "🌱 **اختر نوع المحصول للزراعة:**\n\n"
+        
+        keyboard_buttons = []
+        row = []
+        
+        for crop_type, crop_info in CROP_TYPES.items():
+            crops_text += f"{crop_info['emoji']} **{crop_info['name']}**\n"
+            crops_text += f"   💰 التكلفة: {format_number(crop_info['cost_per_unit'])}$ للوحدة\n"
+            crops_text += f"   ⏰ وقت النمو: {crop_info['grow_time_minutes']} دقيقة\n"
+            crops_text += f"   💎 العائد: {format_number(crop_info['yield_per_unit'])}$ للوحدة\n"
+            crops_text += f"   📊 الحد الأقصى: {crop_info['max_quantity']} وحدة\n\n"
+            
+            # إضافة زر للمحصول
+            button = InlineKeyboardButton(
+                text=f"{crop_info['emoji']} {crop_info['name']}", 
+                callback_data=f"farm_plant_{crop_type}"
+            )
+            row.append(button)
+            
+            # إضافة صف جديد كل زرين
+            if len(row) == 2:
+                keyboard_buttons.append(row)
+                row = []
+        
+        # إضافة أي أزرار متبقية
+        if row:
+            keyboard_buttons.append(row)
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        
+        await callback.message.edit_text(crops_text, reply_markup=keyboard)
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض قائمة الزراعة: {e}")
+        await callback.answer("❌ حدث خطأ أثناء عرض قائمة الزراعة")
+
+
+async def handle_specific_plant_callback(callback):
+    """معالج زر زراعة محصول محدد"""
+    try:
+        # استخراج نوع المحصول من callback_data
+        crop_type = callback.data.split('farm_plant_')[1]
+        
+        if crop_type not in CROP_TYPES:
+            await callback.answer("❌ نوع محصول غير صالح!")
+            return
+        
+        crop_info = CROP_TYPES[crop_type]
+        
+        # عرض معلومات المحصول وطلب الكمية
+        plant_text = f"🌱 **زراعة {crop_info['name']}**\n\n"
+        plant_text += f"{crop_info['emoji']} **المحصول:** {crop_info['name']}\n"
+        plant_text += f"💰 **التكلفة:** {format_number(crop_info['cost_per_unit'])}$ للوحدة\n"
+        plant_text += f"⏰ **وقت النمو:** {crop_info['grow_time_minutes']} دقيقة\n"
+        plant_text += f"💎 **العائد:** {format_number(crop_info['yield_per_unit'])}$ للوحدة\n"
+        plant_text += f"📊 **الحد الأقصى:** {crop_info['max_quantity']} وحدة\n\n"
+        plant_text += f"📝 **لزراعة هذا المحصول، استخدم الأمر:**\n"
+        plant_text += f"`زراعة {crop_info['name'].split()[0]} [الكمية]`\n\n"
+        plant_text += f"**مثال:** زراعة {crop_info['name'].split()[0]} 10"
+        
+        await callback.message.edit_text(plant_text)
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في زراعة محصول محدد: {e}")
+        await callback.answer("❌ حدث خطأ أثناء الزراعة")
+
+
 async def get_farm_statistics(user_id: int):
     """الحصول على إحصائيات المزرعة للمستخدم"""
     try:

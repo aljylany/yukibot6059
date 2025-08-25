@@ -175,6 +175,22 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_shuffle_close_callback(callback)
             return
         
+        # معالجة callbacks المزرعة
+        if data == 'farm_harvest':
+            from modules.farm import handle_harvest_callback
+            await handle_harvest_callback(callback)
+            return
+        
+        if data == 'farm_plant':
+            from modules.farm import handle_plant_callback
+            await handle_plant_callback(callback)
+            return
+        
+        if data.startswith('farm_plant_'):
+            from modules.farm import handle_specific_plant_callback
+            await handle_specific_plant_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         

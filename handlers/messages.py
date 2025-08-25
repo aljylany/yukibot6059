@@ -892,6 +892,98 @@ async def handle_general_message(message: Message, state: FSMContext):
     except Exception as activity_error:
         logging.error(f"خطأ في تحديث النشاط أو XP: {activity_error}")
     
+    # أمر ذكر جميع الأعضاء الغير متصلين
+    if text.lower() in ['الكل', 'all', 'mention all', 'ذكر الكل', 'نداء عام']:
+        try:
+            if message.chat.type not in ['group', 'supergroup']:
+                await message.reply("❌ هذا الأمر يعمل في المجموعات فقط!")
+                return
+            
+            # الحصول على قائمة أعضاء المجموعة
+            chat_members = []
+            mentions_text = "📢 **نداء عام لجميع الأعضاء:**\n\n"
+            
+            try:
+                # جلب معرفات أعضاء المجموعة من الرسائل المحفوظة أو من قاعدة البيانات
+                from database.operations import execute_query
+                
+                # البحث عن المستخدمين النشطين في هذه المجموعة
+                active_users = await execute_query(
+                    """
+                    SELECT DISTINCT user_id FROM (
+                        SELECT user_id FROM users WHERE chat_id = ?
+                        UNION
+                        SELECT user_id FROM farm WHERE user_id IN (
+                            SELECT user_id FROM users WHERE chat_id = ?
+                        )
+                        UNION  
+                        SELECT user_id FROM levels WHERE user_id IN (
+                            SELECT user_id FROM users WHERE chat_id = ?
+                        )
+                    ) LIMIT 50
+                    """,
+                    (message.chat.id, message.chat.id, message.chat.id),
+                    fetch_all=True
+                )
+                
+                if not active_users:
+                    await message.reply("❌ لا يمكن العثور على أعضاء لذكرهم!")
+                    return
+                
+                mentions_count = 0
+                mentions_list = []
+                
+                # إنشاء قائمة الذكر
+                for user_data in active_users[:25]:  # حد أقصى 25 عضو لتجنب الإزعاج
+                    user_id = user_data['user_id']
+                    
+                    # تجنب ذكر البوت نفسه
+                    if user_id == message.bot.id:
+                        continue
+                    
+                    # تجنب ذكر مرسل الرسالة
+                    if user_id == message.from_user.id:
+                        continue
+                    
+                    mentions_list.append(f"[@user{user_id}](tg://user?id={user_id})")
+                    mentions_count += 1
+                
+                if mentions_count == 0:
+                    await message.reply("❌ لا يوجد أعضاء لذكرهم!")
+                    return
+                
+                # تقسيم القائمة إلى مجموعات صغيرة لتجنب الرسائل الطويلة
+                mentions_per_message = 10
+                for i in range(0, len(mentions_list), mentions_per_message):
+                    chunk = mentions_list[i:i + mentions_per_message]
+                    
+                    final_text = f"📢 **نداء عام - المجموعة {i//mentions_per_message + 1}:**\n\n"
+                    final_text += " • ".join(chunk)
+                    final_text += f"\n\n👤 المرسل: {message.from_user.first_name}"
+                    
+                    await message.reply(final_text, parse_mode="Markdown")
+                
+                # رسالة تأكيد
+                await message.reply(f"✅ تم ذكر {mentions_count} عضو من أعضاء المجموعة!")
+                
+            except Exception as db_error:
+                logging.error(f"خطأ في قاعدة البيانات لأمر الكل: {db_error}")
+                
+                # طريقة بديلة - ذكر المستخدمين من الرسائل الأخيرة
+                simple_mentions = []
+                simple_mentions.append(f"[@user{message.from_user.id}](tg://user?id={message.from_user.id})")
+                
+                final_text = "📢 **نداء عام:**\n\n"
+                final_text += "تعذر جلب قائمة الأعضاء، لكن تم إرسال النداء!\n\n"
+                final_text += f"👤 المرسل: {message.from_user.first_name}"
+                
+                await message.reply(final_text, parse_mode="Markdown")
+            
+        except Exception as e:
+            logging.error(f"خطأ في أمر ذكر الكل: {e}")
+            await message.reply("❌ حدث خطأ أثناء محاولة ذكر الأعضاء")
+        return
+
     # دليل المستويات الشامل
     if text in ['المستويات', 'دليل المستويات', 'شرح المستويات', 'كيفية التقدم']:
         from modules.levels_guide import show_levels_guide
