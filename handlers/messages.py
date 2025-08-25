@@ -805,10 +805,7 @@ async def handle_general_message(message: Message, state: FSMContext):
             from config.hierarchy import MASTERS
             user = message.from_user
             
-            # التحقق من أن المرسل هو مطور
-            if user.id not in MASTERS:
-                await message.reply("❌ هذا الأمر متاح للمطورين فقط!")
-                return
+            # أمر المطور متاح للجميع الآن
             
             # معلومات المطور
             developer_info = f"👨‍💻 **معلومات المطور**\n\n"
@@ -915,40 +912,44 @@ async def handle_general_message(message: Message, state: FSMContext):
                 # جلب معرفات أعضاء المجموعة من الرسائل المحفوظة أو من قاعدة البيانات
                 from database.operations import execute_query
                 
-                # البحث عن جميع الأعضاء في هذه المجموعة (نشطين وغير نشطين)
-                active_users = await execute_query(
+                # البحث عن جميع الأعضاء مع ترتيب الغير نشطين أولاً
+                all_users = await execute_query(
                     """
-                    SELECT DISTINCT user_id FROM (
-                        SELECT user_id FROM group_ranks WHERE chat_id = ?
+                    SELECT DISTINCT user_id, 
+                           COALESCE(last_activity, '1970-01-01') as last_activity
+                    FROM (
+                        SELECT user_id, MAX(last_activity) as last_activity FROM group_ranks WHERE chat_id = ?
                         UNION
-                        SELECT from_user_id as user_id FROM transactions 
+                        SELECT from_user_id as user_id, NULL as last_activity FROM transactions 
                         WHERE from_user_id IN (SELECT user_id FROM group_ranks WHERE chat_id = ?)
                         AND from_user_id IS NOT NULL AND from_user_id != 0
                         UNION
-                        SELECT to_user_id as user_id FROM transactions 
+                        SELECT to_user_id as user_id, NULL as last_activity FROM transactions 
                         WHERE to_user_id IN (SELECT user_id FROM group_ranks WHERE chat_id = ?)
                         AND to_user_id IS NOT NULL AND to_user_id != 0
                         UNION
-                        SELECT user_id FROM levels 
+                        SELECT user_id, NULL as last_activity FROM levels 
                         WHERE user_id IN (SELECT user_id FROM group_ranks WHERE chat_id = ?)
                         UNION
-                        SELECT user_id FROM farm 
+                        SELECT user_id, NULL as last_activity FROM farm 
                         WHERE user_id IN (SELECT user_id FROM group_ranks WHERE chat_id = ?)
-                    ) LIMIT 50
+                    ) 
+                    ORDER BY last_activity ASC
+                    LIMIT 50
                     """,
                     (message.chat.id, message.chat.id, message.chat.id, message.chat.id, message.chat.id),
                     fetch_all=True
                 )
                 
-                if not active_users:
+                if not all_users:
                     await message.reply("❌ لا يمكن العثور على أعضاء لذكرهم!")
                     return
                 
                 mentions_count = 0
                 mentions_list = []
                 
-                # إنشاء قائمة الذكر
-                for user_data in active_users[:25]:  # حد أقصى 25 عضو لتجنب الإزعاج
+                # إنشاء قائمة الذكر - أولوية للمستخدمين الغير نشطين
+                for user_data in all_users[:25]:  # حد أقصى 25 عضو لتجنب الإزعاج
                     user_id = user_data['user_id']
                     
                     # تجنب ذكر البوت نفسه
@@ -983,9 +984,9 @@ async def handle_general_message(message: Message, state: FSMContext):
                 for i in range(0, len(mentions_list), mentions_per_message):
                     chunk = mentions_list[i:i + mentions_per_message]
                     
-                    final_text = f"📢 **نداء عام - المجموعة {i//mentions_per_message + 1}:**\n\n"
+                    final_text = f"📢 **نداء عام (أولوية للأعضاء الغير نشطين) - المجموعة {i//mentions_per_message + 1}:**\n\n"
                     final_text += " • ".join(chunk)
-                    final_text += f"\n\n👤 المرسل: {message.from_user.first_name}"
+                    final_text += f"\n\n👤 المرسل: {message.from_user.first_name}\n💡 **ملاحظة:** تم ترتيب الأعضاء حسب النشاط (الأقل نشاطاً أولاً)"
                     
                     await message.reply(final_text, parse_mode="Markdown")
                 
