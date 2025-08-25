@@ -2238,6 +2238,18 @@ async def handle_sticker_messages(message: Message):
     )
 
 
+# معالج الأوامر العربية للحماية - يجب أن يأتي قبل المعالج العام
+@router.message(F.text.in_(["تفعيل الحماية", "تشغيل الحماية", "فعل الحماية", 
+                            "تعطيل الحماية", "إيقاف الحماية", "عطل الحماية",
+                            "حالة الحماية", "وضع الحماية", "إعدادات الحماية"]))
+async def handle_protection_arabic_commands(message: Message):
+    """معالج الأوامر العربية للحماية"""
+    try:
+        await handle_protection_commands(message)
+    except Exception as e:
+        logging.error(f"خطأ في معالج أوامر الحماية العربية: {e}")
+        await message.reply("❌ حدث خطأ في تنفيذ الأمر!")
+
 # معالج جهات الاتصال
 @router.message(F.contact)
 @user_required
@@ -2261,14 +2273,3 @@ async def handle_location_messages(message: Message):
         "لكن حالياً يمكنك استخدام الأوامر العادية."
     )
 
-# معالج الأوامر العربية للحماية
-@router.message(F.text.in_(["تفعيل الحماية", "تشغيل الحماية", "فعل الحماية", 
-                            "تعطيل الحماية", "إيقاف الحماية", "عطل الحماية",
-                            "حالة الحماية", "وضع الحماية", "إعدادات الحماية"]))
-async def handle_protection_arabic_commands(message: Message):
-    """معالج الأوامر العربية للحماية"""
-    try:
-        await handle_protection_commands(message)
-    except Exception as e:
-        logging.error(f"خطأ في معالج أوامر الحماية العربية: {e}")
-        await message.reply("❌ حدث خطأ في تنفيذ الأمر!")
