@@ -132,6 +132,11 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_word_status_callback(callback)
             return
         
+        if data.startswith('word_cancel_'):
+            from modules.word_game import handle_word_cancel_callback
+            await handle_word_cancel_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         

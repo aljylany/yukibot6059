@@ -130,7 +130,11 @@ async def handle_game_start_callback(callback_query, game_command: str):
             
         elif game_command in ["الكلمة", "كلمة", "word"]:
             from modules.word_game import start_word_game
-            fake_message = callback_query.message
+            # إنشاء رسالة وهمية محاكاة للضغط على الزر
+            import types
+            fake_message = types.SimpleNamespace()
+            fake_message.chat = callback_query.message.chat
+            fake_message.from_user = callback_query.from_user
             fake_message.text = game_command
             await start_word_game(fake_message)
             await callback_query.answer("💭 تم بدء لعبة الكلمة!")
