@@ -630,6 +630,17 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في بدء لعبة الرويال: {e}")
             await message.reply("❌ حدث خطأ أثناء بدء لعبة الرويال")
     
+    # لعبة اكس اوه - XO/Tic-Tac-Toe Game
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(command in text for command in ['اكس اوه', 'xo', 'اكس او', 'اكساوه'])):
+        try:
+            from modules.xo_game import start_xo_game
+            await start_xo_game(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء لعبة اكس اوه: {e}")
+            await message.reply("❌ حدث خطأ أثناء بدء لعبة اكس اوه")
+    
     # معالج خاص لحرف "ا" منفرداً في المجموعات - عرض معلومات الملف الشخصي
     if (message.text and message.text.strip() == "ا" and 
         message.chat.type in ['group', 'supergroup'] and message.from_user):

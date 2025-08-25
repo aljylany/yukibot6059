@@ -123,8 +123,13 @@ class SocialStates(StatesGroup):
     """حالات التفاعل الاجتماعي"""
     waiting_friend_request = State()
     waiting_guild_creation = State()
-    waiting_guild_invite = State()
-    waiting_message_to_friend = State()
+
+
+class XOGameStates(StatesGroup):
+    """حالات لعبة اكس اوه"""
+    waiting_for_player = State()
+    game_in_progress = State()
+    game_ended = State()
 
 
 class EventStates(StatesGroup):

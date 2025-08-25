@@ -51,6 +51,22 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_royal_confirmation(callback)
             return
         
+        # معالجة callbacks لعبة اكس اوه
+        if data.startswith('xo_join_'):
+            from modules.xo_game import handle_xo_join
+            await handle_xo_join(callback)
+            return
+        
+        if data.startswith('xo_move_'):
+            from modules.xo_game import handle_xo_move
+            await handle_xo_move(callback)
+            return
+        
+        if data == 'xo_info':
+            from modules.xo_game import handle_xo_info
+            await handle_xo_info(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         
