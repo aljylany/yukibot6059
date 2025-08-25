@@ -601,6 +601,24 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     text = message.text.lower() if message.text else ""
     
+    # الرد الإسلامي - السلام عليكم ووعليكم السلام
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(greeting in message.text for greeting in ['السلام عليكم', 'السلام عليكم ورحمة الله', 'السلام عليكم ورحمة الله وبركاته'])):
+        try:
+            islamic_responses = [
+                "وعليكم السلام ورحمة الله وبركاته 🕌",
+                "وعليكم السلام ورحمة الله 🌙",
+                "وعليكم السلام وأهلاً وسهلاً 🤲",
+                "وعليكم السلام، مرحباً بكم 🕌✨",
+                "وعليكم السلام ورحمة الله، حياكم الله 🌙"
+            ]
+            import random
+            response = random.choice(islamic_responses)
+            await message.reply(response)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في الرد الإسلامي: {e}")
+    
     # معالج خاص لحرف "ا" منفرداً في المجموعات - عرض معلومات الملف الشخصي
     if (message.text and message.text.strip() == "ا" and 
         message.chat.type in ['group', 'supergroup'] and message.from_user):
