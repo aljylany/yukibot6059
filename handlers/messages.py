@@ -619,6 +619,17 @@ async def handle_general_message(message: Message, state: FSMContext):
         except Exception as e:
             logging.error(f"خطأ في الرد الإسلامي: {e}")
     
+    # لعبة الرويال - Royal Battle Game
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(command in text for command in ['لعبة الحظ', 'رويال', 'royal'])):
+        try:
+            from modules.royal_game import start_royal_game
+            await start_royal_game(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء لعبة الرويال: {e}")
+            await message.reply("❌ حدث خطأ أثناء بدء لعبة الرويال")
+    
     # معالج خاص لحرف "ا" منفرداً في المجموعات - عرض معلومات الملف الشخصي
     if (message.text and message.text.strip() == "ا" and 
         message.chat.type in ['group', 'supergroup'] and message.from_user):

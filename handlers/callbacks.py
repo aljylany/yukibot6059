@@ -40,6 +40,17 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 await handle_rank_info_callback(callback)
             return
         
+        # معالجة callbacks لعبة الرويال
+        if data.startswith('royal_join_'):
+            from modules.royal_game import handle_royal_join
+            await handle_royal_join(callback)
+            return
+        
+        if data.startswith('royal_confirm_'):
+            from modules.royal_game import handle_royal_confirmation
+            await handle_royal_confirmation(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         
