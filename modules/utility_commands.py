@@ -839,6 +839,26 @@ async def get_bio(message: Message):
         await message.reply("❌ حدث خطأ أثناء عرض البايو")
 
 
+async def show_developer_info(message: Message):
+    """عرض معلومات المطور - يعرض معلومات المطور فقط حتى لو استخدمه اي شخص اخر"""
+    try:
+        developer_info = """👤 **الملف الشخصي**
+
+🏷️ **الاسم:** Yuki Brandon
+📧 **اليوزرنيم:** @YukiBrandon
+🆔 **المعرف:** `6524680126`
+⭐ **الرتبة:** السيد 👑
+📝 **السيرة الذاتية:** غير محددة
+
+💻 **مطور البوت والمنشئ الأساسي**"""
+        
+        await message.reply(developer_info)
+        
+    except Exception as e:
+        logging.error(f"خطأ في show_developer_info: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض معلومات المطور")
+
+
 async def create_team(message: Message):
     """إنشاء فريق"""
     try:
@@ -943,6 +963,10 @@ async def handle_utility_commands(message: Message) -> bool:
     
     elif text in ['بايو', 'البايو']:
         await get_bio(message)
+        return True
+    
+    elif text in ['المطور', 'مطور', 'developer']:
+        await show_developer_info(message)
         return True
     
     elif text in ['انشاء تيم', 'إنشاء تيم', 'انشئ تيم']:
