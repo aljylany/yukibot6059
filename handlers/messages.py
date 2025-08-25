@@ -1200,6 +1200,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # === أمر عرض قائمة الأسياد (للأسياد فقط) ===
     if text == 'الأسياد' or text == 'الاسياد' or text == 'قائمة الأسياد' or text == 'قائمة الاسياد':
+        from config.hierarchy import MASTERS
         user_id = message.from_user.id if message.from_user else 0
         if user_id in MASTERS:
             try:
@@ -1265,6 +1266,16 @@ async def handle_general_message(message: Message, state: FSMContext):
                 await message.reply("❌ حدث خطأ في تحميل قائمة الأسياد")
         else:
             await message.reply("❌ هذا الأمر متاح للأسياد فقط")
+        return
+    
+    # === أمر عرض المكتومين ===
+    if text in ['المكتومين', 'مكتومين', 'قائمة المكتومين']:
+        try:
+            from modules.group_management import show_muted_users
+            await show_muted_users(message)
+        except Exception as e:
+            logging.error(f"خطأ في عرض المكتومين: {e}")
+            await message.reply("❌ حدث خطأ في عرض قائمة المكتومين")
         return
     
     # === أوامر إضافة الردود المخصصة ===

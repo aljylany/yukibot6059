@@ -252,8 +252,44 @@ async def show_banned_users(message: Message):
 async def show_muted_users(message: Message):
     """عرض قائمة المكتومين"""
     try:
-        # يمكن إضافة جدول للمكتومين أو استخدام الحالة من Telegram
-        await message.reply("📋 **المكتومين:**\nهذه الميزة قيد التطوير")
+        # جلب قائمة المكتومين من قاعدة البيانات
+        muted_users = await execute_query(
+            """
+            SELECT user_id, username, full_name, until_date, reason, muted_by 
+            FROM muted_users 
+            WHERE chat_id = ? AND (until_date IS NULL OR until_date > ?)
+            ORDER BY muted_at DESC
+            """,
+            (message.chat.id, datetime.now()),
+            fetch_all=True
+        )
+        
+        if not muted_users:
+            await message.reply("📋 **المكتومين:**\nلا يوجد أعضاء مكتومين حالياً ✅")
+            return
+        
+        muted_list = []
+        for user in muted_users:
+            user_info = f"🔇 {user.get('full_name', 'مجهول')}"
+            if user.get('username'):
+                user_info += f" (@{user['username']})"
+            
+            user_info += f"\n   🆔 `{user['user_id']}`"
+            
+            if user.get('until_date'):
+                user_info += f"\n   ⏰ حتى: {user['until_date']}"
+            else:
+                user_info += f"\n   ⏰ كتم دائم"
+                
+            if user.get('reason'):
+                user_info += f"\n   📝 السبب: {user['reason']}"
+                
+            muted_list.append(user_info)
+        
+        text = f"📋 **قائمة المكتومين** ({len(muted_users)}):\n\n"
+        text += "\n\n".join(muted_list)
+        
+        await message.reply(text)
         
     except Exception as e:
         logging.error(f"خطأ في عرض المكتومين: {e}")
