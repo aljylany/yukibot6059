@@ -945,7 +945,19 @@ async def handle_general_message(message: Message, state: FSMContext):
                     if user_id == message.from_user.id:
                         continue
                     
-                    mentions_list.append(f"[@user{user_id}](tg://user?id={user_id})")
+                    # الحصول على اسم المستخدم من قاعدة البيانات
+                    user_info = await execute_query(
+                        "SELECT first_name, username FROM users WHERE user_id = ?",
+                        (user_id,),
+                        fetch_one=True
+                    )
+                    
+                    if user_info and user_info['first_name']:
+                        display_name = user_info['first_name']
+                    else:
+                        display_name = f"عضو {user_id}"
+                    
+                    mentions_list.append(f"[{display_name}](tg://user?id={user_id})")
                     mentions_count += 1
                 
                 if mentions_count == 0:

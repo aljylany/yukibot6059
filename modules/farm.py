@@ -497,7 +497,7 @@ async def process_crop_quantity(message: Message, state: FSMContext):
         
         # إضافة المحصول إلى قاعدة البيانات
         await execute_query(
-            "INSERT INTO farm (user_id, crop_type, quantity, planted_at, harvest_time, status) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO farm (user_id, crop_type, quantity, plant_time, harvest_time, status) VALUES (?, ?, ?, ?, ?, ?)",
             (message.from_user.id, crop_type, quantity, datetime.now().isoformat(), harvest_time.isoformat(), 'growing')
         )
         
@@ -705,7 +705,7 @@ async def get_user_crops(user_id: int):
     """الحصول على محاصيل المستخدم"""
     try:
         crops = await execute_query(
-            "SELECT * FROM farm WHERE user_id = ? ORDER BY planted_at DESC",
+            "SELECT * FROM farm WHERE user_id = ? ORDER BY plant_time DESC",
             (user_id,),
             fetch_all=True
         )
