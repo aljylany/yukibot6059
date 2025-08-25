@@ -641,6 +641,18 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في عرض قائمة الألعاب: {e}")
             await message.reply("❌ حدث خطأ في عرض قائمة الألعاب")
 
+    # أمر الألعاب المقترحة
+    if (message.text and 
+        any(command in text for command in ['اقتراحات', 'العاب مقترحة', 'الاقتراحات', 'مقترحة'])):
+        try:
+            from modules.suggested_games import get_suggested_games_list
+            suggested_text = get_suggested_games_list()
+            await message.reply(suggested_text)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في عرض الألعاب المقترحة: {e}")
+            await message.reply("❌ حدث خطأ في عرض الألعاب المقترحة")
+
     # لعبة ساحة الموت الأخيرة - Battle Arena Game
     if (message.text and message.chat.type in ['group', 'supergroup'] and 
         any(command in text for command in ['ساحة الموت', 'battle', 'معركة', 'ساحة المعركة'])):
@@ -651,6 +663,28 @@ async def handle_general_message(message: Message, state: FSMContext):
         except Exception as e:
             logging.error(f"خطأ في بدء ساحة الموت: {e}")
             await message.reply("❌ حدث خطأ أثناء بدء ساحة الموت الأخيرة")
+    
+    # لعبة عجلة الحظ - Luck Wheel Game
+    if (message.text and 
+        any(command in text for command in ['عجلة الحظ', 'عجلة', 'wheel', 'حظ'])):
+        try:
+            from modules.luck_wheel_game import start_luck_wheel
+            await start_luck_wheel(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء عجلة الحظ: {e}")
+            await message.reply("❌ حدث خطأ في عجلة الحظ")
+
+    # لعبة خمن الرقم - Number Guess Game
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(command in text for command in ['خمن الرقم', 'تخمين', 'رقم', 'guess'])):
+        try:
+            from modules.number_guess_game import start_number_guess_game
+            await start_number_guess_game(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء لعبة خمن الرقم: {e}")
+            await message.reply("❌ حدث خطأ في لعبة خمن الرقم")
     
     # لعبة اكس اوه - XO/Tic-Tac-Toe Game
     if (message.text and message.chat.type in ['group', 'supergroup'] and 
@@ -824,6 +858,16 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_clear_command(message, text)
         return
     
+    # معالجة أرقام لعبة خمن الرقم
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        message.text.strip().isdigit()):
+        try:
+            from modules.number_guess_game import handle_number_input
+            await handle_number_input(message)
+            # لا نستخدم return هنا للسماح بمعالجة أخرى
+        except Exception as e:
+            logging.error(f"خطأ في معالجة تخمين الرقم: {e}")
+
     # فحص الردود المخصصة
     from modules.custom_replies import check_for_custom_replies, handle_show_custom_replies
     if await check_for_custom_replies(message):

@@ -58,6 +58,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_game_start_callback(callback, game_command)
             return
         
+        # معالجة callbacks عجلة الحظ
+        if data.startswith('spin_wheel_'):
+            from modules.luck_wheel_game import handle_wheel_spin
+            await handle_wheel_spin(callback)
+            return
+        
         # معالجة callbacks لعبة ساحة الموت الأخيرة
         if data.startswith('battle_join_'):
             from modules.battle_arena_callbacks import handle_battle_join
