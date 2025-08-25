@@ -133,6 +133,21 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول المحاصيل المزروعة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS farm (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    crop_type TEXT NOT NULL,
+                    quantity INTEGER NOT NULL DEFAULT 1,
+                    plant_time TEXT NOT NULL,
+                    harvest_time TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'growing',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
             # إنشاء جدول القلاع المحدث مع نظام الحروب
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS user_castles (

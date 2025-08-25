@@ -146,6 +146,11 @@ async def list_crops(message: Message):
 async def plant_crop_command(message: Message):
     """معالجة أمر زراعة المحاصيل"""
     try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+            
         if not message.text:
             await message.reply("❌ يرجى تحديد نوع المحصول للزراعة")
             return
@@ -167,10 +172,57 @@ async def plant_crop_command(message: Message):
         if not crop_type:
             await message.reply("❌ نوع المحصول غير متاح\n\nاستخدم 'قائمة المزروعات' لعرض المحاصيل المتاحة")
             return
-            
-        # منطق الزراعة الأساسي
+        
         crop_info = CROP_TYPES[crop_type]
-        await message.reply(f"🌱 تم زراعة {crop_info['name']} بنجاح!\n\n⏰ سيكون جاهز خلال {crop_info['grow_time_minutes']} دقيقة")
+        quantity = 1  # كمية افتراضية
+        total_cost = crop_info['cost_per_unit'] * quantity
+        
+        # التحقق من الرصيد
+        if total_cost > user['balance']:
+            await message.reply(
+                f"❌ رصيد غير كافٍ!\n\n"
+                f"{crop_info['emoji']} {crop_info['name']}\n"
+                f"💰 التكلفة: {total_cost}$\n"
+                f"💵 رصيدك: {format_number(user['balance'])}$"
+            )
+            return
+        
+        # حساب وقت الحصاد
+        harvest_time = datetime.now() + timedelta(minutes=crop_info['grow_time_minutes'])
+        
+        # خصم التكلفة من الرصيد
+        new_balance = user['balance'] - total_cost
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # حفظ المحصول في قاعدة البيانات
+        await execute_query(
+            "INSERT INTO farm (user_id, crop_type, quantity, plant_time, harvest_time, status) VALUES (?, ?, ?, ?, ?, ?)",
+            (message.from_user.id, crop_type, quantity, datetime.now().isoformat(), harvest_time.isoformat(), 'growing')
+        )
+        
+        # إضافة معاملة
+        await add_transaction(
+            from_user_id=message.from_user.id,
+            to_user_id=0,  # النظام
+            transaction_type="crop_purchase",
+            amount=total_cost,
+            description=f"زراعة {quantity} وحدة من {crop_info['name']}"
+        )
+        
+        expected_yield = crop_info['yield_per_unit'] * quantity
+        expected_profit = expected_yield - total_cost
+        
+        await message.reply(
+            f"🎉 **تم زراعة {crop_info['name']} بنجاح!**\n\n"
+            f"{crop_info['emoji']} الكمية: {quantity} وحدة\n"
+            f"💰 التكلفة: {format_number(total_cost)}$\n"
+            f"⏰ وقت النضج: {crop_info['grow_time_minutes']} دقيقة\n"
+            f"💎 العائد المتوقع: {format_number(expected_yield)}$\n"
+            f"📈 الربح المتوقع: {format_number(expected_profit)}$\n"
+            f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+            f"🌱 استخدم 'حالة المزرعة' لمتابعة نمو محاصيلك!"
+        )
+        
     except Exception as e:
         logging.error(f"خطأ في زراعة المحصول: {e}")
         await message.reply("❌ حدث خطأ في عملية الزراعة")
@@ -628,7 +680,7 @@ async def get_user_crops(user_id: int):
     """الحصول على محاصيل المستخدم"""
     try:
         crops = await execute_query(
-            "SELECT * FROM user_farms WHERE user_id = ? ORDER BY created_at DESC",
+            "SELECT * FROM farm WHERE user_id = ? ORDER BY plant_time DESC",
             (user_id,),
             fetch_all=True
         )
@@ -643,7 +695,7 @@ async def get_ready_crops(user_id: int):
     try:
         now = datetime.now().isoformat()
         crops = await execute_query(
-            "SELECT * FROM user_farms WHERE user_id = ? AND last_harvest <= ?",
+            "SELECT * FROM farm WHERE user_id = ? AND harvest_time <= ? AND status = 'ready'",
             (user_id, now),
             fetch_all=True
         )
@@ -660,8 +712,8 @@ async def auto_update_crop_status():
         
         # تحديث المحاصيل التي وصلت لوقت الحصاد
         result = await execute_query(
-            "UPDATE user_farms SET last_harvest = ? WHERE last_harvest <= ?",
-            (now, now)
+            "UPDATE farm SET status = 'ready' WHERE harvest_time <= ? AND status = 'growing'",
+            (now,)
         )
         
         if result > 0:
@@ -681,7 +733,7 @@ async def get_farm_statistics(user_id: int):
         
         # إجمالي المحاصيل المزروعة
         total_planted = await execute_query(
-            "SELECT COUNT(*) as count FROM user_farms WHERE user_id = ?",
+            "SELECT COUNT(*) as count, SUM(quantity) as total_quantity FROM farm WHERE user_id = ?",
             (user_id,),
             fetch_one=True
         )

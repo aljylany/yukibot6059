@@ -139,46 +139,7 @@ async def update_user_bank_balance(user_id: int, new_bank_balance: float) -> boo
         return False
 
 
-async def execute_query(query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False):
-    """تنفيذ استعلام قاعدة البيانات مع معالجة الأخطاء"""
-    try:
-        async with aiosqlite.connect(DATABASE_URL) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(query, params) as cursor:
-                if fetch_one:
-                    result = await cursor.fetchone()
-                    await db.commit()
-                    return result
-                elif fetch_all:
-                    result = await cursor.fetchall()
-                    await db.commit()
-                    return result
-                else:
-                    await db.commit()
-                    return True
-                    
-    except Exception as e:
-        logging.error(f"خطأ في تنفيذ الاستعلام: {e}")
-        return None if (fetch_one or fetch_all) else False
-
-
-async def add_transaction(user_id: int, description: str, amount: float, transaction_type: str = "general") -> bool:
-    """إضافة معاملة جديدة"""
-    try:
-        async with aiosqlite.connect(DATABASE_URL) as db:
-            await db.execute(
-                "INSERT INTO transactions (user_id, description, amount, transaction_type, created_at) VALUES (?, ?, ?, ?, ?)",
-                (user_id, description, amount, transaction_type, datetime.now().isoformat())
-            )
-            await db.commit()
-            return True
-            
-    except Exception as e:
-        logging.error(f"خطأ في إضافة المعاملة: {e}")
-        return False
-
-
-async def add_transaction(user_id: int, transaction_type: str, amount: float, 
+async def add_transaction(user_id: int = None, transaction_type: str = "general", amount: float = 0, 
                          description: str = "", from_user_id: Optional[int] = None, 
                          to_user_id: Optional[int] = None) -> bool:
     """إضافة معاملة جديدة"""
@@ -215,15 +176,16 @@ async def execute_query(query: str, params: tuple = (), fetch_one: bool = False,
     """تنفيذ استعلام قاعدة البيانات"""
     try:
         async with aiosqlite.connect(DATABASE_URL) as db:
-            if fetch_one or fetch_all:
-                db.row_factory = aiosqlite.Row
+            db.row_factory = aiosqlite.Row
             
             async with db.execute(query, params) as cursor:
                 if fetch_one:
                     result = await cursor.fetchone()
+                    await db.commit()
                     return dict(result) if result else None
                 elif fetch_all:
                     results = await cursor.fetchall()
+                    await db.commit()
                     return [dict(row) for row in results]
                 else:
                     await db.commit()
@@ -231,7 +193,7 @@ async def execute_query(query: str, params: tuple = (), fetch_one: bool = False,
                     
     except Exception as e:
         logging.error(f"خطأ في تنفيذ الاستعلام: {e}")
-        return None
+        return None if (fetch_one or fetch_all) else False
 
 
 async def get_user_message_count(user_id: int, chat_id: int) -> int:
