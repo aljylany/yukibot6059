@@ -6,6 +6,9 @@ Games List Module
 import logging
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
+# متغير لتتبع الفهرس الحالي للعبة لكل مستخدم
+user_game_index = {}
+
 # قائمة الألعاب المتاحة
 AVAILABLE_GAMES = {
     "xo": {
@@ -67,47 +70,105 @@ AVAILABLE_GAMES = {
 }
 
 async def show_games_list(message: Message):
-    """عرض قائمة الألعاب المتاحة"""
+    """عرض قائمة الألعاب المتاحة بشكل أفقي مع التنقل"""
     try:
-        games_text = "🎮 **قائمة الألعاب المتاحة**\n\n"
+        user_id = message.from_user.id
         
-        for game_key, game_info in AVAILABLE_GAMES.items():
-            status_icon = "✅" if game_info["status"] == "متاحة" else "🔜"
-            
-            games_text += f"{status_icon} **{game_info['name']}**\n"
-            games_text += f"📝 {game_info['description']}\n"
-            games_text += f"👥 اللاعبين: {game_info['players']}\n"
-            games_text += f"⏱️ المدة: {game_info['duration']}\n"
-            games_text += f"🎯 الأوامر: {', '.join(game_info['commands'])}\n"
-            games_text += f"📊 الحالة: {game_info['status']}\n\n"
+        # تهيئة الفهرس للمستخدم إذا لم يكن موجوداً
+        if user_id not in user_game_index:
+            user_game_index[user_id] = 0
         
-        games_text += "🔥 **استمتع باللعب وحظ سعيد!**"
-        
-        # أزرار سريعة للألعاب المتاحة
-        keyboard = []
-        available_games = [game for game in AVAILABLE_GAMES.values() if game["status"] == "متاحة"]
-        
-        for i in range(0, len(available_games), 2):
-            row = []
-            if i < len(available_games):
-                game = available_games[i]
-                main_command = game["commands"][0]
-                row.append(InlineKeyboardButton(text=game["name"], callback_data=f"start_game_{main_command}"))
-            
-            if i + 1 < len(available_games):
-                game = available_games[i + 1]
-                main_command = game["commands"][0]
-                row.append(InlineKeyboardButton(text=game["name"], callback_data=f"start_game_{main_command}"))
-            
-            keyboard.append(row)
-        
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard) if keyboard else None
-        
-        await message.reply(games_text, reply_markup=reply_markup)
+        await show_game_carousel(message, user_id, user_game_index[user_id])
         
     except Exception as e:
         logging.error(f"خطأ في عرض قائمة الألعاب: {e}")
         await message.reply("❌ حدث خطأ في عرض قائمة الألعاب")
+
+async def show_game_carousel(message_or_callback, user_id: int, game_index: int):
+    """عرض لعبة واحدة مع أزرار التنقل"""
+    try:
+        # الحصول على الألعاب المتاحة
+        available_games = [
+            (game_key, game_info) 
+            for game_key, game_info in AVAILABLE_GAMES.items() 
+            if game_info["status"] == "متاحة"
+        ]
+        
+        if not available_games:
+            text = "❌ لا توجد ألعاب متاحة حالياً"
+            keyboard = None
+        else:
+            # التأكد من أن الفهرس ضمن النطاق المسموح
+            game_index = max(0, min(game_index, len(available_games) - 1))
+            user_game_index[user_id] = game_index
+            
+            # الحصول على اللعبة الحالية
+            game_key, game_info = available_games[game_index]
+            
+            # إنشاء النص
+            text = (
+                f"🎮 **قائمة الألعاب المتاحة**\n\n"
+                f"✅ **{game_info['name']}**\n\n"
+                f"📝 **الوصف:** {game_info['description']}\n"
+                f"👥 **اللاعبين:** {game_info['players']}\n"
+                f"⏱️ **المدة:** {game_info['duration']}\n"
+                f"🎯 **الأوامر:** {', '.join(game_info['commands'])}\n\n"
+                f"📊 **اللعبة {game_index + 1} من {len(available_games)}**\n\n"
+                f"🚀 **اضغط 'ابدأ اللعبة' للعب الآن!**"
+            )
+            
+            # إنشاء لوحة المفاتيح
+            keyboard = []
+            
+            # الصف الأول: زر بدء اللعبة
+            main_command = game_info["commands"][0]
+            keyboard.append([
+                InlineKeyboardButton(
+                    text="🚀 ابدأ اللعبة", 
+                    callback_data=f"start_game_{main_command}"
+                )
+            ])
+            
+            # الصف الثاني: أزرار التنقل
+            nav_row = []
+            
+            # زر السابق (إذا لم نكن في أول لعبة)
+            if game_index > 0:
+                nav_row.append(InlineKeyboardButton(
+                    text="⬅️ السابق", 
+                    callback_data=f"games_nav_prev_{user_id}"
+                ))
+            
+            # زر التالي (إذا لم نكن في آخر لعبة)
+            if game_index < len(available_games) - 1:
+                nav_row.append(InlineKeyboardButton(
+                    text="التالي ➡️", 
+                    callback_data=f"games_nav_next_{user_id}"
+                ))
+            
+            if nav_row:
+                keyboard.append(nav_row)
+            
+            # الصف الثالث: زر إغلاق
+            keyboard.append([
+                InlineKeyboardButton(
+                    text="❌ إغلاق القائمة", 
+                    callback_data=f"games_close_{user_id}"
+                )
+            ])
+        
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard) if keyboard else None
+        
+        # إرسال أو تحديث الرسالة
+        if hasattr(message_or_callback, 'message'):  # callback query
+            await message_or_callback.message.edit_text(text, reply_markup=reply_markup)
+        else:  # رسالة عادية
+            await message_or_callback.reply(text, reply_markup=reply_markup)
+            
+    except Exception as e:
+        logging.error(f"خطأ في عرض carousel الألعاب: {e}")
+        if hasattr(message_or_callback, 'answer'):
+            await message_or_callback.answer("❌ حدث خطأ", show_alert=True)
 
 async def handle_game_start_callback(callback_query, game_command: str):
     """معالجة بدء اللعبة من الأزرار"""
@@ -145,3 +206,38 @@ async def handle_game_start_callback(callback_query, game_command: str):
     except Exception as e:
         logging.error(f"خطأ في بدء اللعبة من الزر: {e}")
         await callback_query.answer("❌ حدث خطأ في بدء اللعبة", show_alert=True)
+
+async def handle_games_navigation_callback(callback_query):
+    """معالجة أزرار التنقل في قائمة الألعاب"""
+    try:
+        data = callback_query.data
+        user_id = callback_query.from_user.id
+        
+        if data.startswith("games_nav_prev_"):
+            # الانتقال للعبة السابقة
+            if user_id in user_game_index:
+                user_game_index[user_id] = max(0, user_game_index[user_id] - 1)
+            await show_game_carousel(callback_query, user_id, user_game_index.get(user_id, 0))
+            await callback_query.answer("⬅️ اللعبة السابقة")
+            
+        elif data.startswith("games_nav_next_"):
+            # الانتقال للعبة التالية
+            available_games = [
+                game for game in AVAILABLE_GAMES.values() 
+                if game["status"] == "متاحة"
+            ]
+            max_index = len(available_games) - 1
+            
+            if user_id in user_game_index:
+                user_game_index[user_id] = min(max_index, user_game_index[user_id] + 1)
+            await show_game_carousel(callback_query, user_id, user_game_index.get(user_id, 0))
+            await callback_query.answer("➡️ اللعبة التالية")
+            
+        elif data.startswith("games_close_"):
+            # إغلاق قائمة الألعاب
+            await callback_query.message.delete()
+            await callback_query.answer("✅ تم إغلاق قائمة الألعاب")
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالجة تنقل الألعاب: {e}")
+        await callback_query.answer("❌ حدث خطأ", show_alert=True)

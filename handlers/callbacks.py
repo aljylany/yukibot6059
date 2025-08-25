@@ -137,6 +137,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_word_cancel_callback(callback)
             return
         
+        # معالجة التنقل في قائمة الألعاب
+        if data.startswith('games_nav_') or data.startswith('games_close_'):
+            from modules.games_list import handle_games_navigation_callback
+            await handle_games_navigation_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         
