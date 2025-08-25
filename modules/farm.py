@@ -533,13 +533,16 @@ async def process_crop_quantity(message: Message, state: FSMContext):
         await state.clear()
 
 
-async def harvest_crops(message: Message):
-    """حصاد المحاصيل الجاهزة"""
+async def harvest_all_crops_command(message: Message):
+    """حصاد جميع المحاصيل الجاهزة - أمر 'حصاد محاصيلي'"""
     try:
         user = await get_user(message.from_user.id)
         if not user:
             await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
+        
+        # تحديث حالة المحاصيل أولاً
+        await auto_update_crop_status()
         
         # الحصول على المحاصيل الجاهزة للحصاد
         ready_crops = await get_ready_crops(message.from_user.id)
@@ -547,19 +550,22 @@ async def harvest_crops(message: Message):
         if not ready_crops:
             await message.reply(
                 "🌱 **لا توجد محاصيل جاهزة للحصاد**\n\n"
-                "تحقق من حالة محاصيلك باستخدام قائمة المزرعة"
+                "تحقق من حالة محاصيلك باستخدام 'حالة المزرعة'"
             )
             return
         
         total_yield = 0
         total_crops = 0
+        total_cost = 0
         harvest_summary = {}
         
         # حصاد جميع المحاصيل الجاهزة
         for crop in ready_crops:
             crop_info = CROP_TYPES.get(crop['crop_type'], {})
             yield_amount = crop_info.get('yield_per_unit', 0) * crop['quantity']
+            cost_amount = crop_info.get('cost_per_unit', 0) * crop['quantity']
             total_yield += yield_amount
+            total_cost += cost_amount
             total_crops += crop['quantity']
             
             # تجميع المحاصيل حسب النوع
@@ -568,10 +574,14 @@ async def harvest_crops(message: Message):
                 harvest_summary[crop_name] = {
                     'quantity': 0,
                     'yield': 0,
+                    'cost': 0,
+                    'profit': 0,
                     'emoji': crop_info.get('emoji', '🌾')
                 }
             harvest_summary[crop_name]['quantity'] += crop['quantity']
             harvest_summary[crop_name]['yield'] += yield_amount
+            harvest_summary[crop_name]['cost'] += cost_amount
+            harvest_summary[crop_name]['profit'] += (yield_amount - cost_amount)
             
             # تحديث حالة المحصول في قاعدة البيانات
             await execute_query(
@@ -589,27 +599,201 @@ async def harvest_crops(message: Message):
             to_user_id=message.from_user.id,
             transaction_type="crop_harvest",
             amount=total_yield,
-            description=f"حصاد {total_crops} وحدة محصول"
+            description=f"حصاد جميع المحاصيل - {total_crops} وحدة"
         )
         
-        # إعداد نص الحصاد
-        harvest_text = f"🎉 **تم الحصاد بنجاح!**\n\n"
+        # إعداد نص الحصاد المفصل
+        total_profit = total_yield - total_cost
+        profit_percentage = (total_profit / total_cost * 100) if total_cost > 0 else 0
+        
+        harvest_text = f"🎉 **تم حصاد جميع المحاصيل بنجاح!**\n\n"
+        harvest_text += f"📊 **تفاصيل الحصاد:**\n"
         
         for crop_name, data in harvest_summary.items():
-            harvest_text += f"{data['emoji']} **{crop_name}**: {data['quantity']} وحدة\n"
-            harvest_text += f"   💰 العائد: {format_number(data['yield'])}$\n\n"
+            profit_percent = (data['profit'] / data['cost'] * 100) if data['cost'] > 0 else 0
+            harvest_text += f"{data['emoji']} **{crop_name}** ({data['quantity']} وحدة)\n"
+            harvest_text += f"   💰 العائد: {format_number(data['yield'])}$\n"
+            harvest_text += f"   💸 التكلفة: {format_number(data['cost'])}$\n"
+            harvest_text += f"   📈 الربح: {format_number(data['profit'])}$ ({profit_percent:.1f}%)\n\n"
         
-        harvest_text += f"📊 **ملخص الحصاد:**\n"
+        harvest_text += f"💎 **ملخص الربح:**\n"
         harvest_text += f"🌾 إجمالي المحاصيل: {total_crops} وحدة\n"
         harvest_text += f"💰 إجمالي العائد: {format_number(total_yield)}$\n"
+        harvest_text += f"💸 إجمالي التكلفة: {format_number(total_cost)}$\n"
+        harvest_text += f"📈 إجمالي الربح: {format_number(total_profit)}$ ({profit_percentage:.1f}%)\n"
         harvest_text += f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
-        harvest_text += f"🎯 أحسنت! استمر في الزراعة لزيادة أرباحك!"
+        harvest_text += f"🎯 تهانينا! استمر في الزراعة لزيادة أرباحك!"
         
         await message.reply(harvest_text)
         
     except Exception as e:
-        logging.error(f"خطأ في حصاد المحاصيل: {e}")
+        logging.error(f"خطأ في حصاد جميع المحاصيل: {e}")
         await message.reply("❌ حدث خطأ في عملية الحصاد")
+
+
+async def harvest_specific_crop_command(message: Message):
+    """حصاد كمية معينة من نوع محدد - أمر 'حصاد [النوع] [العدد]'"""
+    try:
+        user = await get_user(message.from_user.id)
+        if not user:
+            await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
+            return
+        
+        if not message.text:
+            await message.reply("❌ يرجى تحديد نوع المحصول والكمية")
+            return
+        
+        parts = message.text.split()
+        if len(parts) < 3:
+            await message.reply(
+                "❌ يرجى كتابة نوع المحصول والكمية\n\n"
+                "📝 **مثال:** حصاد قمح 5\n"
+                "📝 **مثال:** حصاد طماطم 10"
+            )
+            return
+        
+        crop_name = parts[1].lower()
+        
+        # قراءة الكمية
+        try:
+            quantity = int(parts[2])
+            if quantity <= 0:
+                await message.reply("❌ الكمية يجب أن تكون أكبر من صفر")
+                return
+        except ValueError:
+            await message.reply("❌ الكمية يجب أن تكون رقم صحيح")
+            return
+        
+        # البحث عن نوع المحصول
+        crop_type = None
+        for key, crop_info in CROP_TYPES.items():
+            if crop_name in crop_info['name'].lower():
+                crop_type = key
+                break
+                
+        if not crop_type:
+            available_crops = ", ".join([crop['name'] for crop in CROP_TYPES.values()])
+            await message.reply(
+                f"❌ نوع المحصول غير متاح\n\n"
+                f"📝 **المحاصيل المتاحة:** {available_crops}"
+            )
+            return
+        
+        # تحديث حالة المحاصيل أولاً
+        await auto_update_crop_status()
+        
+        # الحصول على المحاصيل الجاهزة من النوع المحدد
+        ready_crops = await execute_query(
+            "SELECT * FROM farm WHERE user_id = ? AND crop_type = ? AND status = 'ready' ORDER BY plant_time ASC",
+            (message.from_user.id, crop_type),
+            fetch_all=True
+        )
+        
+        if not ready_crops:
+            crop_info = CROP_TYPES[crop_type]
+            await message.reply(
+                f"❌ لا توجد محاصيل {crop_info['emoji']} **{crop_info['name']}** جاهزة للحصاد\n\n"
+                "استخدم 'حالة المزرعة' لمتابعة نمو محاصيلك"
+            )
+            return
+        
+        # حساب الكمية المتاحة
+        available_quantity = sum(crop['quantity'] for crop in ready_crops)
+        
+        if quantity > available_quantity:
+            crop_info = CROP_TYPES[crop_type]
+            await message.reply(
+                f"❌ الكمية المطلوبة أكبر من المتاح!\n\n"
+                f"{crop_info['emoji']} **{crop_info['name']}**\n"
+                f"📊 المتاح للحصاد: {available_quantity} وحدة\n"
+                f"🔢 المطلوب: {quantity} وحدة"
+            )
+            return
+        
+        # حصاد الكمية المطلوبة
+        remaining_to_harvest = quantity
+        harvested_crops = []
+        
+        for crop in ready_crops:
+            if remaining_to_harvest <= 0:
+                break
+                
+            if crop['quantity'] <= remaining_to_harvest:
+                # حصاد المحصول بالكامل
+                harvested_crops.append({
+                    'id': crop['id'],
+                    'quantity': crop['quantity']
+                })
+                remaining_to_harvest -= crop['quantity']
+                
+                # تحديث حالة المحصول
+                await execute_query(
+                    "UPDATE farm SET status = 'harvested' WHERE id = ?",
+                    (crop['id'],)
+                )
+            else:
+                # حصاد جزء من المحصول
+                harvested_crops.append({
+                    'id': crop['id'],
+                    'quantity': remaining_to_harvest
+                })
+                
+                # تحديث كمية المحصول المتبقي
+                new_quantity = crop['quantity'] - remaining_to_harvest
+                await execute_query(
+                    "UPDATE farm SET quantity = ? WHERE id = ?",
+                    (new_quantity, crop['id'])
+                )
+                remaining_to_harvest = 0
+        
+        # حساب العائد والربح
+        crop_info = CROP_TYPES[crop_type]
+        yield_amount = crop_info['yield_per_unit'] * quantity
+        cost_amount = crop_info['cost_per_unit'] * quantity
+        profit_amount = yield_amount - cost_amount
+        profit_percentage = (profit_amount / cost_amount * 100) if cost_amount > 0 else 0
+        
+        # إضافة العائد إلى رصيد المستخدم
+        new_balance = user['balance'] + yield_amount
+        await update_user_balance(message.from_user.id, new_balance)
+        
+        # إضافة معاملة
+        await add_transaction(
+            from_user_id=0,  # النظام
+            to_user_id=message.from_user.id,
+            transaction_type="crop_harvest",
+            amount=yield_amount,
+            description=f"حصاد {quantity} وحدة من {crop_info['name']}"
+        )
+        
+        # إعداد نص الحصاد المفصل
+        harvest_text = f"🎉 **تم الحصاد بنجاح!**\n\n"
+        harvest_text += f"{crop_info['emoji']} **{crop_info['name']}**\n"
+        harvest_text += f"📊 الكمية المحصودة: {quantity} وحدة\n\n"
+        
+        harvest_text += f"💎 **تفاصيل الربح:**\n"
+        harvest_text += f"💰 إجمالي العائد: {format_number(yield_amount)}$\n"
+        harvest_text += f"💸 إجمالي التكلفة: {format_number(cost_amount)}$\n"
+        harvest_text += f"📈 صافي الربح: {format_number(profit_amount)}$ ({profit_percentage:.1f}%)\n"
+        harvest_text += f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
+        
+        # عرض الكمية المتبقية إن وجدت
+        remaining_quantity = available_quantity - quantity
+        if remaining_quantity > 0:
+            harvest_text += f"🌾 متبقي للحصاد: {remaining_quantity} وحدة من {crop_info['name']}\n\n"
+        
+        harvest_text += f"🎯 ممتاز! استمر في الزراعة والحصاد!"
+        
+        await message.reply(harvest_text)
+        
+    except Exception as e:
+        logging.error(f"خطأ في حصاد المحصول المحدد: {e}")
+        await message.reply("❌ حدث خطأ في عملية الحصاد")
+
+
+async def harvest_crops(message: Message):
+    """حصاد المحاصيل الجاهزة - الدالة القديمة للتوافق"""
+    await harvest_all_crops_command(message)
 
 
 async def show_farm_status(message: Message):
@@ -687,14 +871,17 @@ async def show_farm_status(message: Message):
             status_text += f"🌾 محاصيل محصودة: {len(harvested_crops)}\n"
             status_text += f"💰 إجمالي الأرباح السابقة: {format_number(total_harvested_yield)}$\n"
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🌾 حصاد الآن", callback_data="farm_harvest"),
-                InlineKeyboardButton(text="🌱 زراعة جديدة", callback_data="farm_plant")
-            ]
-        ])
+        # إضافة أوامر الحصاد والزراعة النصية
+        if ready_crops:
+            status_text += "📝 **أوامر متاحة:**\n"
+            status_text += "🌾 **حصاد محاصيلي** - لحصاد جميع المحاصيل الجاهزة\n"
+            status_text += "🌾 **حصاد [النوع] [العدد]** - لحصاد كمية معينة من نوع محدد\n"
+            status_text += "🌱 **زراعة** - لبدء زراعة محاصيل جديدة\n\n"
+        else:
+            status_text += "📝 **أوامر متاحة:**\n"
+            status_text += "🌱 **زراعة** - لبدء زراعة محاصيل جديدة\n\n"
         
-        await message.reply(status_text, reply_markup=keyboard)
+        await message.reply(status_text)
         
     except Exception as e:
         logging.error(f"خطأ في عرض حالة المزرعة: {e}")

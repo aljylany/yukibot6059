@@ -52,6 +52,9 @@ Bot Configuration:
 - **Added Master Account Deletion Command**: "حذف حسابه" command allows Masters to completely delete any user's account with 10-second countdown and cancellation option. Includes protection against deleting other Masters
 - **Added Master Level Fix Command**: "اصلح مستواه" command allows Masters to fix level inconsistencies by deleting and resetting user level data
 - **Added Comprehensive Levels Guide**: "المستويات" command displays complete guide explaining level system, worlds, XP earning methods, progression tips, and useful commands for players
+- **Enhanced Farm System**: Completely redesigned farm interface from button-based to command-based harvesting with detailed profit breakdown messages
+- **New Farm Commands**: Added "حصاد محاصيلي" for harvesting all ready crops and "حصاد [النوع] [العدد]" for harvesting specific quantities of specific crops
+- **Detailed Harvest Reports**: Enhanced harvest messages with comprehensive profit analysis including cost breakdown, profit percentages, and detailed summaries per crop type
 
 # System Architecture
 

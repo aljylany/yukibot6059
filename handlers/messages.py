@@ -1446,6 +1446,10 @@ async def handle_general_message(message: Message, state: FSMContext):
         await farm.list_crops(message)
     elif text == 'حصاد':
         await farm.harvest_command(message)
+    elif text in ['حصاد محاصيلي', 'حصاد الكل']:
+        await farm.harvest_all_crops_command(message)
+    elif text.startswith('حصاد ') and len(text.split()) >= 3:
+        await farm.harvest_specific_crop_command(message)
     elif text == 'حالة المزرعة':
         await farm.show_farm_status(message)
     elif text == 'شراء بذور':
