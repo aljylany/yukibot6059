@@ -143,6 +143,22 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_games_navigation_callback(callback)
             return
         
+        # معالجة callbacks لعبة الرموز
+        if data.startswith('symbols_hint_'):
+            from modules.symbols_game import handle_symbols_hint_callback
+            await handle_symbols_hint_callback(callback)
+            return
+        
+        if data.startswith('symbols_status_'):
+            from modules.symbols_game import handle_symbols_status_callback
+            await handle_symbols_status_callback(callback)
+            return
+        
+        if data.startswith('symbols_cancel_'):
+            from modules.symbols_game import handle_symbols_cancel_callback
+            await handle_symbols_cancel_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         

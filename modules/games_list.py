@@ -66,6 +66,14 @@ AVAILABLE_GAMES = {
         "players": "مفتوح للجميع",
         "duration": "1-3 دقائق",
         "status": "متاحة"
+    },
+    "symbols": {
+        "name": "🔤 لعبة الرموز",
+        "description": "حل الرموز والألغاز المشفرة بالأرقام والحروف",
+        "commands": ["الرموز", "رموز", "symbols"],
+        "players": "مفتوح للجميع",
+        "duration": "1-2 دقيقة",
+        "status": "متاحة"
     }
 }
 
@@ -199,6 +207,17 @@ async def handle_game_start_callback(callback_query, game_command: str):
             fake_message.text = game_command
             await start_word_game(fake_message)
             await callback_query.answer("💭 تم بدء لعبة الكلمة!")
+            
+        elif game_command in ["الرموز", "رموز", "symbols"]:
+            from modules.symbols_game import start_symbols_game
+            # إنشاء رسالة وهمية محاكاة للضغط على الزر
+            import types
+            fake_message = types.SimpleNamespace()
+            fake_message.chat = callback_query.message.chat
+            fake_message.from_user = callback_query.from_user
+            fake_message.text = game_command
+            await start_symbols_game(fake_message)
+            await callback_query.answer("🔤 تم بدء لعبة الرموز!")
             
         else:
             await callback_query.answer("❌ هذه اللعبة غير متاحة حالياً", show_alert=True)

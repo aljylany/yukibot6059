@@ -641,6 +641,17 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في بدء لعبة الكلمة: {e}")
             await message.reply("❌ حدث خطأ أثناء بدء لعبة الكلمة")
     
+    # لعبة الرموز - Symbols Game
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(command in text for command in ['الرموز', 'رموز', 'symbols'])):
+        try:
+            from modules.symbols_game import start_symbols_game
+            await start_symbols_game(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء لعبة الرموز: {e}")
+            await message.reply("❌ حدث خطأ أثناء بدء لعبة الرموز")
+    
     # أمر قائمة الألعاب
     if (message.text and 
         any(command in text for command in ['العاب', 'الالعاب', 'games', 'قائمة الالعاب'])):
@@ -1656,13 +1667,18 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'مسح الرابط':
         await clear_commands.clear_link(message)
     
-    # معالجة تخمينات لعبة الكلمة (في النهاية لضمان أن الأوامر الأخرى تأخذ الأولوية)
+    # معالجة تخمينات الألعاب (في النهاية لضمان أن الأوامر الأخرى تأخذ الأولوية)
     elif message.chat.type in ['group', 'supergroup']:
         try:
+            # معالجة تخمينات لعبة الكلمة
             from modules.word_game import handle_word_guess
             await handle_word_guess(message)
+            
+            # معالجة تخمينات لعبة الرموز
+            from modules.symbols_game import handle_symbols_guess
+            await handle_symbols_guess(message)
         except Exception as e:
-            logging.error(f"خطأ في معالجة تخمين الكلمة: {e}")
+            logging.error(f"خطأ في معالجة تخمينات الألعاب: {e}")
     
     # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
 
