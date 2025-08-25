@@ -630,6 +630,17 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في بدء لعبة الرويال: {e}")
             await message.reply("❌ حدث خطأ أثناء بدء لعبة الرويال")
     
+    # لعبة الكلمة - Word Game
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(command in text for command in ['الكلمة', 'كلمة', 'word'])):
+        try:
+            from modules.word_game import start_word_game
+            await start_word_game(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء لعبة الكلمة: {e}")
+            await message.reply("❌ حدث خطأ أثناء بدء لعبة الكلمة")
+    
     # أمر قائمة الألعاب
     if (message.text and 
         any(command in text for command in ['العاب', 'الالعاب', 'games', 'قائمة الالعاب'])):
@@ -1644,6 +1655,14 @@ async def handle_general_message(message: Message, state: FSMContext):
         await clear_commands.clear_welcome(message)
     elif text == 'مسح الرابط':
         await clear_commands.clear_link(message)
+    
+    # معالجة تخمينات لعبة الكلمة (في النهاية لضمان أن الأوامر الأخرى تأخذ الأولوية)
+    elif message.chat.type in ['group', 'supergroup']:
+        try:
+            from modules.word_game import handle_word_guess
+            await handle_word_guess(message)
+        except Exception as e:
+            logging.error(f"خطأ في معالجة تخمين الكلمة: {e}")
     
     # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
 

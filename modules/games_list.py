@@ -55,6 +55,14 @@ AVAILABLE_GAMES = {
         "players": "مفتوح للجميع", 
         "duration": "3-5 دقائق",
         "status": "متاحة"
+    },
+    "word": {
+        "name": "💭 لعبة الكلمة",
+        "description": "خمن الكلمة الصحيحة من التعريف المعطى",
+        "commands": ["الكلمة", "كلمة", "word"],
+        "players": "مفتوح للجميع",
+        "duration": "1-3 دقائق",
+        "status": "متاحة"
     }
 }
 
@@ -119,6 +127,13 @@ async def handle_game_start_callback(callback_query, game_command: str):
             fake_message.text = game_command
             await start_royal_game(fake_message)
             await callback_query.answer("👑 تم بدء لعبة الرويال!")
+            
+        elif game_command in ["الكلمة", "كلمة", "word"]:
+            from modules.word_game import start_word_game
+            fake_message = callback_query.message
+            fake_message.text = game_command
+            await start_word_game(fake_message)
+            await callback_query.answer("💭 تم بدء لعبة الكلمة!")
             
         else:
             await callback_query.answer("❌ هذه اللعبة غير متاحة حالياً", show_alert=True)

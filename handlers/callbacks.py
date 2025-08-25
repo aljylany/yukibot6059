@@ -121,6 +121,17 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_xo_info(callback)
             return
         
+        # معالجة callbacks لعبة الكلمة
+        if data.startswith('word_hint_'):
+            from modules.word_game import handle_word_hint_callback
+            await handle_word_hint_callback(callback)
+            return
+        
+        if data.startswith('word_status_'):
+            from modules.word_game import handle_word_status_callback
+            await handle_word_status_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         
