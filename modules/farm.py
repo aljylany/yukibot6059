@@ -79,6 +79,9 @@ async def show_farm_menu(message: Message):
             await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
+        # تحديث حالة المحاصيل أولاً
+        await auto_update_crop_status()
+        
         # الحصول على محاصيل المستخدم
         user_crops = await get_user_crops(message.from_user.id)
         growing_crops = [crop for crop in user_crops if crop['status'] == 'growing']
@@ -246,6 +249,9 @@ async def plant_crop_command(message: Message):
 async def harvest_command(message: Message):
     """معالجة أمر الحصاد"""
     try:
+        # تحديث حالة المحاصيل أولاً
+        await auto_update_crop_status()
+        
         user_crops = await get_user_crops(message.from_user.id)
         
         if not user_crops:
@@ -282,6 +288,9 @@ async def harvest_command(message: Message):
 async def show_farm_status(message: Message):
     """عرض حالة المزرعة"""
     try:
+        # تحديث حالة المحاصيل أولاً
+        await auto_update_crop_status()
+        
         user_crops = await get_user_crops(message.from_user.id)
         
         if not user_crops:
@@ -368,7 +377,7 @@ async def show_planting_options(message: Message):
             
             planting_text += f"{affordable} {crop_info['emoji']} **{crop_info['name']}**\n"
             planting_text += f"   💰 التكلفة: {crop_info['cost_per_unit']}$ للوحدة\n"
-            planting_text += f"   ⏰ وقت النمو: {crop_info['grow_time_hours']} ساعة\n"
+            planting_text += f"   ⏰ وقت النمو: {crop_info['grow_time_minutes']} دقيقة\n"
             planting_text += f"   💎 العائد: {crop_info['yield_per_unit']}$ للوحدة\n"
             planting_text += f"   📈 الربح: {profit}$ ({profit_percentage:.0f}%)\n"
             planting_text += f"   📊 الحد الأقصى: {crop_info['max_quantity']} وحدة\n\n"
@@ -419,7 +428,7 @@ async def start_planting_process(message: Message, crop_type: str, state: FSMCon
             f"🌱 **زراعة {crop_info['name']}**\n\n"
             f"{crop_info['emoji']} المحصول: {crop_info['name']}\n"
             f"💰 التكلفة: {crop_info['cost_per_unit']}$ للوحدة\n"
-            f"⏰ وقت النمو: {crop_info['grow_time_hours']} ساعة\n"
+            f"⏰ وقت النمو: {crop_info['grow_time_minutes']} دقيقة\n"
             f"💎 العائد: {crop_info['yield_per_unit']}$ للوحدة\n"
             f"📈 الربح: {profit_per_unit}$ للوحدة\n\n"
             f"💵 رصيدك: {format_number(user['balance'])}$\n"
@@ -484,12 +493,12 @@ async def process_crop_quantity(message: Message, state: FSMContext):
         await update_user_balance(message.from_user.id, new_balance)
         
         # حساب وقت الحصاد
-        harvest_time = datetime.now() + timedelta(hours=crop_info['grow_time_hours'])
+        harvest_time = datetime.now() + timedelta(minutes=crop_info['grow_time_minutes'])
         
         # إضافة المحصول إلى قاعدة البيانات
         await execute_query(
-            "INSERT INTO user_farms (user_id, farm_type, level, productivity, last_harvest) VALUES (?, ?, ?, ?, ?)",
-            (message.from_user.id, crop_type, 1, crop_info['yield_per_unit'], harvest_time.isoformat())
+            "INSERT INTO farm (user_id, crop_type, quantity, planted_at, harvest_time, status) VALUES (?, ?, ?, ?, ?, ?)",
+            (message.from_user.id, crop_type, quantity, datetime.now().isoformat(), harvest_time.isoformat(), 'growing')
         )
         
         # إضافة معاملة
@@ -513,7 +522,7 @@ async def process_crop_quantity(message: Message, state: FSMContext):
             f"💎 العائد المتوقع: {format_number(expected_yield)}$\n"
             f"📈 الربح المتوقع: {format_number(expected_profit)}$\n"
             f"💵 رصيدك الجديد: {format_number(new_balance)}$\n\n"
-            f"🌱 المحصول ينمو الآن... عد بعد {crop_info['grow_time_hours']} ساعة للحصاد!"
+            f"🌱 المحصول ينمو الآن... عد بعد {crop_info['grow_time_minutes']} دقيقة للحصاد!"
         )
         
         await state.clear()
@@ -696,7 +705,7 @@ async def get_user_crops(user_id: int):
     """الحصول على محاصيل المستخدم"""
     try:
         crops = await execute_query(
-            "SELECT * FROM farm WHERE user_id = ? ORDER BY plant_time DESC",
+            "SELECT * FROM farm WHERE user_id = ? ORDER BY planted_at DESC",
             (user_id,),
             fetch_all=True
         )
