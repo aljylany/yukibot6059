@@ -1677,6 +1677,10 @@ async def handle_general_message(message: Message, state: FSMContext):
             # معالجة تخمينات لعبة الرموز
             from modules.symbols_game import handle_symbols_guess
             await handle_symbols_guess(message)
+            
+            # معالجة تخمينات لعبة ترتيب الحروف
+            from modules.letter_shuffle_game import handle_shuffle_guess
+            await handle_shuffle_guess(message)
         except Exception as e:
             logging.error(f"خطأ في معالجة تخمينات الألعاب: {e}")
     

@@ -159,6 +159,22 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_symbols_cancel_callback(callback)
             return
         
+        # معالجة callbacks لعبة ترتيب الحروف
+        if data.startswith('shuffle_hint_'):
+            from modules.letter_shuffle_game import handle_shuffle_hint_callback
+            await handle_shuffle_hint_callback(callback)
+            return
+        
+        if data.startswith('shuffle_status_'):
+            from modules.letter_shuffle_game import handle_shuffle_status_callback
+            await handle_shuffle_status_callback(callback)
+            return
+        
+        if data.startswith('shuffle_close_'):
+            from modules.letter_shuffle_game import handle_shuffle_close_callback
+            await handle_shuffle_close_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         

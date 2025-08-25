@@ -74,6 +74,14 @@ AVAILABLE_GAMES = {
         "players": "مفتوح للجميع",
         "duration": "1-2 دقيقة",
         "status": "متاحة"
+    },
+    "letter_shuffle": {
+        "name": "🎯 لعبة ترتيب الحروف",
+        "description": "رتب الحروف المختلطة لتكوين كلمة صحيحة وافوز بالجائزة",
+        "commands": ["الترتيب", "ترتيب", "حروف"],
+        "players": "مفتوح للجميع",
+        "duration": "1 دقيقة",
+        "status": "متاحة"
     }
 }
 
@@ -240,6 +248,11 @@ async def handle_game_start_callback(callback_query, game_command: str):
             from modules.quick_quiz_game import start_quick_quiz_game
             await start_quick_quiz_game(fake_message)
             await callback_query.answer("🧠 تم بدء سؤال وجواب!")
+            
+        elif game_command in ["الترتيب", "ترتيب", "حروف"]:
+            from modules.letter_shuffle_game import start_letter_shuffle_game
+            await start_letter_shuffle_game(fake_message)
+            await callback_query.answer("🎯 تم بدء لعبة ترتيب الحروف!")
             
         else:
             await callback_query.answer("❌ هذه اللعبة غير متاحة حالياً", show_alert=True)
