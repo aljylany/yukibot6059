@@ -15,7 +15,6 @@ from modules.cancel_handler import start_cancellable_command, is_command_cancell
 from database.operations import execute_query, get_user
 
 
-@master_only
 async def restart_bot_command(message: Message):
     """إعادة تشغيل البوت مع عد تنازلي وإمكانية الإلغاء"""
     try:
@@ -104,7 +103,6 @@ async def restart_bot_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء إعادة التشغيل")
 
 
-@master_only
 async def shutdown_bot_command(message: Message):
     """إيقاف تشغيل البوت نهائياً مع عد تنازلي وإمكانية الإلغاء"""
     try:
@@ -182,7 +180,6 @@ async def shutdown_bot_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء إيقاف التشغيل")
 
 
-@master_only 
 async def self_destruct_command(message: Message):
     """التدمير الذاتي - حذف جميع أعضاء المجموعة مع عد تنازلي"""
     try:
@@ -364,7 +361,6 @@ async def self_destruct_command(message: Message):
         await message.reply("❌ حدث خطأ في معالجة الأمر")
 
 
-@master_only
 async def leave_group_command(message: Message):
     """مغادرة المجموعة مع عد تنازلي"""
     try:
@@ -442,7 +438,6 @@ async def leave_group_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء المغادرة")
 
 
-@master_only
 async def promote_group_owner_command(message: Message):
     """ترقية مستخدم لمالك المجموعة"""
     try:
@@ -485,7 +480,6 @@ async def promote_group_owner_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء الترقية")
 
 
-@master_only
 async def demote_group_owner_command(message: Message):
     """تنزيل مالك المجموعة"""
     try:

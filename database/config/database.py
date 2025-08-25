@@ -132,11 +132,32 @@ async def init_database() -> None:
             # جدول المحظورين
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS banned_users (
-                    user_id INTEGER PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
                     banned_by INTEGER NOT NULL,
                     banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     reason TEXT,
+                    is_active INTEGER DEFAULT 1,
                     FOREIGN KEY (banned_by) REFERENCES users (user_id)
+                )
+            """)
+            
+            # جدول المكتومين
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS muted_users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    username TEXT,
+                    full_name TEXT,
+                    muted_by INTEGER NOT NULL,
+                    muted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    until_date TIMESTAMP,
+                    reason TEXT,
+                    FOREIGN KEY (muted_by) REFERENCES users (user_id)
                 )
             """)
             

@@ -103,6 +103,14 @@ def format_user_mention(user) -> str:
         return "مستخدم غير معروف"
 
 
+def format_user_id(user_id: int) -> str:
+    """تنسيق معرف المستخدم للعرض"""
+    try:
+        return f"`{user_id}`"
+    except Exception:
+        return "`غير محدد`"
+
+
 def parse_user_mention_from_text(text: str) -> Optional[str]:
     """استخراج معرف المستخدم من النص"""
     try:
