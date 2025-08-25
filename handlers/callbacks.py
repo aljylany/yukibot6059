@@ -51,6 +51,44 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_royal_confirmation(callback)
             return
         
+        # معالجة callbacks قائمة الألعاب
+        if data.startswith('start_game_'):
+            from modules.games_list import handle_game_start_callback
+            game_command = data.replace('start_game_', '')
+            await handle_game_start_callback(callback, game_command)
+            return
+        
+        # معالجة callbacks لعبة ساحة الموت الأخيرة
+        if data.startswith('battle_join_'):
+            from modules.battle_arena_callbacks import handle_battle_join
+            await handle_battle_join(callback)
+            return
+        
+        if data.startswith('battle_start_'):
+            from modules.battle_arena_callbacks import handle_battle_start
+            await handle_battle_start(callback)
+            return
+        
+        if data.startswith('battle_move_'):
+            from modules.battle_arena_callbacks import handle_battle_move
+            await handle_battle_move(callback)
+            return
+        
+        if data.startswith('battle_attack_'):
+            from modules.battle_arena_callbacks import handle_battle_attack
+            await handle_battle_attack(callback)
+            return
+        
+        if data.startswith('battle_defend_'):
+            from modules.battle_arena_callbacks import handle_battle_defend
+            await handle_battle_defend(callback)
+            return
+        
+        if data.startswith('battle_scout_'):
+            from modules.battle_arena_callbacks import handle_battle_scout
+            await handle_battle_scout(callback)
+            return
+        
         # معالجة callbacks لعبة اكس اوه
         if data.startswith('xo_join_'):
             from modules.xo_game import handle_xo_join

@@ -630,6 +630,28 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في بدء لعبة الرويال: {e}")
             await message.reply("❌ حدث خطأ أثناء بدء لعبة الرويال")
     
+    # أمر قائمة الألعاب
+    if (message.text and 
+        any(command in text for command in ['العاب', 'الالعاب', 'games', 'قائمة الالعاب'])):
+        try:
+            from modules.games_list import show_games_list
+            await show_games_list(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في عرض قائمة الألعاب: {e}")
+            await message.reply("❌ حدث خطأ في عرض قائمة الألعاب")
+
+    # لعبة ساحة الموت الأخيرة - Battle Arena Game
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(command in text for command in ['ساحة الموت', 'battle', 'معركة', 'ساحة المعركة'])):
+        try:
+            from modules.battle_arena_game import start_battle_arena
+            await start_battle_arena(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء ساحة الموت: {e}")
+            await message.reply("❌ حدث خطأ أثناء بدء ساحة الموت الأخيرة")
+    
     # لعبة اكس اوه - XO/Tic-Tac-Toe Game
     if (message.text and message.chat.type in ['group', 'supergroup'] and 
         any(command in text for command in ['اكس اوه', 'xo', 'اكس او', 'اكساوه'])):
