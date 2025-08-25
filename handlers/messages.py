@@ -1575,6 +1575,13 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_unlock_command(message, text)
     
     # === أوامر التفعيل والتعطيل ===
+    # معالجة أوامر الحماية أولاً قبل المعالج العام
+    elif text in ["تفعيل الحماية", "تشغيل الحماية", "فعل الحماية"]:
+        await handle_protection_commands(message)
+    elif text in ["تعطيل الحماية", "إيقاف الحماية", "عطل الحماية"]:
+        await handle_protection_commands(message)
+    elif text in ["حالة الحماية", "وضع الحماية", "إعدادات الحماية"]:
+        await handle_protection_commands(message)
     elif text.startswith('تفعيل '):
         await handle_toggle_command(message, text, 'تفعيل')
     elif text.startswith('تعطيل '):

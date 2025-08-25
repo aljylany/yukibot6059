@@ -161,9 +161,8 @@ async def handle_protection_status_command(message: Message) -> bool:
         return True
 
 async def handle_protection_commands(message: Message) -> bool:
-    """
-    المعالج الرئيسي لجميع أوامر الحماية
-    """
+    """المعالج الرئيسي المُبسط لأوامر الحماية"""
+    logging.info(f"🔍 تم استلام أمر حماية: {message.text}")
     try:
         # معالجة أوامر التفعيل/التعطيل
         if await handle_protection_toggle_command(message):
@@ -177,4 +176,5 @@ async def handle_protection_commands(message: Message) -> bool:
         
     except Exception as e:
         logging.error(f"خطأ في معالج أوامر الحماية: {e}")
+        await message.reply("❌ حدث خطأ في معالج الحماية!")
         return False
