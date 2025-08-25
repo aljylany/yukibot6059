@@ -311,7 +311,7 @@ async def handle_xo_move(callback: CallbackQuery):
             )
             
             if callback.message:
-            await callback.message.edit_text(game_text, reply_markup=game.get_board_keyboard())
+                await callback.message.edit_text(game_text, reply_markup=game.get_board_keyboard())
             await callback.answer("✅ تم تنفيذ الحركة!")
         
     except Exception as e:
