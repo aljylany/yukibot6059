@@ -529,10 +529,11 @@ async def check_for_profanity(message: Message) -> bool:
             logging.info(f"تم كشف سباب مُشفر: '{banned_word}' في النص: '{message.text[:50]}...'")
             return True
     
-    # استخدام الفحص المتقدم إذا فشل الفحص التقليدي
+    # استخدام الفحص المتقدم الجديد إذا لم يُفعل، أو كنظام مساعد
     if not is_protection_enabled(message.chat.id):
         return False
     
+    # النظام الجديد: فحص متقدم بدرجات الخطورة والذكاء الاصطناعي
     result = await check_message_advanced(message.text, message.from_user.id, message.chat.id)
     return result['is_abusive']
 
