@@ -183,8 +183,8 @@ class QuickQuizGame:
                 "answered": False
             }
     
-    def answer_question(self, user_id: int, user_name: str, choice: int) -> str:
-        """الإجابة على السؤال"""
+    def answer_question(self, user_id: int, user_name: str, choice: int) -> tuple[str, bool]:
+        """الإجابة على السؤال - إرجاع (النتيجة, هل الجميع أجاب)"""
         # إضافة المشارك إذا لم يكن موجوداً
         self.add_participant(user_id, user_name)
         
@@ -192,22 +192,27 @@ class QuickQuizGame:
         
         # فحص إذا أجاب من قبل على هذا السؤال
         if participant["answered"]:
-            return "❌ لقد أجبت على هذا السؤال بالفعل!"
+            return "❌ لقد أجبت على هذا السؤال بالفعل!", False
         
         # فحص انتهاء الوقت
         time_passed = time.time() - self.question_start_time
         if time_passed > self.answer_time_limit:
-            return "⏰ انتهى الوقت المحدد للإجابة!"
+            return "⏰ انتهى الوقت المحدد للإجابة!", False
         
         # تسجيل الإجابة
         participant["answered"] = True
         
+        # فحص إذا أجاب الجميع
+        all_answered = all(p["answered"] for p in self.participants.values())
+        
         if choice == self.current_question["correct"]:
+            result = f"✅ إجابة صحيحة يا {user_name}! (+1 نقطة)"
             participant["score"] += 1
-            return f"✅ إجابة صحيحة يا {user_name}! (+1 نقطة)"
         else:
             correct_answer = self.current_question["options"][self.current_question["correct"]]
-            return f"❌ إجابة خاطئة! الإجابة الصحيحة: {correct_answer}"
+            result = f"❌ إجابة خاطئة! الإجابة الصحيحة: {correct_answer}"
+        
+        return result, all_answered
     
     def get_question_display(self) -> str:
         """عرض السؤال الحالي"""
@@ -340,12 +345,59 @@ async def handle_quiz_answer(callback_query, choice: int):
             return
         
         # الإجابة على السؤال
-        result = game.answer_question(user_id, user_name, choice)
+        result, all_answered = game.answer_question(user_id, user_name, choice)
         await callback_query.answer(result)
+        
+        # إذا أجاب الجميع، انتقل للسؤال التالي فوراً
+        if all_answered or len(game.participants) >= 3:  # إذا أجاب 3+ لاعبين انتقل للسؤال التالي
+            import asyncio
+            await asyncio.sleep(2)  # انتظار قصير لعرض النتيجة
+            await move_to_next_question(game, callback_query.message)
         
     except Exception as e:
         logging.error(f"خطأ في معالجة إجابة المسابقة: {e}")
         await callback_query.answer("❌ حدث خطأ في معالجة الإجابة", show_alert=True)
+
+async def move_to_next_question(game: QuickQuizGame, message):
+    """الانتقال للسؤال التالي"""
+    try:
+        if game.game_ended:
+            return
+            
+        # عرض الإجابة الصحيحة للسؤال الحالي
+        correct_answer = game.current_question["options"][game.current_question["correct"]]
+        answered_count = len([p for p in game.participants.values() if p["answered"]])
+        
+        answer_text = (
+            f"✅ **انتهى السؤال {game.question_number}!**\n\n"
+            f"🎯 **الإجابة الصحيحة:** {correct_answer}\n"
+            f"👥 **عدد من أجاب:** {answered_count}\n\n"
+        )
+        
+        # بدء السؤال التالي أو إنهاء اللعبة
+        game.start_new_question()
+        
+        if game.game_ended:
+            # عرض النتائج النهائية
+            final_results = game.get_final_results()
+            await message.reply(answer_text + final_results)
+            
+            # توزيع الجوائز
+            await distribute_prizes(game)
+            
+            # إزالة اللعبة
+            if game.group_id in ACTIVE_QUIZ_GAMES:
+                del ACTIVE_QUIZ_GAMES[game.group_id]
+        else:
+            # عرض السؤال التالي
+            question_text = game.get_question_display()
+            keyboard = game.get_question_keyboard()
+            
+            await message.reply(answer_text + "⬇️ **السؤال التالي:**")
+            await message.reply(question_text, reply_markup=keyboard)
+            
+    except Exception as e:
+        logging.error(f"خطأ في الانتقال للسؤال التالي: {e}")
 
 async def question_timer(game: QuickQuizGame, message: Message):
     """مؤقت السؤال"""
