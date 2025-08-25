@@ -133,15 +133,15 @@ def get_response(user_id: int, message_text: str = "") -> Optional[str]:
         if any(admin_cmd in message_lower for admin_cmd in admin_keywords):
             return None
         
-        # تحديد نوع الرد المطلوب - يجب أن تكون الكلمة منفصلة أو في بداية/نهاية الجملة
+        # تحديد نوع الرد المطلوب - يجب أن تكون الكلمة منفصلة تماماً
         response_type = None
         for msg_type, keywords in TRIGGER_KEYWORDS.items():
             for keyword in keywords:
-                # فحص أدق: الكلمة يجب أن تكون منفصلة أو في بداية/نهاية الجملة
-                if (message_lower == keyword or 
-                    message_lower.startswith(keyword + " ") or 
-                    message_lower.endswith(" " + keyword) or
-                    f" {keyword} " in message_lower):
+                # فحص دقيق جداً: الكلمة يجب أن تكون منفصلة تماماً باستخدام حدود الكلمات
+                import re
+                # إنشاء نمط regex للبحث عن الكلمة كاملة منفصلة
+                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                if re.search(pattern, message_lower):
                     response_type = msg_type
                     break
             if response_type:

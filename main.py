@@ -97,6 +97,18 @@ async def main():
     from modules.media_download import load_download_settings
     await load_download_settings()
     
+    # تهيئة نظام الحماية المتطور من الألفاظ المسيئة
+    try:
+        from modules.profanity_filter import init_abusive_db, init_ml_model
+        init_abusive_db()
+        init_success = init_ml_model()
+        if init_success:
+            logging.info("✅ تم تهيئة نظام الحماية بنجاح")
+        else:
+            logging.info("⚠️ تم تهيئة قاعدة البيانات بدون نموذج ML")
+    except Exception as protection_error:
+        logging.error(f"⚠️ خطأ في تهيئة نظام الحماية: {protection_error}")
+    
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)
     

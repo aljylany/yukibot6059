@@ -55,9 +55,11 @@ Bot Configuration:
 - **Enhanced Farm System**: Completely redesigned farm interface from button-based to command-based harvesting with detailed profit breakdown messages
 - **New Farm Commands**: Added "حصاد محاصيلي" for harvesting all ready crops and "حصاد [النوع] [العدد]" for harvesting specific quantities of specific crops
 - **Detailed Harvest Reports**: Enhanced harvest messages with comprehensive profit analysis including cost breakdown, profit percentages, and detailed summaries per crop type
-- **Advanced Abusive Language Detection**: Integrated AI-powered profanity filter with machine learning and database-driven detection system
-- **Comprehensive Moderation System**: Automated message deletion, progressive warning system, and punishment escalation (mute → ban) for offensive content
-- **Smart Detection Methods**: Dual-layer detection using both pre-defined word database and machine learning model for Arabic language content analysis
+- **Advanced AI-Powered Protection System**: Integrated sophisticated profanity detection using machine learning (TfidfVectorizer + LogisticRegression) with database-driven word classification and severity levels (1-3)
+- **Natural Arabic Protection Commands**: Group owners can control protection with intuitive commands: "تفعيل الحماية", "تعطيل الحماية", "حالة الحماية" (restricted to group owners and masters)
+- **Comprehensive Moderation System**: Automated message deletion, progressive warning system based on word severity, and punishment escalation (warn → mute → ban) for offensive content
+- **Smart Detection Methods**: Triple-layer detection system: pre-defined word database + encrypted/obfuscated text detection + ML model for unknown abusive content
+- **Enhanced Yuki Response System**: Fixed trigger detection to respond only to standalone "يوكي" mentions using regex word boundaries, preventing false positives from similar words
 
 # System Architecture
 

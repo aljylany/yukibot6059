@@ -30,6 +30,7 @@ from modules.utility_commands import handle_utility_commands
 from modules.abusive_detector import detector, show_detection_menu
 from modules.abusive_detector import add_word_command, remove_word_command, list_words_command
 from modules.abusive_detector import user_warnings_command, reset_warnings_command, initialize_detector
+from modules.protection_commands import handle_protection_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -2259,3 +2260,15 @@ async def handle_location_messages(message: Message):
         "في المستقبل قد نضيف ميزات تعتمد على الموقع، "
         "لكن حالياً يمكنك استخدام الأوامر العادية."
     )
+
+# معالج الأوامر العربية للحماية
+@router.message(F.text.in_(["تفعيل الحماية", "تشغيل الحماية", "فعل الحماية", 
+                            "تعطيل الحماية", "إيقاف الحماية", "عطل الحماية",
+                            "حالة الحماية", "وضع الحماية", "إعدادات الحماية"]))
+async def handle_protection_arabic_commands(message: Message):
+    """معالج الأوامر العربية للحماية"""
+    try:
+        await handle_protection_commands(message)
+    except Exception as e:
+        logging.error(f"خطأ في معالج أوامر الحماية العربية: {e}")
+        await message.reply("❌ حدث خطأ في تنفيذ الأمر!")

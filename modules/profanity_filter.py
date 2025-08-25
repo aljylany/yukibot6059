@@ -1,13 +1,24 @@
 """
-نظام كشف السباب والكتم التلقائي
+نظام كشف السباب المتطور والكتم التلقائي
+يستخدم قاعدة بيانات ونموذج ذكاء اصطناعي للكشف عن الألفاظ المسيئة
 يقوم بكتم المستخدمين الذين يسبون ويرسل رسالة من السيدة رهف
 """
 
 import logging
+import sqlite3
+import pandas as pd
+import numpy as np
 from aiogram.types import Message, ChatPermissions
 from aiogram.exceptions import TelegramBadRequest
 # from utils.decorators import ensure_group_only  # مُعطل مؤقتاً
 from datetime import datetime, timedelta
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+import nltk
+import re
+import os
 
 # قائمة الكلمات المحظورة (السباب الشديد فقط)
 BANNED_WORDS = [
@@ -59,6 +70,244 @@ BANNED_VARIATIONS = [
 
 # دمج جميع الكلمات المحظورة
 ALL_BANNED_WORDS = BANNED_WORDS + BANNED_VARIATIONS
+
+# متغيرات النموذج العالمية
+vectorizer = None
+ml_model = None
+protection_enabled = {}
+
+# قاموس التحذيرات في الذاكرة
+user_warnings = {}
+
+# تحميل بيانات NLTK إذا لم تكن موجودة
+try:
+    import nltk
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+except Exception as e:
+    logging.warning(f"تحذير: لم يتمكن من تحميل بيانات NLTK: {e}")
+
+def init_abusive_db():
+    """
+    تهيئة قاعدة بيانات الألفاظ المسيئة والتحذيرات
+    """
+    try:
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        # جدول الكلمات المسيئة مع درجة الخطورة
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS abusive_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word TEXT UNIQUE,
+            severity INTEGER DEFAULT 1,
+            added_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        
+        # جدول تحذيرات المستخدمين
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_warnings (
+            user_id INTEGER,
+            chat_id INTEGER,
+            warnings INTEGER DEFAULT 0,
+            last_warning TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, chat_id)
+        )
+        ''')
+        
+        # جدول إعدادات الحماية للمجموعات
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS group_protection_settings (
+            chat_id INTEGER PRIMARY KEY,
+            protection_enabled BOOLEAN DEFAULT TRUE,
+            ml_threshold REAL DEFAULT 0.7,
+            max_warnings INTEGER DEFAULT 3,
+            mute_duration INTEGER DEFAULT 3600,
+            updated_by INTEGER,
+            updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        
+        # إضافة الكلمات الافتراضية
+        add_default_abusive_words()
+        
+        logging.info("✅ تم تهيئة قاعدة بيانات الألفاظ المسيئة بنجاح")
+        
+    except Exception as e:
+        logging.error(f"خطأ في تهيئة قاعدة البيانات: {e}")
+
+def add_default_abusive_words():
+    """
+    إضافة الكلمات المسيئة الافتراضية مع درجات خطورة
+    """
+    try:
+        # تحديد درجة الخطورة لكل كلمة (1=خفيف، 2=متوسط، 3=شديد)
+        default_words_with_severity = []
+        
+        # كلمات شديدة الخطورة (3)
+        severe_words = [
+            "شرموط", "شرموطة", "عاهرة", "عاهر", "زانية", "زاني",
+            "منيك", "منيكة", "نيك", "نايك", "كس", "كسها", "زب", "زبر", "طيز",
+            "ابن الشرموطة", "بنت الشرموطة", "خرا", "خراء"
+        ]
+        for word in severe_words:
+            default_words_with_severity.append((word, 3))
+            
+        # كلمات متوسطة الخطورة (2)
+        medium_words = [
+            "منيوك", "ايري", "انيك", "نيكك", "منيوكة", "ايرك", "ايرها",
+            "قاوود", "قواد", "زومل", "زومله", "ملعون", "ملعونه"
+        ]
+        for word in medium_words:
+            default_words_with_severity.append((word, 2))
+            
+        # كلمات خفيفة الخطورة (1)
+        light_words = ["يلعن", "اللعنة"]
+        for word in light_words:
+            default_words_with_severity.append((word, 1))
+            
+        # إضافة الكلمات لقاعدة البيانات
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        for word, severity in default_words_with_severity:
+            try:
+                cursor.execute('INSERT OR IGNORE INTO abusive_words (word, severity) VALUES (?, ?)', (word, severity))
+            except Exception as e:
+                logging.debug(f"تحذير: لم يتم إضافة '{word}': {e}")
+                
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        logging.error(f"خطأ في إضافة الكلمات الافتراضية: {e}")
+
+def init_ml_model():
+    """
+    تهيئة نموذج تعلم الآلة للكشف عن الألفاظ المسيئة
+    """
+    global vectorizer, ml_model
+    
+    try:
+        # بيانات تدريب عينة محسنة
+        training_data = {
+            'text': [
+                "أنت شخص لطيف ومحترم",
+                "أحب التحدث معك دائماً",
+                "شكراً لك على مساعدتك الرائعة",
+                "هذا عمل ممتاز ومتقن",
+                "أتمنى لك يوماً سعيداً",
+                "بارك الله فيك على جهودك",
+                "أنت إنسان رائع حقاً",
+                "أحترم وجهة نظرك تماماً",
+                
+                "أنت غبي جداً ولا تفهم شيء",
+                "اخرس يا أحمق ولا تتكلم",
+                "أنت عديم الفائدة تماماً",
+                "أنت فاشل في حياتك كلها",
+                "لا تفتح فمك مرة أخرى",
+                "أنت مزعج ومقرف جداً",
+                "اتركني في حالي أيها الغبي",
+                "كلامك سخيف ولا معنى له"
+            ],
+            'label': [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+        }
+        
+        df = pd.DataFrame(training_data)
+        
+        # تنظيف النص للنموذج
+        try:
+            stop_words = set(stopwords.words('arabic'))
+        except:
+            stop_words = set()  # إذا لم تكن متوفرة، استخدم مجموعة فارغة
+        
+        def clean_text_for_ml(text):
+            # إزالة العلامات والرموز
+            text = re.sub(r'[^\w\s]', '', text)
+            try:
+                tokens = word_tokenize(text)
+                tokens = [word for word in tokens if word not in stop_words and len(word) > 1]
+            except:
+                tokens = text.split()  # fallback إذا فشل tokenize
+            return ' '.join(tokens)
+        
+        df['cleaned_text'] = df['text'].apply(clean_text_for_ml)
+        
+        # تدريب النموذج
+        vectorizer = TfidfVectorizer(max_features=1000, ngram_range=(1, 2))
+        X = vectorizer.fit_transform(df['cleaned_text'])
+        y = df['label']
+        
+        ml_model = LogisticRegression(random_state=42)
+        ml_model.fit(X, y)
+        
+        logging.info("✅ تم تدريب نموذج تعلم الآلة بنجاح")
+        return True
+        
+    except Exception as e:
+        logging.error(f"خطأ في تدريب النموذج: {e}")
+        return False
+
+def is_protection_enabled(chat_id: int) -> bool:
+    """
+    التحقق من تفعيل الحماية في المجموعة
+    """
+    try:
+        # التحقق من الذاكرة أولاً
+        if chat_id in protection_enabled:
+            return protection_enabled[chat_id]
+            
+        # التحقق من قاعدة البيانات
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT protection_enabled FROM group_protection_settings WHERE chat_id = ?', (chat_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            enabled = bool(result[0])
+            protection_enabled[chat_id] = enabled
+            return enabled
+        else:
+            # إعداد افتراضي: تفعيل الحماية
+            protection_enabled[chat_id] = True
+            return True
+            
+    except Exception as e:
+        logging.error(f"خطأ في فحص حالة الحماية: {e}")
+        return True  # افتراضي مفعل
+
+async def toggle_protection(chat_id: int, enabled: bool, user_id: int) -> bool:
+    """
+    تفعيل/تعطيل الحماية في المجموعة
+    """
+    try:
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        INSERT OR REPLACE INTO group_protection_settings 
+        (chat_id, protection_enabled, updated_by, updated_date)
+        VALUES (?, ?, ?, ?)
+        ''', (chat_id, enabled, user_id, datetime.now()))
+        
+        conn.commit()
+        conn.close()
+        
+        # تحديث الذاكرة
+        protection_enabled[chat_id] = enabled
+        
+        status = "مفعل" if enabled else "معطل"
+        logging.info(f"تم {status} نظام الحماية في المجموعة {chat_id} بواسطة {user_id}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"خطأ في تغيير حالة الحماية: {e}")
+        return False
 
 def clean_text_for_profanity_check(text: str) -> str:
     """
@@ -129,6 +378,121 @@ def generate_text_variations(text: str) -> list:
     
     return list(set(variations))  # إزالة التكرارات
 
+async def check_message_advanced(text: str, user_id: int, chat_id: int) -> dict:
+    """
+    فحص متقدم للرسالة باستخدام قاعدة البيانات ونموذج تعلم الآلة
+    """
+    try:
+        # فحص قاعدة البيانات أولاً
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT word, severity FROM abusive_words')
+        db_words = cursor.fetchall()
+        conn.close()
+        
+        found_words = []
+        text_lower = text.lower()
+        
+        # فحص الكلمات المعروفة
+        for word, severity in db_words:
+            if word.lower() in text_lower:
+                # فحص أدق للتأكد من أن الكلمة منفصلة
+                pattern = r'\b' + re.escape(word.lower()) + r'\b'
+                if re.search(pattern, text_lower):
+                    found_words.append((word, severity))
+        
+        # إذا وُجدت كلمات معروفة
+        if found_words:
+            max_severity = max(severity for _, severity in found_words)
+            return {
+                'is_abusive': True,
+                'method': 'database',
+                'words': found_words,
+                'severity': max_severity,
+                'ml_score': None
+            }
+        
+        # إذا لم توجد كلمات معروفة، استخدم النموذج
+        if vectorizer and ml_model:
+            try:
+                cleaned_text = re.sub(r'[^\w\s]', '', text_lower)
+                X = vectorizer.transform([cleaned_text])
+                probability = ml_model.predict_proba(X)[0][1]
+                
+                threshold = 0.7  # يمكن تعديله من قاعدة البيانات
+                if probability > threshold:
+                    return {
+                        'is_abusive': True,
+                        'method': 'ml_model',
+                        'words': [],
+                        'severity': 2,  # متوسط للنموذج
+                        'ml_score': probability
+                    }
+                else:
+                    return {
+                        'is_abusive': False,
+                        'method': 'ml_model',
+                        'words': [],
+                        'severity': 0,
+                        'ml_score': probability
+                    }
+            except Exception as ml_error:
+                logging.warning(f"خطأ في نموذج ML: {ml_error}")
+        
+        return {
+            'is_abusive': False,
+            'method': 'clean',
+            'words': [],
+            'severity': 0,
+            'ml_score': None
+        }
+        
+    except Exception as e:
+        logging.error(f"خطأ في الفحص المتقدم: {e}")
+        return {
+            'is_abusive': False,
+            'method': 'error',
+            'words': [],
+            'severity': 0,
+            'ml_score': None
+        }
+
+async def update_user_warnings(user_id: int, chat_id: int, severity: int) -> int:
+    """
+    تحديث تحذيرات المستخدم وإرجاع العدد الجديد
+    """
+    try:
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        # إضافة أو تحديث التحذيرات
+        cursor.execute('''
+        INSERT OR IGNORE INTO user_warnings (user_id, chat_id, warnings)
+        VALUES (?, ?, 0)
+        ''', (user_id, chat_id))
+        
+        # زيادة التحذيرات حسب درجة الخطورة
+        warning_increment = severity  # كلما زادت الخطورة، زادت التحذيرات
+        
+        cursor.execute('''
+        UPDATE user_warnings 
+        SET warnings = warnings + ?, last_warning = CURRENT_TIMESTAMP
+        WHERE user_id = ? AND chat_id = ?
+        ''', (warning_increment, user_id, chat_id))
+        
+        cursor.execute('SELECT warnings FROM user_warnings WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+        warnings_count = cursor.fetchone()[0]
+        
+        conn.commit()
+        conn.close()
+        
+        return warnings_count
+        
+    except Exception as e:
+        logging.error(f"خطأ في تحديث التحذيرات: {e}")
+        return 0
+
 async def check_for_profanity(message: Message) -> bool:
     """
     فحص الرسالة للكشف عن السباب مع كشف التشفير والتمويه
@@ -165,7 +529,12 @@ async def check_for_profanity(message: Message) -> bool:
             logging.info(f"تم كشف سباب مُشفر: '{banned_word}' في النص: '{message.text[:50]}...'")
             return True
     
-    return False
+    # استخدام الفحص المتقدم إذا فشل الفحص التقليدي
+    if not is_protection_enabled(message.chat.id):
+        return False
+    
+    result = await check_message_advanced(message.text, message.from_user.id, message.chat.id)
+    return result['is_abusive']
 
 async def mute_user_for_profanity(message: Message) -> bool:
     """
