@@ -4,6 +4,7 @@ Bot Messages Handler
 """
 
 import logging
+import asyncio
 from aiogram import Router, F
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
@@ -26,6 +27,9 @@ from modules.response_tester import handle_response_tester_commands
 from modules.master_commands import handle_master_commands
 from modules.group_hierarchy import handle_hierarchy_commands
 from modules.utility_commands import handle_utility_commands
+from modules.abusive_detector import detector, show_detection_menu
+from modules.abusive_detector import add_word_command, remove_word_command, list_words_command
+from modules.abusive_detector import user_warnings_command, reset_warnings_command, initialize_detector
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -34,6 +38,7 @@ from modules.utility_commands import WhisperStates
 
 router = Router()
 
+# سيتم تهيئة نظام كشف الألفاظ المسيئة تلقائياً عند أول استخدام
 
 # تم نقل معالج الهمسة إلى handlers/commands.py
 
@@ -594,6 +599,23 @@ async def attempt_theft_on_target(message: Message, thief: dict, target: dict, t
 
 async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
+    
+    # فحص الألفاظ المسيئة أولاً (قبل كل شيء)
+    if message.text and message.chat.type in ['group', 'supergroup']:
+        try:
+            detection_result = await detector.check_message(
+                message.text, message.from_user.id, message.chat.id
+            )
+            
+            if detection_result['is_abusive']:
+                # معالجة الرسالة المسيئة
+                warning_message = await detector.handle_abusive_message(message, detection_result)
+                await message.reply(warning_message)
+                return  # إنهاء المعالجة هنا
+                
+        except Exception as e:
+            logging.error(f"خطأ في فحص الألفاظ المسيئة: {e}")
+    
     # التحقق من الأوامر الإدارية المتقدمة أولاً
     from handlers.advanced_admin_handler import handle_advanced_admin_commands
     if await handle_advanced_admin_commands(message, state):
@@ -1377,6 +1399,20 @@ async def handle_general_message(message: Message, state: FSMContext):
         await theft.show_top_thieves(message)
     elif any(word in words for word in ['سرقة', 'سرق']) or text == 'امان':
         await theft.show_security_menu(message)
+    
+    # === أوامر نظام كشف الألفاظ المسيئة ===
+    elif text.startswith('اضافة كلمة محظورة') or text.startswith('إضافة كلمة محظورة'):
+        await add_word_command(message)
+    elif text.startswith('حذف كلمة محظورة'):
+        await remove_word_command(message)
+    elif text == 'قائمة الكلمات المحظورة':
+        await list_words_command(message)
+    elif text == 'تحذيرات المستخدم':
+        await user_warnings_command(message)
+    elif text == 'اعادة تعيين التحذيرات' or text == 'إعادة تعيين التحذيرات':
+        await reset_warnings_command(message)
+    elif text in ['كشف الالفاظ', 'كشف الألفاظ', 'نظام الكشف', 'نظام كشف الألفاظ']:
+        await show_detection_menu(message)
     
     # === أوامر الاستثمار ===
     elif text == 'استثمار فلوسي':

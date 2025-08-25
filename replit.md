@@ -55,6 +55,9 @@ Bot Configuration:
 - **Enhanced Farm System**: Completely redesigned farm interface from button-based to command-based harvesting with detailed profit breakdown messages
 - **New Farm Commands**: Added "حصاد محاصيلي" for harvesting all ready crops and "حصاد [النوع] [العدد]" for harvesting specific quantities of specific crops
 - **Detailed Harvest Reports**: Enhanced harvest messages with comprehensive profit analysis including cost breakdown, profit percentages, and detailed summaries per crop type
+- **Advanced Abusive Language Detection**: Integrated AI-powered profanity filter with machine learning and database-driven detection system
+- **Comprehensive Moderation System**: Automated message deletion, progressive warning system, and punishment escalation (mute → ban) for offensive content
+- **Smart Detection Methods**: Dual-layer detection using both pre-defined word database and machine learning model for Arabic language content analysis
 
 # System Architecture
 

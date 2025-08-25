@@ -8,5 +8,9 @@ dependencies = [
     "aiohttp>=3.12.15",
     "aiosqlite>=0.21.0",
     "ffmpeg-python>=0.2.0",
+    "nltk>=3.9.1",
+    "numpy>=2.3.2",
+    "pandas>=2.3.2",
+    "scikit-learn>=1.7.1",
     "yt-dlp>=2025.8.22",
 ]
