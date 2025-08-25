@@ -685,6 +685,17 @@ async def handle_general_message(message: Message, state: FSMContext):
         except Exception as e:
             logging.error(f"خطأ في بدء لعبة خمن الرقم: {e}")
             await message.reply("❌ حدث خطأ في لعبة خمن الرقم")
+
+    # لعبة سؤال وجواب سريعة - Quick Quiz Game
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        any(command in text for command in ['سؤال وجواب', 'مسابقة', 'quiz', 'سؤال'])):
+        try:
+            from modules.quick_quiz_game import start_quick_quiz_game
+            await start_quick_quiz_game(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في بدء مسابقة سؤال وجواب: {e}")
+            await message.reply("❌ حدث خطأ في بدء المسابقة")
     
     # لعبة اكس اوه - XO/Tic-Tac-Toe Game
     if (message.text and message.chat.type in ['group', 'supergroup'] and 

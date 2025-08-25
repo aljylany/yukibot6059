@@ -64,6 +64,16 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_wheel_spin(callback)
             return
         
+        # معالجة callbacks مسابقة سؤال وجواب
+        if data.startswith('quiz_answer_'):
+            from modules.quick_quiz_game import handle_quiz_answer
+            # استخراج الاختيار من البيانات
+            parts = data.split('_')
+            if len(parts) >= 4:
+                choice = int(parts[-1])
+                await handle_quiz_answer(callback, choice)
+            return
+        
         # معالجة callbacks لعبة ساحة الموت الأخيرة
         if data.startswith('battle_join_'):
             from modules.battle_arena_callbacks import handle_battle_join
