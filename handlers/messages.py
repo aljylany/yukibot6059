@@ -620,6 +620,20 @@ async def handle_general_message(message: Message, state: FSMContext):
             
             profile_text += f"\n🆔 **المعرف:** `{user.id}`"
             
+            # إضافة الرتبة الإدارية في المجموعة
+            try:
+                from config.hierarchy import get_user_admin_level, get_admin_level_name, MASTERS
+                admin_level = get_user_admin_level(user.id, message.chat.id)
+                level_name = get_admin_level_name(admin_level)
+                profile_text += f"\n⭐ **الرتبة:** {level_name}"
+                
+                # إضافة تمييز خاص للأسياد
+                if user.id in MASTERS:
+                    profile_text += " 👑"
+            except Exception as rank_error:
+                logging.error(f"خطأ في الحصول على الرتبة: {rank_error}")
+                profile_text += f"\n⭐ **الرتبة:** عضو"
+            
             # محاولة الحصول على معلومات إضافية من المجموعة
             try:
                 chat_member = await message.bot.get_chat_member(message.chat.id, user.id)
