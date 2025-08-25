@@ -911,18 +911,18 @@ async def handle_general_message(message: Message, state: FSMContext):
                 active_users = await execute_query(
                     """
                     SELECT DISTINCT user_id FROM (
-                        SELECT user_id FROM users WHERE chat_id = ?
+                        SELECT user_id FROM group_ranks WHERE chat_id = ?
                         UNION
-                        SELECT user_id FROM farm WHERE user_id IN (
-                            SELECT user_id FROM users WHERE chat_id = ?
-                        )
-                        UNION  
-                        SELECT user_id FROM levels WHERE user_id IN (
-                            SELECT user_id FROM users WHERE chat_id = ?
-                        )
+                        SELECT user_id FROM levels WHERE user_id IS NOT NULL
+                        UNION
+                        SELECT user_id FROM farm WHERE user_id IS NOT NULL
+                        UNION
+                        SELECT from_user_id as user_id FROM transactions WHERE from_user_id IS NOT NULL AND from_user_id != 0
+                        UNION
+                        SELECT to_user_id as user_id FROM transactions WHERE to_user_id IS NOT NULL AND to_user_id != 0
                     ) LIMIT 50
                     """,
-                    (message.chat.id, message.chat.id, message.chat.id),
+                    (message.chat.id,),
                     fetch_all=True
                 )
                 
