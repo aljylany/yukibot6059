@@ -306,7 +306,7 @@ async def start_letter_shuffle_game(message: Message):
         
         # إرسال رسالة اللعبة
         game_text = (
-            f"🎯 **لعبة ترتيب الحروف بدأت!**\n\n"
+            f"🎯 **لعبة خلط الحروف بدأت!**\n\n"
             f"🔤 **الحروف المختلطة:** {game.current_word['shuffled']}\n"
             f"📝 **المطلوب:** رتب الحروف لتكوين كلمة صحيحة\n\n"
             f"👤 **منشئ اللعبة:** {creator_name}\n"
@@ -322,7 +322,7 @@ async def start_letter_shuffle_game(message: Message):
         # بدء مؤقت انتهاء اللعبة (منع الإزعاج)
         asyncio.create_task(auto_end_game(group_id, game.game_duration))
         
-        logging.info(f"تم بدء لعبة ترتيب الحروف في المجموعة {group_id}")
+        logging.info(f"تم بدء لعبة خلط الحروف في المجموعة {group_id}")
         
     except Exception as e:
         logging.error(f"خطأ في بدء لعبة ترتيب الحروف: {e}")
@@ -352,7 +352,7 @@ async def auto_end_game(group_id: int, duration: int):
                 bot = Bot.get_current()
                 await bot.send_message(
                     group_id,
-                    f"⏰ **انتهت لعبة ترتيب الحروف!**\n\n"
+                    f"⏰ **انتهت لعبة خلط الحروف!**\n\n"
                     f"🔤 الكلمة الصحيحة كانت: **{game.current_word['word']}**\n"
                     f"❌ لم يجب أحد بشكل صحيح"
                 )
@@ -392,7 +392,7 @@ async def handle_shuffle_guess(message: Message):
                 user_id, 
                 game.prize_pool, 
                 "win", 
-                "جائزة لعبة ترتيب الحروف"
+                "جائزة لعبة خلط الحروف"
             )
             
             # حذف رسالة اللعبة القديمة
