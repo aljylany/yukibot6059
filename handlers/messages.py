@@ -1256,48 +1256,8 @@ async def handle_general_message(message: Message, state: FSMContext):
                 masters_info = "👑 قائمة الأسياد الحاليين:\n\n"
                 
                 for i, master_id in enumerate(MASTERS, 1):
-                    try:
-                        # جلب معلومات المستخدم من تيليجرام مع إعادة المحاولة للتحديث
-                        import asyncio
-                        try:
-                            # محاولة جلب المعلومات مع timeout
-                            chat_info = await asyncio.wait_for(
-                                message.bot.get_chat(master_id), 
-                                timeout=5.0
-                            )
-                        except asyncio.TimeoutError:
-                            # في حالة timeout، استخدم معلومات أساسية
-                            chat_info = None
-                            logging.warning(f"Timeout عند جلب معلومات السيد {master_id}")
-                        
-                        if chat_info:
-                            # تكوين الاسم الكامل
-                            display_name = ""
-                            if chat_info.first_name:
-                                display_name = chat_info.first_name
-                            if chat_info.last_name:
-                                display_name += f" {chat_info.last_name}"
-                            if not display_name.strip():
-                                display_name = f"سيد {i}"
-                            
-                            masters_info += f"{i}. 👑 {display_name}\n"
-                            
-                            # إضافة اسم المستخدم إذا كان موجوداً
-                            if chat_info.username:
-                                masters_info += f"   📱 @{chat_info.username}\n"
-                            
-                            masters_info += f"   🆔 {master_id}\n\n"
-                        else:
-                            # في حالة عدم توفر المعلومات
-                            masters_info += f"{i}. 👑 سيد {i}\n"
-                            masters_info += f"   🆔 {master_id}\n"
-                            masters_info += f"   ⚠️ البيانات غير محدثة\n\n"
-                        
-                    except Exception as e:
-                        # في حالة عدم القدرة على جلب معلومات المستخدم
-                        masters_info += f"{i}. 👑 سيد {i}\n"
-                        masters_info += f"   🆔 {master_id}\n\n"
-                        logging.warning(f"لم يتم العثور على معلومات المستخدم {master_id}: {e}")
+                    masters_info += f"{i}. 👑 سيد {i}\n"
+                    masters_info += f"   🆔 {master_id}\n\n"
                 
                 masters_info += f"📊 إجمالي الأسياد: {len(MASTERS)}\n\n"
                 masters_info += "🔴 الأسياد لديهم صلاحيات مطلقة في جميع المجموعات\n"
