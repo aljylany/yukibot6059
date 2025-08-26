@@ -309,9 +309,55 @@ async def toggle_protection(chat_id: int, enabled: bool, user_id: int) -> bool:
         logging.error(f"خطأ في تغيير حالة الحماية: {e}")
         return False
 
+def create_arabic_pattern(word: str) -> str:
+    """
+    إنشاء نمط تعبير منتظم للكلمة العربية مع اختلافات الكتابة المحسنة
+    مستوحى من الملف الجديد مع تحسينات إضافية
+    """
+    replacements = {
+        'ا': '[اٲإأٱآ]',
+        'ب': '[ب٨]',
+        'ت': '[ت٥]',
+        'ث': '[ث٨]',
+        'ج': '[جچ]',
+        'ح': '[ح٨]',
+        'خ': '[خ٨]',
+        'د': '[د]',
+        'ذ': '[ذ٨]',
+        'ر': '[ر٤]',
+        'ز': '[ز]',
+        'س': '[س٥]',
+        'ش': '[ش]',
+        'ص': '[ص]',
+        'ض': '[ض]',
+        'ط': '[ط٥]',
+        'ظ': '[ظ]',
+        'ع': '[ع٥]',
+        'غ': '[غ]',
+        'ف': '[ف]',
+        'ق': '[ق٥]',
+        'ك': '[كک]',
+        'ل': '[ل]',
+        'م': '[م]',
+        'ن': '[ن٥]',
+        'ه': '[هة]',
+        'و': '[و٦]',
+        'ي': '[ي٨ئى]'
+    }
+    
+    pattern = r'(?i)\b('
+    for char in word:
+        if char in replacements:
+            pattern += replacements[char]
+        else:
+            pattern += re.escape(char)
+    pattern += r')\b'
+    
+    return pattern
+
 def clean_text_for_profanity_check(text: str) -> str:
     """
-    تنظيف النص لإزالة التشفير والتمويه
+    تنظيف النص لإزالة التشفير والتمويه - محسن مع الأنماط الجديدة
     """
     if not text:
         return ""
@@ -330,18 +376,18 @@ def clean_text_for_profanity_check(text: str) -> str:
     # إزالة المسافات التي قد تكون بين الحروف
     cleaned = cleaned.replace(' ', '')
     
-    # تحويل الأرقام الشائعة إلى حروف
+    # تحويل الأرقام الشائعة إلى حروف - محسن مع اختلافات عربية
     number_replacements = {
-        '0': 'o',
-        '1': 'i',
-        '2': 'z',
-        '3': 'e',
-        '4': 'a',
-        '5': 's',
-        '6': 'g',
-        '7': 't',
-        '8': 'b',
-        '9': 'g'
+        '0': 'و',  # شكل مشابه للواو
+        '1': 'ل',  # شكل مشابه للام  
+        '2': 'ن',  # شكل مشابه للنون
+        '3': 'ع',  # شكل مشابه للعين
+        '4': 'ر',  # شكل مشابه للراء
+        '5': 'ه',  # شكل مشابه للهاء
+        '6': 'و',  # شكل مشابه للواو
+        '7': 'ح',  # شكل مشابه للحاء
+        '8': 'ث',  # شكل مشابه للثاء
+        '9': 'ق'   # شكل مشابه للقاف
     }
     
     for number, letter in number_replacements.items():
@@ -504,13 +550,19 @@ async def check_for_profanity(message: Message) -> bool:
     # الحصول على تنويعات النص للفحص
     text_variations = generate_text_variations(message.text.lower().strip())
     
-    # فحص كل تنويعة مع كل كلمة محظورة
+    # فحص كل تنويعة مع كل كلمة محظورة باستخدام الأنماط المحسنة
     import re
     for text_variant in text_variations:
         for banned_word in ALL_BANNED_WORDS:
-            # استخدام regex للتأكد من أن الكلمة المحظورة منفصلة وليست جزء من كلمة أخرى
-            pattern = r'\b' + re.escape(banned_word.lower()) + r'\b'
-            if re.search(pattern, text_variant):
+            # استخدام النمط المحسن للكلمات العربية
+            arabic_pattern = create_arabic_pattern(banned_word.lower())
+            if re.search(arabic_pattern, text_variant):
+                logging.info(f"تم كشف سباب بالنمط المحسن: '{banned_word}' في النص المنظف: '{text_variant}' (النص الأصلي: '{message.text[:50]}...')")
+                return True
+            
+            # النمط القديم كاحتياط
+            simple_pattern = r'\b' + re.escape(banned_word.lower()) + r'\b'
+            if re.search(simple_pattern, text_variant):
                 logging.info(f"تم كشف سباب: '{banned_word}' في النص المنظف: '{text_variant}' (النص الأصلي: '{message.text[:50]}...')")
                 return True
     
