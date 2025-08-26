@@ -43,6 +43,21 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول المستويات (نظام XP)
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS levels (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER UNIQUE NOT NULL,
+                    xp INTEGER DEFAULT 0,
+                    level_name TEXT DEFAULT 'نجم 1',
+                    world_name TEXT DEFAULT 'عالم النجوم',
+                    last_xp_gain REAL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
             # إنشاء جدول المعاملات
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS transactions (
