@@ -10,13 +10,13 @@ BOT_TOKEN = "7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
 BOT_USERNAME = "theyuki_bot"
 
 # قائمة المديرين والمالكين
-ADMINS = [6524680126, 8278493069, 6629947448]
+ADMINS = [6524680126, 8278493069, 6629947448,7155814194]
 
 # الأسياد - مستوردة من نظام الهيكل الجديد  
 try:
     from config.hierarchy import MASTERS
 except ImportError:
-    MASTERS = [6524680126, 8278493069]
+    MASTERS = [6524680126, 8278493069, 7155814194]
 ADMIN_IDS = ADMINS  # اسم بديل للتوافق
 OWNERS = [6524680126]
 

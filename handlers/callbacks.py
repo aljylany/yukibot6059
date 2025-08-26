@@ -191,6 +191,17 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_specific_plant_callback(callback)
             return
         
+        # معالجة callbacks العقارات
+        if data.startswith('property_buy_'):
+            from modules.real_estate import handle_property_buy_callback
+            await handle_property_buy_callback(callback)
+            return
+            
+        if data.startswith('property_sell_'):
+            from modules.real_estate import handle_property_sell_callback
+            await handle_property_sell_callback(callback)
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         

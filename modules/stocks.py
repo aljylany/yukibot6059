@@ -197,6 +197,13 @@ async def buy_stock(message: Message, symbol: str, quantity: int):
             to_user_id=0  # النظام
         )
         
+        # إضافة XP للمعاملة
+        try:
+            from modules.enhanced_xp_handler import add_xp_for_activity
+            await add_xp_for_activity(message.from_user.id, "stocks")
+        except Exception as e:
+            logging.error(f"خطأ في إضافة XP للأسهم: {e}")
+        
         await message.reply(
             f"✅ **تم الشراء بنجاح!**\n\n"
             f"{stock_info.get('emoji', '📊')} السهم: {symbol}\n"

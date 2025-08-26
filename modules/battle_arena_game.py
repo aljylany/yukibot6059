@@ -344,7 +344,11 @@ async def handle_battle_end(game: BattleArenaGame, message: Message):
                 prize_amount = int(game.total_prize * 0.8)  # 80% للفائز
                 await update_user_balance(winner['id'], winner_data['balance'] + prize_amount)
                 await add_transaction(winner['id'], "فوز في ساحة الموت", prize_amount, "battle_win")
-                await leveling_system.add_xp(winner['id'], "gaming")
+                try:
+                    from modules.enhanced_xp_handler import add_xp_for_activity
+                    await add_xp_for_activity(winner['id'], "gambling")
+                except Exception:
+                    await leveling_system.add_xp(winner['id'], "gaming")
             
             # مكافآت اللاعبين الآخرين
             alive_players = [p for p in game.players if p['alive'] and p['id'] != winner['id']]
@@ -357,7 +361,11 @@ async def handle_battle_end(game: BattleArenaGame, message: Message):
                         reward = participation_reward + (player['kills'] * 5000)
                         await update_user_balance(player['id'], player_data['balance'] + reward)
                         await add_transaction(player['id'], "مشاركة في ساحة الموت", reward, "battle_participation")
-                        await leveling_system.add_xp(player['id'], "gaming")
+                        try:
+                            from modules.enhanced_xp_handler import add_xp_for_activity
+                            await add_xp_for_activity(player['id'], "gambling")
+                        except Exception:
+                            await leveling_system.add_xp(player['id'], "gaming")
             
             end_text = (
                 "🏆 **انتهت المعركة!**\n\n"

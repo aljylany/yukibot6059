@@ -110,6 +110,13 @@ async def process_luck_gamble(message: Message, bet_amount: float = None, bet_al
             else:
                 result_text = "❌ حدث خطأ في تحديث الرصيد، حاول مرة أخرى"
         
+        # إضافة XP للمراهنة
+        try:
+            from modules.enhanced_xp_handler import add_xp_for_activity
+            await add_xp_for_activity(user_id, "gambling")
+        except Exception as xp_error:
+            logging.error(f"خطأ في إضافة XP لمراهنة الحظ: {xp_error}")
+        
         # عرض النتيجة مع إحصائيات الحظ
         luck_stats = (
             f"\n\n📊 **إحصائيات مراهنة الحظ:**\n"

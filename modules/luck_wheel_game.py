@@ -108,6 +108,13 @@ async def handle_wheel_spin(callback: CallbackQuery):
         # تطبيق الجائزة
         result_text = await apply_prize(user_id, user_data, prize, user_name)
         
+        # إضافة XP للعب
+        try:
+            from modules.enhanced_xp_handler import add_xp_for_activity
+            await add_xp_for_activity(user_id, "gambling")
+        except Exception as xp_error:
+            logging.error(f"خطأ في إضافة XP لعجلة الحظ: {xp_error}")
+        
         # رسالة النتيجة مع أنيميشن العجلة
         wheel_animation = get_wheel_animation()
         final_text = (

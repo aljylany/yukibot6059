@@ -27,7 +27,15 @@ class EnhancedXPSystem:
             "transfer": 5,
             "gambling": 7,
             "custom_reply": 2,
-            "command_usage": 3
+            "command_usage": 3,
+            "stocks": 10,
+            "real_estate": 20,
+            "luck_wheel": 5,
+            "battle_arena": 15,
+            "treasure_hunt": 6,
+            "simple_investment": 8,
+            "ai_interaction": 2,
+            "music_search": 3
         }
     
     async def add_xp(self, user_id: int, activity_type: str, amount: int = None):
@@ -170,6 +178,14 @@ class EnhancedXPSystem:
 • العقارات: +25 XP
 • المزرعة: +8 XP
 • القلعة: +12 XP
+• الأسهم: +10 XP
+• عجلة الحظ: +5 XP
+• مراهنة الحظ: +7 XP
+• ساحة الموت: +15 XP
+• البحث عن الكنز: +6 XP
+• الاستثمار البسيط: +8 XP
+• التفاعل مع الذكاء الاصطناعي: +2 XP
+• البحث عن الموسيقى: +3 XP
             """
             
             return display.strip()
