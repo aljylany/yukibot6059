@@ -190,29 +190,48 @@ class SharedGroupMemoryPG:
                 return ""
                 
             try:
-                # البحث عن المحادثات التي تذكر المستخدم المطلوب
+                # البحث عن المحادثات التي تذكر المستخدم المطلوب أو التي كتبها
                 rows = await conn.fetch('''
                     SELECT user_id, username, message_text, ai_response, topics, timestamp
                     FROM shared_conversations
                     WHERE chat_id = $1 
-                    AND (mentioned_users LIKE $2 OR user_id = $3)
+                    AND (mentioned_users LIKE $2 OR user_id = $3 OR message_text ILIKE $4)
                     ORDER BY timestamp DESC
-                    LIMIT $4
-                ''', chat_id, f'%{target_user_id}%', target_user_id, limit)
+                    LIMIT $5
+                ''', chat_id, f'%{target_user_id}%', target_user_id, f'%{target_user_id}%', limit)
                 
                 if not rows:
-                    return ""
+                    # البحث في أسماء المستخدمين المعروفين
+                    user_names = {
+                        8278493069: 'رهف',
+                        7155814194: 'الشيخ',
+                        6629947448: 'غيو'
+                    }
+                    user_name = user_names.get(target_user_id, 'هذا المستخدم')
+                    return f"لم أجد محادثات حديثة مع {user_name} في الذاكرة المشتركة."
                 
-                context = f"ما أعرفه عن هذا المستخدم من المحادثات السابقة:\n"
+                # الحصول على اسم المستخدم المستهدف
+                target_username = None
+                user_names = {
+                    8278493069: 'رهف',
+                    7155814194: 'الشيخ', 
+                    6629947448: 'غيو'
+                }
+                
+                context = f"ما أعرفه عن {user_names.get(target_user_id, 'هذا المستخدم')} من المحادثات:\n"
                 
                 for row in rows:
                     user_id, username, message, ai_response, topics, timestamp = row
                     topics_list = json.loads(topics) if topics else []
                     
                     if user_id == target_user_id:
-                        context += f"• {username} تحدث عن: {', '.join(topics_list[:3])}\n"
+                        # المستخدم المستهدف نفسه كتب الرسالة
+                        context += f"• {username} قال: {message[:100]}{'...' if len(message) > 100 else ''}\n"
+                        if ai_response:
+                            context += f"  → ورديت عليه: {ai_response[:80]}{'...' if len(ai_response) > 80 else ''}\n"
                     else:
-                        context += f"• {username} ذكر/تحدث عنه بموضوع: {', '.join(topics_list[:3])}\n"
+                        # شخص آخر تحدث عنه
+                        context += f"• {username} ذكره وتحدث عن: {', '.join(topics_list[:3])}\n"
                 
                 return context
                 
