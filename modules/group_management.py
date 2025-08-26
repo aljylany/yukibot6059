@@ -251,36 +251,99 @@ async def show_banned_users(message: Message):
 async def show_muted_users(message: Message):
     """عرض قائمة المكتومين"""
     try:
+        import sqlite3
         from datetime import datetime
-        # جلب قائمة المكتومين من قاعدة البيانات
-        muted_users = await execute_query(
-            """
-            SELECT user_id, until_date, muted_by 
-            FROM muted_users 
-            WHERE chat_id = ? AND (until_date IS NULL OR until_date > ?)
-            ORDER BY muted_at DESC
-            """,
-            (message.chat.id, datetime.now()),
-            fetch_all=True
-        )
         
-        if not muted_users:
+        muted_list = []
+        
+        # البحث في قاعدة البيانات الرئيسية (الكتم اليدوي)
+        try:
+            main_muted = await execute_query(
+                """
+                SELECT user_id, until_date, muted_by 
+                FROM muted_users 
+                WHERE chat_id = ? AND (until_date IS NULL OR until_date > CURRENT_TIMESTAMP)
+                ORDER BY muted_at DESC
+                """,
+                (message.chat.id,),
+                fetch_all=True
+            )
+            
+            for user in main_muted or []:
+                try:
+                    # محاولة جلب معلومات المستخدم
+                    user_info = await message.bot.get_chat_member(message.chat.id, user['user_id'])
+                    user_name = user_info.user.first_name or f"المستخدم {user['user_id']}"
+                    username = f"@{user_info.user.username}" if user_info.user.username else "بدون معرف"
+                    
+                    mute_info = f"🔇 {user_name} ({username})\n   🆔 {user['user_id']}"
+                    
+                    if user.get('until_date'):
+                        mute_info += f"\n   ⏰ حتى: {user['until_date']}"
+                    else:
+                        mute_info += f"\n   ⏰ كتم دائم"
+                        
+                    muted_list.append(mute_info)
+                except:
+                    # في حالة عدم العثور على معلومات المستخدم
+                    mute_info = f"🔇 المستخدم {user['user_id']}"
+                    if user.get('until_date'):
+                        mute_info += f"\n   ⏰ حتى: {user['until_date']}"
+                    else:
+                        mute_info += f"\n   ⏰ كتم دائم"
+                    muted_list.append(mute_info)
+                    
+        except Exception as db_error:
+            logging.warning(f"لم يتم العثور على مكتومين في القاعدة الرئيسية: {db_error}")
+        
+        # البحث في قاعدة بيانات الحماية (الكتم التلقائي)
+        try:
+            conn = sqlite3.connect('abusive_words.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT user_id, until_date, muted_by 
+                FROM muted_users 
+                WHERE chat_id = ? AND (until_date IS NULL OR datetime(until_date) > datetime('now'))
+                ORDER BY muted_at DESC
+            ''', (message.chat.id,))
+            protection_muted = cursor.fetchall()
+            conn.close()
+            
+            for user_id, until_date, muted_by in protection_muted:
+                try:
+                    # محاولة جلب معلومات المستخدم
+                    user_info = await message.bot.get_chat_member(message.chat.id, user_id)
+                    user_name = user_info.user.first_name or f"المستخدم {user_id}"
+                    username = f"@{user_info.user.username}" if user_info.user.username else "بدون معرف"
+                    
+                    mute_info = f"🤖 {user_name} ({username})\n   🆔 {user_id}\n   🛡️ كتم تلقائي"
+                    
+                    if until_date:
+                        mute_info += f"\n   ⏰ حتى: {until_date}"
+                    else:
+                        mute_info += f"\n   ⏰ كتم دائم"
+                        
+                    muted_list.append(mute_info)
+                except:
+                    # في حالة عدم العثور على معلومات المستخدم
+                    mute_info = f"🤖 المستخدم {user_id}\n   🛡️ كتم تلقائي"
+                    if until_date:
+                        mute_info += f"\n   ⏰ حتى: {until_date}"
+                    else:
+                        mute_info += f"\n   ⏰ كتم دائم"
+                    muted_list.append(mute_info)
+                    
+        except Exception as protection_error:
+            logging.warning(f"خطأ في قاعدة بيانات الحماية: {protection_error}")
+        
+        # عرض النتائج
+        if not muted_list:
             await message.reply("📋 **المكتومين:**\nلا يوجد أعضاء مكتومين حالياً ✅")
             return
         
-        muted_list = []
-        for user in muted_users:
-            user_info = f"🔇 المستخدم {user['user_id']}"
-            
-            if user.get('until_date'):
-                user_info += f"\n   ⏰ حتى: {user['until_date']}"
-            else:
-                user_info += f"\n   ⏰ كتم دائم"
-                
-            muted_list.append(user_info)
-        
-        text = f"📋 **قائمة المكتومين** ({len(muted_users)}):\n\n"
+        text = f"📋 **قائمة المكتومين** ({len(muted_list)}):\n\n"
         text += "\n\n".join(muted_list)
+        text += "\n\n🔇 = كتم يدوي | 🤖 = كتم تلقائي"
         
         await message.reply(text)
         
