@@ -1436,13 +1436,17 @@ async def handle_general_message(message: Message, state: FSMContext):
                         
                         username = f"@{chat_member.username}" if chat_member.username else "بدون يوزر"
                         
-                        masters_info += f"{i}. 👑 {user_name}\n"
+                        # جعل الاسم قابلاً للنقر للانتقال إلى حساب المستخدم
+                        clickable_name = f"[{user_name}](tg://user?id={master_id})"
+                        
+                        masters_info += f"{i}. 👑 {clickable_name}\n"
                         masters_info += f"   📱 {username}\n"
                         masters_info += f"   🆔 {master_id}\n\n"
                         
                     except Exception as e:
                         # في حالة فشل الحصول على معلومات المستخدم
-                        masters_info += f"{i}. 👑 سيد {i}\n"
+                        clickable_name = f"[سيد {i}](tg://user?id={master_id})"
+                        masters_info += f"{i}. 👑 {clickable_name}\n"
                         masters_info += f"   🆔 {master_id}\n\n"
                 
                 masters_info += f"📊 إجمالي الأسياد: {len(MASTERS)}\n\n"
@@ -1451,7 +1455,7 @@ async def handle_general_message(message: Message, state: FSMContext):
                 masters_info += "💡 اضغط على أي اسم للانتقال إلى حساب السيد\n"
                 masters_info += "🔄 ملاحظة: إذا لاحظت أي يوزر خاطئ فهذا يعني أن تيليجرام لم يحدث المعلومات"
                 
-                await message.reply(masters_info, disable_web_page_preview=True)
+                await message.reply(masters_info, parse_mode="Markdown", disable_web_page_preview=True)
                 
             except Exception as e:
                 logging.error(f"خطأ في عرض قائمة الأسياد: {e}")
