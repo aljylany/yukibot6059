@@ -39,10 +39,15 @@ class RealYukiAI:
 - المرح والترفيه مع الأعضاء
 - إدارة النقاشات الجماعية بحكمة
 
-🎮 كما تعرف ألعاب البوت عند السؤال عنها:
-- البنوك والأوامر المصرفية (ايداع، سحب، راتب)
-- العقارات والاستثمارات والأسهم
-- المزارع والقلاع والألعاب الترفيهية
+🎮 كما تعرف ألعاب البوت عند السؤال عنها وتستطيع الوصول لقاعدة بيانات اللاعبين لمعرفة تقدمهم:
+- البنوك والأوامر المصرفية (ايداع، سحب، راتب) - يمكنك رؤية أرصدتهم
+- العقارات والاستثمارات والأسهم - يمكنك رؤية محافظهم الاستثمارية
+- المزارع والمحاصيل - يمكنك رؤية محاصيلهم وحالة نضجها
+- القلاع والموارد - يمكنك رؤية قلاعهم وموارد البناء
+- المستويات والنقاط - يمكنك رؤية مستواهم ونقاط XP وترتيبهم
+- النقاط الذهبية والترتيب العام - تعرف أين يقفون بين اللاعبين
+
+🎯 عندما يسأل أي لاعب عن تقدمه أو إحصائياته، ستحصل على بياناته من قاعدة البيانات تلقائياً
 
 📋 عندما يسأل عن "أوامر يوكي" وجهه للأمر مباشرة
 💡 كن صديقاً حقيقياً، مستمعاً جيداً، ومرشداً حكيماً
@@ -78,6 +83,138 @@ class RealYukiAI:
         except Exception as e:
             logging.error(f"خطأ في إعداد Gemini: {e}")
             self.gemini_client = None
+    
+    async def get_comprehensive_player_data(self, user_id: int) -> str:
+        """جمع معلومات اللاعب الشاملة من قاعدة البيانات لاستخدامها في الذكاء الاصطناعي"""
+        try:
+            player_info = "معلومات اللاعب من قاعدة البيانات:\n"
+            
+            # معلومات المستخدم الأساسية
+            try:
+                from database.operations import get_user
+                user = await get_user(user_id)
+                if user:
+                    balance = user.get('balance', 0)
+                    bank_balance = user.get('bank_balance', 0)
+                    bank_type = user.get('bank_type', 'الأهلي')
+                    player_info += f"💰 الرصيد النقدي: {balance}$\n"
+                    player_info += f"🏦 رصيد البنك ({bank_type}): {bank_balance}$\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات المستخدم: {e}")
+            
+            # معلومات المستوى والتقدم
+            try:
+                from modules.unified_level_system import get_unified_user_level
+                level_info = await get_unified_user_level(user_id)
+                player_info += f"⭐ المستوى: {level_info.get('level', 1)}\n"
+                player_info += f"🎯 النقاط (XP): {level_info.get('xp', 0)}\n"
+                player_info += f"🌟 الرتبة: {level_info.get('level_name', 'نجم 1')}\n"
+                player_info += f"🌍 العالم: {level_info.get('world_name', 'عالم النجوم')}\n"
+                if level_info.get('is_master'):
+                    player_info += "👑 سيد مطلق\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات المستوى: {e}")
+            
+            # معلومات المزرعة
+            try:
+                from database.operations import execute_query
+                crops = await execute_query(
+                    "SELECT * FROM farm WHERE user_id = ? ORDER BY plant_time DESC LIMIT 10",
+                    (user_id,),
+                    fetch_all=True
+                )
+                if crops:
+                    player_info += f"🌾 المحاصيل: {len(crops)} محصول\n"
+                    ready_crops = 0
+                    growing_crops = 0
+                    from datetime import datetime
+                    import time
+                    current_time = time.time()
+                    
+                    for crop in crops:
+                        if current_time >= crop.get('ready_time', 0):
+                            ready_crops += 1
+                        else:
+                            growing_crops += 1
+                    
+                    if ready_crops > 0:
+                        player_info += f"✅ محاصيل جاهزة للحصاد: {ready_crops}\n"
+                    if growing_crops > 0:
+                        player_info += f"🌱 محاصيل تنمو: {growing_crops}\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات المزرعة: {e}")
+            
+            # معلومات القلعة
+            try:
+                castle = await execute_query(
+                    "SELECT * FROM user_castles WHERE user_id = ?",
+                    (user_id,),
+                    fetch_one=True
+                )
+                if castle:
+                    player_info += f"🏰 القلعة: {castle.get('name', 'بلا اسم')}\n"
+                    player_info += f"⚔️ نقاط الهجوم: {castle.get('attack_points', 0)}\n"
+                    player_info += f"🛡️ نقاط الدفاع: {castle.get('defense_points', 0)}\n"
+                    
+                    # موارد القلعة
+                    resources = await execute_query(
+                        "SELECT * FROM user_resources WHERE user_id = ?",
+                        (user_id,),
+                        fetch_one=True
+                    )
+                    if resources:
+                        player_info += f"💎 الذهب: {resources.get('gold', 0)}\n"
+                        player_info += f"🪨 الحجارة: {resources.get('stones', 0)}\n"
+                        player_info += f"👷 العمال: {resources.get('workers', 0)}\n"
+                else:
+                    player_info += "🏰 لا يملك قلعة\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات القلعة: {e}")
+            
+            # معلومات الأسهم
+            try:
+                stocks = await execute_query(
+                    "SELECT * FROM stocks WHERE user_id = ?",
+                    (user_id,),
+                    fetch_all=True
+                )
+                if stocks:
+                    total_stocks = len(stocks)
+                    total_value = sum(stock.get('quantity', 0) * stock.get('purchase_price', 0) for stock in stocks)
+                    player_info += f"📈 الأسهم: {total_stocks} نوع\n"
+                    player_info += f"💹 قيمة المحفظة: {total_value:.2f}$\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات الأسهم: {e}")
+            
+            # معلومات الاستثمارات
+            try:
+                investments = await execute_query(
+                    "SELECT * FROM investments WHERE user_id = ? AND status = 'active'",
+                    (user_id,),
+                    fetch_all=True
+                )
+                if investments:
+                    total_invested = sum(inv.get('amount', 0) for inv in investments)
+                    player_info += f"💼 الاستثمارات النشطة: {len(investments)}\n"
+                    player_info += f"💵 إجمالي المستثمر: {total_invested}$\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات الاستثمارات: {e}")
+            
+            # معلومات النقاط الذهبية والترتيب
+            try:
+                from modules.ranking_system import get_user_rank_info
+                rank_info = await get_user_rank_info(user_id)
+                if not rank_info.get('error'):
+                    player_info += f"🏅 النقاط الذهبية: {rank_info.get('gold_points', 0)}\n"
+                    player_info += f"🏆 الترتيب: #{rank_info.get('rank', 0)}\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات الترتيب: {e}")
+            
+            return player_info
+            
+        except Exception as e:
+            logging.error(f"خطأ في جمع معلومات اللاعب الشاملة: {e}")
+            return "معلومات اللاعب غير متاحة حالياً"
     
     async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: Optional[int] = None) -> str:
         """توليد رد ذكي بناءً على الذكاء الاصطناعي الحقيقي مع ذاكرة المحادثات"""
@@ -171,10 +308,35 @@ class RealYukiAI:
                 except Exception as memory_error:
                     logging.warning(f"خطأ في جلب الذاكرة المشتركة: {memory_error}")
             
+            # جلب معلومات اللاعب إذا كان السؤال متعلق بالتقدم أو الإحصائيات
+            player_data_context = ""
+            if user_id:
+                # كلمات مفتاحية تدل على أن المستخدم يريد معرفة تقدمه
+                progress_triggers = [
+                    'تقدمي', 'تقدمك', 'احصائياتي', 'إحصائياتي', 'احصائياتك', 'إحصائياتك',
+                    'مستواي', 'مستواك', 'رصيدي', 'رصيدك', 'فلوسي', 'فلوسك',
+                    'قلعتي', 'قلعتك', 'مزرعتي', 'مزرعتك', 'اسهمي', 'أسهمي', 'أسهمك',
+                    'استثماراتي', 'استثماراتك', 'محفظتي', 'محفظتك', 'ترتيبي', 'ترتيبك',
+                    'نقاطي', 'نقاطك', 'كم عندي', 'كم عندك', 'وين وصلت', 'أين وصلت',
+                    'شو عندي', 'ماذا عندي', 'ايش عندي', 'كيف تقدمي', 'كيف تقدمك',
+                    'شوف تقدمي', 'شوف تقدمك', 'عرض تقدمي', 'اعرض تقدمي',
+                    'معلوماتي', 'معلوماتك', 'بياناتي', 'بياناتك'
+                ]
+                
+                if any(trigger in user_message.lower() for trigger in progress_triggers):
+                    try:
+                        player_data_context = await self.get_comprehensive_player_data(user_id)
+                        logging.info(f"✅ تم جلب معلومات اللاعب للذكاء الاصطناعي للمستخدم {user_id}")
+                    except Exception as player_error:
+                        logging.error(f"خطأ في جلب معلومات اللاعب: {player_error}")
+            
             # دمج جميع السياقات
             full_context = conversation_context
             if shared_context:
                 full_context += f"\n\nالسياق المشترك:\n{shared_context}\n"
+            
+            if player_data_context:
+                full_context += f"\n\n{player_data_context}\n"
             
             full_prompt = f"{self.system_prompt}{special_prompt}{full_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             

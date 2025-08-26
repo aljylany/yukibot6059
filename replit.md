@@ -61,6 +61,7 @@ Bot Configuration:
 - **Smart Detection Methods**: Triple-layer detection system: pre-defined word database + encrypted/obfuscated text detection + ML model for unknown abusive content
 - **Enhanced Yuki Response System**: Fixed trigger detection to respond only to standalone "يوكي" mentions using regex word boundaries, preventing false positives from similar words
 - **Fixed AI Command Conflicts**: Resolved critical conflict between absolute master commands (like "يوكي قم بالتدمير الذاتي") and general AI commands containing "يوكي". Enhanced `handle_master_commands` with smart detection logic that distinguishes absolute commands from casual AI interactions, ensuring both systems work independently without interference. Date: August 26, 2025
+- **AI Database Integration System**: Enhanced the Google Gemini AI system to access player database and provide comprehensive statistics when asked. The AI can now view user levels, XP, balances, bank accounts, farm crops, castle resources, stock portfolios, investments, rankings, and gold points. Automatically triggered when users ask about their progress using keywords like "تقدمي", "مستواي", "رصيدي", "قلعتي", etc. Date: August 26, 2025
 
 # System Architecture
 
