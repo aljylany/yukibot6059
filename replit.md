@@ -60,6 +60,7 @@ Bot Configuration:
 - **Comprehensive Moderation System**: Automated message deletion, progressive warning system based on word severity, and punishment escalation (warn → mute → ban) for offensive content
 - **Smart Detection Methods**: Triple-layer detection system: pre-defined word database + encrypted/obfuscated text detection + ML model for unknown abusive content
 - **Enhanced Yuki Response System**: Fixed trigger detection to respond only to standalone "يوكي" mentions using regex word boundaries, preventing false positives from similar words
+- **Fixed AI Command Conflicts**: Resolved critical conflict between absolute master commands (like "يوكي قم بالتدمير الذاتي") and general AI commands containing "يوكي". Enhanced `handle_master_commands` with smart detection logic that distinguishes absolute commands from casual AI interactions, ensuring both systems work independently without interference. Date: August 26, 2025
 
 # System Architecture
 

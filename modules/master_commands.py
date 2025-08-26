@@ -676,12 +676,44 @@ async def add_money_command(message: Message):
 
 
 async def handle_master_commands(message: Message) -> bool:
-    """معالج أوامر الأسياد"""
+    """معالج أوامر الأسياد - محسّن لتجنب التعارض مع أوامر الذكاء الاصطناعي"""
     if not message.text or not message.from_user:
         return False
     
     user_id = message.from_user.id
     text = message.text.lower().strip()
+    
+    # قائمة الأوامر المطلقة الدقيقة - للتحقق المسبق
+    absolute_commands = [
+        'يوكي قم بإعادة التشغيل', 'يوكي اعد التشغيل', 'restart bot',
+        'يوكي قم بإيقاف التشغيل', 'يوكي اوقف البوت', 'shutdown bot',
+        'يوكي قم بالتدمير الذاتي', 'يوكي دمر المجموعة', 'self destruct',
+        'يوكي قم بمغادرة المجموعة', 'يوكي اخرج', 'يوكي غادر',
+        'يوكي رقي مالك مجموعة', 'رقية مالك',
+        'يوكي نزل مالك المجموعة', 'تنزيل مالك',
+        'اضف فلوس', 'أضف فلوس', 'add money'
+    ]
+    
+    # فحص إذا كان النص يحتوي على أمر مطلق حقيقي
+    has_absolute_command = False
+    for cmd in absolute_commands:
+        if cmd.lower() in text:
+            has_absolute_command = True
+            break
+    
+    # إذا لم يكن هناك أمر مطلق، والرسالة تحتوي فقط على "يوكي" عادي، اتركها للذكاء الاصطناعي
+    if not has_absolute_command and 'يوكي' in text:
+        # تحقق إضافي: إذا كان النص يحتوي على "يوكي" فقط أو مع كلمات عادية (ليس أوامر مطلقة)
+        simple_yuki_patterns = [
+            'يوكي', 'yuki', 'يوكى',
+            'يوكي كيف حالك', 'يوكي شلونك', 'يوكي من انا',
+            'يوكي ايش رايك', 'يوكي شنو رأيك', 'يوكي وين انت'
+        ]
+        
+        # إذا كان النص يحتوي على أحد هذه الأنماط البسيطة، اتركه للذكاء الاصطناعي
+        for pattern in simple_yuki_patterns:
+            if pattern.lower() in text and not any(abs_cmd.lower() in text for abs_cmd in absolute_commands):
+                return False
     
     # فحص إذا كان النص يحتوي على أمر من أوامر الأسياد
     from modules.permission_responses import is_master_command, get_permission_denial_response
@@ -695,11 +727,9 @@ async def handle_master_commands(message: Message) -> bool:
                 await message.reply(insulting_response)
             return True
     
-    # التحقق من كون المستخدم سيد
+    # التحقق من كون المستخدم سيد للأوامر المطلقة
     if user_id not in MASTERS:
         return False
-    
-    text = message.text.lower().strip()
     
     # فحص أمر الإلغاء أولاً
     if text == 'إلغاء':
@@ -714,7 +744,7 @@ async def handle_master_commands(message: Message) -> bool:
             await message.reply("❓ لا يوجد أمر جاري لإلغائه")
             return True
     
-    # أوامر الأسياد المطلقة - تحويل كل شيء للأحرف الصغيرة للمطابقة
+    # أوامر الأسياد المطلقة - مطابقة دقيقة
     if any(phrase.lower() in text for phrase in ['يوكي قم بإعادة التشغيل', 'يوكي اعد التشغيل', 'restart bot']):
         await restart_bot_command(message)
         return True
