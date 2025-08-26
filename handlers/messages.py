@@ -1253,7 +1253,7 @@ async def handle_general_message(message: Message, state: FSMContext):
         user_id = message.from_user.id if message.from_user else 0
         if user_id in MASTERS:
             try:
-                masters_info = "👑 **قائمة الأسياد الحاليين:**\n\n"
+                masters_info = "👑 قائمة الأسياد الحاليين:\n\n"
                 
                 for i, master_id in enumerate(MASTERS, 1):
                     try:
@@ -1302,13 +1302,13 @@ async def handle_general_message(message: Message, state: FSMContext):
                         masters_info += f"   🆔 `{master_id}`\n\n"
                         logging.warning(f"لم يتم العثور على معلومات المستخدم {master_id}: {e}")
                 
-                masters_info += f"📊 **إجمالي الأسياد:** {len(MASTERS)}\n\n"
-                masters_info += "🔴 **الأسياد لديهم صلاحيات مطلقة في جميع المجموعات**\n"
-                masters_info += "⚡ **يمكنهم تنفيذ أي أمر وإدارة جميع الأنظمة**\n\n"
-                masters_info += "💡 **اضغط على أي اسم للانتقال إلى حساب السيد**\n"
-                masters_info += "🔄 **ملاحظة:** إذا لاحظت أي يوزر خاطئ، فهذا يعني أن تيليجرام لم يحدث المعلومات بعد"
+                masters_info += f"📊 إجمالي الأسياد: {len(MASTERS)}\n\n"
+                masters_info += "🔴 الأسياد لديهم صلاحيات مطلقة في جميع المجموعات\n"
+                masters_info += "⚡ يمكنهم تنفيذ أي أمر وإدارة جميع الأنظمة\n\n"
+                masters_info += "💡 اضغط على أي اسم للانتقال إلى حساب السيد\n"
+                masters_info += "🔄 ملاحظة: إذا لاحظت أي يوزر خاطئ فهذا يعني أن تيليجرام لم يحدث المعلومات"
                 
-                await message.reply(masters_info, parse_mode="Markdown")
+                await message.reply(masters_info, parse_mode="Markdown", disable_web_page_preview=True)
                 
             except Exception as e:
                 logging.error(f"خطأ في عرض قائمة الأسياد: {e}")

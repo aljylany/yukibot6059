@@ -13,7 +13,6 @@ from database.operations import execute_query, get_user
 from utils.helpers import format_number, format_user_mention, format_user_id
 from utils.decorators import group_only, admin_required
 from modules.ranking import get_user_rank
-from config.settings import GROUP_SETTINGS
 
 
 # أوامر رؤية الأعضاء والإعدادات
@@ -252,10 +251,11 @@ async def show_banned_users(message: Message):
 async def show_muted_users(message: Message):
     """عرض قائمة المكتومين"""
     try:
+        from datetime import datetime
         # جلب قائمة المكتومين من قاعدة البيانات
         muted_users = await execute_query(
             """
-            SELECT user_id, username, full_name, until_date, reason, muted_by 
+            SELECT user_id, until_date, reason, muted_by 
             FROM muted_users 
             WHERE chat_id = ? AND (until_date IS NULL OR until_date > ?)
             ORDER BY muted_at DESC
