@@ -12,12 +12,10 @@ from aiogram.types import Message
 from datetime import datetime
 
 try:
-    from google import genai
-    from google.genai import types as genai_types
+    import google.genai as genai
     GEMINI_AVAILABLE = True
 except ImportError:
     genai = None
-    genai_types = None
     GEMINI_AVAILABLE = False
     logging.warning("Google Gemini SDK not available, falling back to basic AI")
 
@@ -29,28 +27,8 @@ class RealYukiAI:
         self.gemini_client = None
         self.setup_gemini()
         
-        # النصوص الأساسية لتوجيه الذكاء الاصطناعي
-        self.system_prompt = """
-أنت يوكي، البوت الذكي والودود لمجموعة تلغرام باللغة العربية. 
-
-شخصيتك:
-- ذكي، مفيد، ومرح
-- تتحدث بالعربية بطلاقة مع خليط من اللهجات العربية المختلفة
-- ودود وقريب من الشباب العربي
-- تحب المساعدة في كل شيء
-- لديك شخصية مميزة وروح دعابة لطيفة
-- تستخدم الإيموجي بشكل مناسب
-- تعرف عن التكنولوجيا والألعاب والثقافة العربية
-
-قواعد مهمة:
-1. اجب دائماً بالعربية
-2. كن مفيداً وودوداً
-3. استخدم اسم المستخدم في الرد
-4. اجعل ردودك قصيرة ومفيدة (100-200 كلمة عادة)
-5. إذا لم تعرف شيئاً، اعترف بذلك بصراحة
-6. تجنب المواضيع السياسية أو الحساسة
-7. ساعد في أي سؤال تقني أو عام
-"""
+        # النصوص الأساسية لتوجيه الذكاء الاصطناعي  
+        self.system_prompt = """أنت يوكي، البوت الذكي والودود باللغة العربية. كن مفيداً ومرحاً، استخدم الإيموجي، واجب دائماً بالعربية مع اسم المستخدم في الرد."""
         
         # ردود احتياطية في حالة عدم توفر الذكاء الاصطناعي
         self.fallback_responses = [
@@ -99,29 +77,29 @@ class RealYukiAI:
 اجب بذكاء ومرح باللغة العربية، واستخدم اسم المستخدم في الرد:
 """
             
-            # استدعاء Gemini
+            # استدعاء Gemini بإعدادات محسّنة
             response = self.gemini_client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=full_prompt,
-                config=genai_types.GenerateContentConfig(
+                config=genai.types.GenerateContentConfig(
                     temperature=0.7,
-                    max_output_tokens=300,
-                    safety_settings=[
-                        genai_types.SafetySetting(
-                            category=genai_types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                            threshold=genai_types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-                        ),
-                        genai_types.SafetySetting(
-                            category=genai_types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                            threshold=genai_types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-                        )
-                    ]
+                    max_output_tokens=500
                 )
             )
             
+            # التحقق من وجود الرد بعدة طرق
+            ai_response = None
+            
+            # طريقة 1: التحقق من response.text المباشر
             if response and response.text:
                 ai_response = response.text.strip()
-                
+            # طريقة 2: التحقق من candidates
+            elif response and response.candidates and len(response.candidates) > 0:
+                candidate = response.candidates[0]
+                if candidate.content and candidate.content.parts and len(candidate.content.parts) > 0:
+                    ai_response = candidate.content.parts[0].text.strip()
+            
+            if ai_response:
                 # تحسين الرد
                 if len(ai_response) > 400:
                     ai_response = ai_response[:350] + "..."
@@ -143,6 +121,10 @@ class RealYukiAI:
         except Exception as e:
             logging.error(f"خطأ في Gemini AI: {e}")
             return self.get_fallback_response(user_name)
+        
+        # إذا وصلنا هنا معناها مافيش رد صالح
+        logging.warning(f"لم يتم العثور على رد صالح من Gemini للمستخدم {user_name}")
+        return self.get_fallback_response(user_name)
     
     def convert_name_to_arabic(self, name: str) -> str:
         """تحويل الأسماء الإنجليزية الشائعة إلى عربية"""
