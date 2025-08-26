@@ -57,6 +57,7 @@ Bot Configuration:
 - **Custom Commands System**: Authorized users can create custom bot commands with keywords and responses.
 - **Music Search Feature**: Search and play songs from YouTube, Instagram, and TikTok.
 - **Advanced AI-Powered Protection System**: Sophisticated profanity detection using machine learning (TfidfVectorizer + LogisticRegression) with database-driven word classification, severity levels, automated message deletion, progressive warnings, and punishment escalation. Includes smart detection methods for encrypted/obfuscated text.
+- **Fixed Game Commands Word Boundary Detection**: Implemented comprehensive word boundary detection for all game commands to prevent accidental activation when mentioned within sentences. Applied regex-based standalone word detection to all games including quiz, royal battle, word game, symbols, battle arena, luck wheel, number guess, and XO game. Commands now require exact matching instead of substring matching. Date: August 26, 2025
 - **Notification System**: Comprehensive notification system for sub-channels detailing bot activity and status updates.
 
 # External Dependencies

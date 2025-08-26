@@ -646,71 +646,146 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في الرد الإسلامي: {e}")
     
     # لعبة الرويال - Royal Battle Game
-    if (message.text and message.chat.type in ['group', 'supergroup'] and 
-        any(command in text for command in ['لعبة الحظ', 'رويال', 'royal'])):
-        try:
-            from modules.royal_game import start_royal_game
-            await start_royal_game(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء لعبة الرويال: {e}")
-            await message.reply("❌ حدث خطأ أثناء بدء لعبة الرويال")
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        royal_commands = ['لعبة الحظ', 'رويال', 'royal']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_royal_command = False
+        for command in royal_commands:
+            if command == 'لعبة الحظ':
+                # فحص خاص للعبارة المكونة من كلمتين
+                if re.search(r'\bلعبة\s+الحظ\b', text):
+                    is_royal_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_royal_command = True
+                    break
+        
+        if is_royal_command:
+            try:
+                from modules.royal_game import start_royal_game
+                await start_royal_game(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء لعبة الرويال: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء لعبة الرويال")
     
     # لعبة الكلمة - Word Game
-    if (message.text and message.chat.type in ['group', 'supergroup'] and 
-        any(command in text for command in ['الكلمة', 'كلمة', 'word'])):
-        try:
-            from modules.word_game import start_word_game
-            await start_word_game(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء لعبة الكلمة: {e}")
-            await message.reply("❌ حدث خطأ أثناء بدء لعبة الكلمة")
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        word_commands = ['الكلمة', 'كلمة', 'word']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_word_command = any(re.search(rf'\b{re.escape(command)}\b', text) for command in word_commands)
+        
+        if is_word_command:
+            try:
+                from modules.word_game import start_word_game
+                await start_word_game(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء لعبة الكلمة: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء لعبة الكلمة")
     
     # لعبة الرموز - Symbols Game
-    if (message.text and message.chat.type in ['group', 'supergroup'] and 
-        any(command in text for command in ['الرموز', 'رموز', 'symbols'])):
-        try:
-            from modules.symbols_game import start_symbols_game
-            await start_symbols_game(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء لعبة الرموز: {e}")
-            await message.reply("❌ حدث خطأ أثناء بدء لعبة الرموز")
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        symbols_commands = ['الرموز', 'رموز', 'symbols']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_symbols_command = any(re.search(rf'\b{re.escape(command)}\b', text) for command in symbols_commands)
+        
+        if is_symbols_command:
+            try:
+                from modules.symbols_game import start_symbols_game
+                await start_symbols_game(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء لعبة الرموز: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء لعبة الرموز")
     
     # أمر قائمة الألعاب
-    if (message.text and 
-        any(command in text for command in ['العاب', 'الالعاب', 'games', 'قائمة الالعاب'])):
-        try:
-            from modules.games_list import show_games_list
-            await show_games_list(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في عرض قائمة الألعاب: {e}")
-            await message.reply("❌ حدث خطأ في عرض قائمة الألعاب")
+    if message.text:
+        import re
+        games_list_commands = ['العاب', 'الالعاب', 'games', 'قائمة الالعاب']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_games_list_command = False
+        for command in games_list_commands:
+            if command == 'قائمة الالعاب':
+                if re.search(r'\bقائمة\s+الالعاب\b', text):
+                    is_games_list_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_games_list_command = True
+                    break
+        
+        if is_games_list_command:
+            try:
+                from modules.games_list import show_games_list
+                await show_games_list(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في عرض قائمة الألعاب: {e}")
+                await message.reply("❌ حدث خطأ في عرض قائمة الألعاب")
 
     # أمر الألعاب المقترحة
-    if (message.text and 
-        any(command in text for command in ['اقتراحات', 'العاب مقترحة', 'الاقتراحات', 'مقترحة'])):
-        try:
-            from modules.suggested_games import get_suggested_games_list
-            suggested_text = get_suggested_games_list()
-            await message.reply(suggested_text)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في عرض الألعاب المقترحة: {e}")
-            await message.reply("❌ حدث خطأ في عرض الألعاب المقترحة")
+    if message.text:
+        import re
+        suggested_commands = ['اقتراحات', 'العاب مقترحة', 'الاقتراحات', 'مقترحة']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_suggested_command = False
+        for command in suggested_commands:
+            if command == 'العاب مقترحة':
+                if re.search(r'\bالعاب\s+مقترحة\b', text):
+                    is_suggested_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_suggested_command = True
+                    break
+        
+        if is_suggested_command:
+            try:
+                from modules.suggested_games import get_suggested_games_list
+                suggested_text = get_suggested_games_list()
+                await message.reply(suggested_text)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في عرض الألعاب المقترحة: {e}")
+                await message.reply("❌ حدث خطأ في عرض الألعاب المقترحة")
 
     # لعبة ساحة الموت الأخيرة - Battle Arena Game
-    if (message.text and message.chat.type in ['group', 'supergroup'] and 
-        any(command in text for command in ['ساحة الموت', 'battle', 'معركة', 'ساحة المعركة'])):
-        try:
-            from modules.battle_arena_game import start_battle_arena
-            await start_battle_arena(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء ساحة الموت: {e}")
-            await message.reply("❌ حدث خطأ أثناء بدء ساحة الموت الأخيرة")
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        battle_commands = ['ساحة الموت', 'battle', 'معركة', 'ساحة المعركة']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_battle_command = False
+        for command in battle_commands:
+            if command in ['ساحة الموت', 'ساحة المعركة']:
+                command_words = command.split()
+                pattern = r'\b' + r'\s+'.join(re.escape(word) for word in command_words) + r'\b'
+                if re.search(pattern, text):
+                    is_battle_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_battle_command = True
+                    break
+        
+        if is_battle_command:
+            try:
+                from modules.battle_arena_game import start_battle_arena
+                await start_battle_arena(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء ساحة الموت: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء ساحة الموت الأخيرة")
     
     # نظام مراهنة الحظ - Luck Gambling System
     if (message.text and (
@@ -734,27 +809,60 @@ async def handle_general_message(message: Message, state: FSMContext):
             await message.reply("❌ حدث خطأ في مراهنة الحظ")
 
     # لعبة عجلة الحظ - Luck Wheel Game  
-    if (message.text and 
-        (any(command in text for command in ['عجلة الحظ', 'عجلة', 'wheel']) or
-         (text == 'حظ' or text.endswith(' حظ') or ' حظ ' in text))):
-        try:
-            from modules.luck_wheel_game import start_luck_wheel
-            await start_luck_wheel(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء عجلة الحظ: {e}")
-            await message.reply("❌ حدث خطأ في عجلة الحظ")
+    if message.text:
+        import re
+        wheel_commands = ['عجلة الحظ', 'عجلة', 'wheel']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_wheel_command = False
+        for command in wheel_commands:
+            if command == 'عجلة الحظ':
+                if re.search(r'\bعجلة\s+الحظ\b', text):
+                    is_wheel_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_wheel_command = True
+                    break
+        
+        # فحص خاص لكلمة "حظ" مع شروط خاصة
+        if not is_wheel_command and (text == 'حظ' or text.endswith(' حظ') or ' حظ ' in text):
+            is_wheel_command = True
+        
+        if is_wheel_command:
+            try:
+                from modules.luck_wheel_game import start_luck_wheel
+                await start_luck_wheel(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء عجلة الحظ: {e}")
+                await message.reply("❌ حدث خطأ في عجلة الحظ")
 
     # لعبة خمن الرقم - Number Guess Game
-    if (message.text and message.chat.type in ['group', 'supergroup'] and 
-        any(command in text for command in ['خمن الرقم', 'تخمين', 'رقم', 'guess'])):
-        try:
-            from modules.number_guess_game import start_number_guess_game
-            await start_number_guess_game(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء لعبة خمن الرقم: {e}")
-            await message.reply("❌ حدث خطأ في لعبة خمن الرقم")
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        number_commands = ['خمن الرقم', 'تخمين', 'رقم', 'guess']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_number_command = False
+        for command in number_commands:
+            if command == 'خمن الرقم':
+                if re.search(r'\bخمن\s+الرقم\b', text):
+                    is_number_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_number_command = True
+                    break
+        
+        if is_number_command:
+            try:
+                from modules.number_guess_game import start_number_guess_game
+                await start_number_guess_game(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء لعبة خمن الرقم: {e}")
+                await message.reply("❌ حدث خطأ في لعبة خمن الرقم")
 
     # لعبة سؤال وجواب سريعة - Quick Quiz Game
     if (message.text and message.chat.type in ['group', 'supergroup']):
@@ -786,15 +894,32 @@ async def handle_general_message(message: Message, state: FSMContext):
                 await message.reply("❌ حدث خطأ في بدء المسابقة")
     
     # لعبة اكس اوه - XO/Tic-Tac-Toe Game
-    if (message.text and message.chat.type in ['group', 'supergroup'] and 
-        any(command in text for command in ['اكس اوه', 'xo', 'اكس او', 'اكساوه'])):
-        try:
-            from modules.xo_game import start_xo_game
-            await start_xo_game(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء لعبة اكس اوه: {e}")
-            await message.reply("❌ حدث خطأ أثناء بدء لعبة اكس اوه")
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        xo_commands = ['اكس اوه', 'xo', 'اكس او', 'اكساوه']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_xo_command = False
+        for command in xo_commands:
+            if command in ['اكس اوه', 'اكس او']:
+                command_words = command.split()
+                pattern = r'\b' + r'\s+'.join(re.escape(word) for word in command_words) + r'\b'
+                if re.search(pattern, text):
+                    is_xo_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_xo_command = True
+                    break
+        
+        if is_xo_command:
+            try:
+                from modules.xo_game import start_xo_game
+                await start_xo_game(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء لعبة اكس اوه: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء لعبة اكس اوه")
     
     # معالج خاص لحرف "ا" منفرداً في المجموعات - عرض معلومات الملف الشخصي
     if (message.text and message.text.strip() == "ا" and 
