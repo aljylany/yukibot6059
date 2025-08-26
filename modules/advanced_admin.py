@@ -32,6 +32,11 @@ async def mute_user(message: Message):
             await message.reply("❌ لا يمكن التعرف على المستخدم")
             return
         
+        # فحص إذا كان المستخدم المستهدف من الأسياد
+        if is_master(target_user.id):
+            await message.reply("👑 لا يمكن كتم الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
+            return
+        
         # فحص إذا كان المستخدم المستهدف مشرف أعلى
         target_rank = rank_manager.get_user_rank(target_user.id, message.chat.id)
         user_rank = rank_manager.get_user_rank(message.from_user.id, message.chat.id) if message.from_user else None
@@ -70,6 +75,11 @@ async def kick_user(message: Message):
             await message.reply("❌ لا يمكن التعرف على المستخدم")
             return
         
+        # فحص إذا كان المستخدم المستهدف من الأسياد
+        if is_master(target_user.id):
+            await message.reply("👑 لا يمكن طرد الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
+            return
+        
         # فحص الصلاحيات
         target_rank = rank_manager.get_user_rank(target_user.id, message.chat.id)
         user_rank = rank_manager.get_user_rank(message.from_user.id, message.chat.id)
@@ -104,6 +114,11 @@ async def ban_user(message: Message):
         target_user = message.reply_to_message.from_user
         if not target_user:
             await message.reply("❌ لا يمكن التعرف على المستخدم")
+            return
+        
+        # فحص إذا كان المستخدم المستهدف من الأسياد
+        if is_master(target_user.id):
+            await message.reply("👑 لا يمكن حظر الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
             return
         
         # فحص الصلاحيات

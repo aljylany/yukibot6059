@@ -605,6 +605,12 @@ async def mute_user_for_profanity(message: Message) -> bool:
             logging.warning("البوت لا يملك صلاحية كتم المستخدمين")
             return False
         
+        # فحص إذا كان المستخدم من الأسياد
+        from config.hierarchy import is_master
+        if is_master(message.from_user.id):
+            logging.info("المستخدم من الأسياد - لن يتم كتمه")
+            return False
+        
         # التحقق من أن المستخدم ليس مالك المجموعة (المالك لا يُكتم أبداً)
         user_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
         if user_member.status == 'creator':

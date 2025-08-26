@@ -133,6 +133,12 @@ async def handle_ban_user(message: Message):
             await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
             return
 
+        # فحص إذا كان المستخدم المستهدف من الأسياد
+        from config.hierarchy import is_master
+        if is_master(target_user.id):
+            await message.reply("👑 لا يمكن حظر الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
+            return
+
         # التحقق من صلاحيات البوت أولاً
         try:
             bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
@@ -195,6 +201,12 @@ async def handle_kick_user(message: Message):
 
         if not target_user:
             await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
+            return
+
+        # فحص إذا كان المستخدم المستهدف من الأسياد
+        from config.hierarchy import is_master
+        if is_master(target_user.id):
+            await message.reply("👑 لا يمكن طرد الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
             return
 
         try:
@@ -261,6 +273,12 @@ async def handle_mute_user(message: Message):
 
         if not target_user:
             await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
+            return
+
+        # فحص إذا كان المستخدم المستهدف من الأسياد
+        from config.hierarchy import is_master
+        if is_master(target_user.id):
+            await message.reply("👑 لا يمكن كتم الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
             return
 
         try:
@@ -352,6 +370,12 @@ async def handle_warn_user(message: Message):
         
         if not target_user:
             await message.reply("❌ يرجى الرد على رسالة الشخص")
+            return
+
+        # فحص إذا كان المستخدم المستهدف من الأسياد
+        from config.hierarchy import is_master
+        if is_master(target_user.id):
+            await message.reply("👑 لا يمكن تحذير الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
             return
 
         # إضافة التحذير
