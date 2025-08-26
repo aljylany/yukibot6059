@@ -75,6 +75,14 @@ async def main():
     from handlers import group_events
     dp.include_router(group_events.router)
     
+    # تسجيل معالج تتبع رسائل المجموعة للذاكرة المشتركة
+    from handlers import group_message_tracker
+    dp.include_router(group_message_tracker.router)
+    
+    # تسجيل أوامر الذاكرة المشتركة
+    from handlers import memory_commands
+    dp.include_router(memory_commands.router)
+    
     # تهيئة قاعدة البيانات
     await init_database()
     
@@ -116,6 +124,14 @@ async def main():
         logging.info("🧠 تم تهيئة نظام يوكي الذكي الحقيقي")
     except Exception as ai_error:
         logging.warning(f"⚠️ تحذير في تهيئة النظام الذكي الحقيقي: {ai_error}")
+    
+    # تهيئة نظام الذاكرة المشتركة مع NLTK
+    try:
+        from modules.shared_memory import shared_memory
+        await shared_memory.init_shared_memory_db()
+        logging.info("🧠 تم تهيئة نظام الذاكرة المشتركة والمواضيع المترابطة")
+    except Exception as shared_error:
+        logging.warning(f"⚠️ تحذير في تهيئة الذاكرة المشتركة: {shared_error}")
     
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)

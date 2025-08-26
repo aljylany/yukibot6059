@@ -28,7 +28,7 @@ class RealYukiAI:
         self.setup_gemini()
         
         # النصوص الأساسية لتوجيه الذكاء الاصطناعي  
-        self.system_prompt = """أنت يوكي 🤖، البوت الذكي والودود الذي طوره يوكي براندون. لست جوجل أو أي AI عام - أنت يوكي فقط! اجب بالعربية مع الإيموجي واستخدم الاسم الذي سأعطيه لك بالضبط. ممنوع منعاً باتاً قول "يا مستخدم" - استخدم الاسم المعطى فقط."""
+        self.system_prompt = """أنت يوكي 🤖، البوت الذكي والودود الذي طوره يوكي براندون. لست جوجل أو أي AI عام - أنت يوكي فقط! اجب بالعربية مع الإيموجي واستخدم الاسم الذي سأعطيه لك بالضبط. ممنوع منعاً باتاً قول "يا مستخدم" - استخدم الاسم المعطى فقط. لديك ذاكرة مشتركة للمجموعة وتتذكر ما يقوله الأعضاء عن بعضهم البعض."""
         
         # ردود احتياطية في حالة عدم توفر الذكاء الاصطناعي
         self.fallback_responses = [
@@ -51,8 +51,9 @@ class RealYukiAI:
                 return
                 
             # إعداد العميل
-            self.gemini_client = genai.Client(api_key=api_key)
-            logging.info("🧠 تم تهيئة Google Gemini بنجاح!")
+            if genai:
+                self.gemini_client = genai.Client(api_key=api_key)
+                logging.info("🧠 تم تهيئة Google Gemini بنجاح!")
             
         except Exception as e:
             logging.error(f"خطأ في إعداد Gemini: {e}")
@@ -76,22 +77,65 @@ class RealYukiAI:
                 if history:
                     conversation_context = f"\n\n{conversation_memory.format_conversation_context(history)}\n"
             
-            # معاملة خاصة لرهف
+            # معاملة خاصة للمستخدمين المميزين
             special_prompt = ""
+            
+            # رهف - معاملة خاصة
             if user_id == 8278493069:
                 special_prompt = " أنت تحب رهف كثيراً وتعاملها بحب ورومانسية وتدليل. أخبرها أنك تحبها وأن المطور يوكي براندون يحبها أيضاً."
             
-            full_prompt = f"{self.system_prompt}{special_prompt}{conversation_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
+            # غيو - المستخدم المميز
+            elif user_id == 6629947448:
+                special_prompt = " أنت تتحدث مع غيو الأسطورة! اظهر له احترام خاص وحماس. غيو محترف في الألعاب وخبير تقنية."
+            
+            # جلب السياق من الذاكرة المشتركة
+            shared_context = ""
+            try:
+                from modules.shared_memory import shared_memory
+                
+                # فحص إذا كان السؤال يتطلب البحث في الذاكرة المشتركة
+                from modules.topic_search import topic_search_engine
+                search_result = await topic_search_engine.process_query(
+                    user_message, user_id, -1002549788763
+                )
+                
+                if search_result:
+                    shared_context = search_result
+                elif any(phrase in user_message.lower() for phrase in ['ماذا تعرف عن', 'ماذا كنتم تتحدثون', 'تحدثتم عني', 'قال عني']):
+                    shared_context = await shared_memory.get_shared_context_about_user(
+                        -1002549788763,  # chat_id المجموعة الرئيسية
+                        user_id, 
+                        user_id, 
+                        limit=5
+                    )
+                
+                # إضافة سياق المستخدمين المميزين
+                special_user_context = shared_memory.get_special_user_context(user_id)
+                if special_user_context:
+                    special_prompt += f" {special_user_context}"
+                    
+            except Exception as memory_error:
+                logging.warning(f"خطأ في جلب الذاكرة المشتركة: {memory_error}")
+            
+            # دمج جميع السياقات
+            full_context = conversation_context
+            if shared_context:
+                full_context += f"\n\nالسياق المشترك:\n{shared_context}\n"
+            
+            full_prompt = f"{self.system_prompt}{special_prompt}{full_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             
             # استدعاء Gemini بإعدادات محسّنة
-            response = self.gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=full_prompt,
-                config=genai.types.GenerateContentConfig(
-                    temperature=0.7,
-                    max_output_tokens=2000
+            if genai:
+                response = self.gemini_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=full_prompt,
+                    config=genai.types.GenerateContentConfig(
+                        temperature=0.7,
+                        max_output_tokens=2000
+                    )
                 )
-            )
+            else:
+                response = None
             
             # التحقق من وجود الرد بعدة طرق مع تسجيل مفصل
             ai_response = None
@@ -105,8 +149,10 @@ class RealYukiAI:
                 candidate = response.candidates[0]
                 logging.info(f"📊 Candidate finish_reason: {candidate.finish_reason}")
                 if candidate.content and candidate.content.parts and len(candidate.content.parts) > 0:
-                    ai_response = candidate.content.parts[0].text.strip()
-                    logging.info(f"✅ تم الحصول على رد من candidate.content.parts")
+                    part_text = candidate.content.parts[0].text
+                    if part_text:
+                        ai_response = part_text.strip()
+                        logging.info(f"✅ تم الحصول على رد من candidate.content.parts")
                 else:
                     logging.warning(f"⚠️ لا يوجد محتوى في candidate.content.parts")
             else:
@@ -127,11 +173,21 @@ class RealYukiAI:
                     ]
                     ai_response += random.choice(extras)
                 
-                # حفظ المحادثة في الذاكرة
+                # حفظ المحادثة في الذاكرة الفردية والمشتركة
                 if user_id:
                     try:
                         from modules.conversation_memory import conversation_memory
                         await conversation_memory.save_conversation(user_id, user_message, ai_response)
+                        
+                        # حفظ في الذاكرة المشتركة أيضاً
+                        from modules.shared_memory import shared_memory
+                        await shared_memory.save_shared_conversation(
+                            -1002549788763,  # chat_id المجموعة الرئيسية
+                            user_id,
+                            arabic_name,
+                            user_message,
+                            ai_response
+                        )
                     except Exception as memory_error:
                         logging.error(f"خطأ في حفظ المحادثة: {memory_error}")
                 
