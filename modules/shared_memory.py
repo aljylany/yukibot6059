@@ -126,6 +126,7 @@ class SharedGroupMemory:
         if NLTK_AVAILABLE:
             try:
                 # توكينز النص
+                from nltk.tokenize import word_tokenize
                 tokens = word_tokenize(text.lower())
                 
                 # إزالة الكلمات الشائعة
@@ -165,7 +166,7 @@ class SharedGroupMemory:
             return 'neutral'
     
     async def save_shared_conversation(self, chat_id: int, user_id: int, username: str, 
-                                     message_text: str, ai_response: str = None):
+                                     message_text: str, ai_response: str = ""):
         """حفظ المحادثة في الذاكرة المشتركة مع تحليل المواضيع"""
         try:
             topics, mentions = self.extract_topics_and_mentions(message_text)

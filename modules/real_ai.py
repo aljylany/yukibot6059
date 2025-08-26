@@ -91,7 +91,7 @@ class RealYukiAI:
             # جلب السياق من الذاكرة المشتركة
             shared_context = ""
             try:
-                from modules.shared_memory import shared_memory
+                from modules.shared_memory import shared_group_memory
                 
                 # فحص إذا كان السؤال يتطلب البحث في الذاكرة المشتركة
                 from modules.topic_search import topic_search_engine
@@ -102,7 +102,7 @@ class RealYukiAI:
                 if search_result:
                     shared_context = search_result
                 elif any(phrase in user_message.lower() for phrase in ['ماذا تعرف عن', 'ماذا كنتم تتحدثون', 'تحدثتم عني', 'قال عني']):
-                    shared_context = await shared_memory.get_shared_context_about_user(
+                    shared_context = await shared_group_memory.get_shared_context_about_user(
                         -1002549788763,  # chat_id المجموعة الرئيسية
                         user_id, 
                         user_id, 
@@ -110,7 +110,7 @@ class RealYukiAI:
                     )
                 
                 # إضافة سياق المستخدمين المميزين
-                special_user_context = shared_memory.get_special_user_context(user_id)
+                special_user_context = shared_group_memory.get_special_user_context(user_id)
                 if special_user_context:
                     special_prompt += f" {special_user_context}"
                     
@@ -180,8 +180,8 @@ class RealYukiAI:
                         await conversation_memory.save_conversation(user_id, user_message, ai_response)
                         
                         # حفظ في الذاكرة المشتركة أيضاً
-                        from modules.shared_memory import shared_memory
-                        await shared_memory.save_shared_conversation(
+                        from modules.shared_memory import shared_group_memory
+                        await shared_group_memory.save_shared_conversation(
                             -1002549788763,  # chat_id المجموعة الرئيسية
                             user_id,
                             arabic_name,

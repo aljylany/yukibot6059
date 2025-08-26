@@ -21,11 +21,11 @@ async def track_group_messages(message: Message):
             return
         
         # حفظ الرسالة في الذاكرة المشتركة
-        from modules.shared_memory import shared_memory
+        from modules.shared_memory import shared_group_memory
         
         username = message.from_user.first_name or message.from_user.username or "مجهول"
         
-        await shared_memory.save_shared_conversation(
+        await shared_group_memory.save_shared_conversation(
             message.chat.id,
             message.from_user.id,
             username,

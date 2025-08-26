@@ -5,7 +5,7 @@ Topic Search and Shared Memory Query System
 
 import logging
 from typing import List, Dict, Optional
-from modules.shared_memory import shared_memory
+from modules.shared_memory import shared_group_memory
 
 class TopicSearchEngine:
     """محرك البحث في المواضيع والذاكرة المشتركة"""
@@ -62,7 +62,7 @@ class TopicSearchEngine:
             return "لم أتمكن من تحديد المستخدم المطلوب البحث عنه."
         
         # البحث في الذاكرة المشتركة
-        context = await shared_memory.get_shared_context_about_user(chat_id, 0, user_id, limit=10)
+        context = await shared_group_memory.get_shared_context_about_user(chat_id, 0, user_id, limit=10)
         
         if context:
             return f"🔍 **معلومات عن {target_username}:**\n\n{context}"
@@ -71,7 +71,7 @@ class TopicSearchEngine:
     
     async def _search_conversation_history(self, query: str, user_id: int, chat_id: int) -> str:
         """البحث في تاريخ المحادثات"""
-        context = await shared_memory.get_shared_context_about_user(chat_id, user_id, user_id, limit=8)
+        context = await shared_group_memory.get_shared_context_about_user(chat_id, user_id, user_id, limit=8)
         
         if context:
             return f"🗣️ **المحادثات التي تخصك:**\n\n{context}"
@@ -93,7 +93,7 @@ class TopicSearchEngine:
         if not topic:
             return "لم أتمكن من تحديد الموضوع المطلوب البحث عنه."
         
-        context = await shared_memory.get_topic_connections(chat_id, topic, limit=5)
+        context = await shared_group_memory.get_topic_connections(chat_id, topic, limit=5)
         
         if context:
             return f"📝 **المحادثات حول موضوع '{topic}':**\n\n{context}"
@@ -102,7 +102,7 @@ class TopicSearchEngine:
     
     async def _search_user_connections(self, query: str, user_id: int, chat_id: int) -> str:
         """البحث عن الروابط بين المستخدمين"""
-        context = await shared_memory.find_conversations_between_users(chat_id, user_id, 0, limit=5)
+        context = await shared_group_memory.find_conversations_between_users(chat_id, user_id, 0, limit=5)
         
         if context:
             return f"🔗 **الروابط والمحادثات:**\n\n{context}"

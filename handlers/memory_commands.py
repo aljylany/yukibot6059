@@ -89,7 +89,7 @@ async def search_command(message: Message):
 async def memory_stats_command(message: Message):
     """عرض إحصائيات الذاكرة المشتركة"""
     try:
-        from modules.shared_memory import shared_memory
+        from modules.shared_memory import shared_group_memory
         from config.settings import DATABASE_URL
         import aiosqlite
         
@@ -133,12 +133,12 @@ async def detect_sheikh_mention(message: Message):
         # إذا كان المرسل هو الشيخ نفسه، نحفظ معرفه
         if message.from_user and message.from_user.username == "Hacker20263":
             # تحديث معرف الشيخ في النظام
-            from modules.shared_memory import shared_memory
+            from modules.shared_memory import shared_group_memory
             
             # إزالة المعرف المؤقت وإضافة المعرف الحقيقي
-            if 1234567890 in shared_memory.special_users:
-                sheikh_data = shared_memory.special_users.pop(1234567890)
-                shared_memory.special_users[message.from_user.id] = sheikh_data
+            if 1234567890 in shared_group_memory.special_users:
+                sheikh_data = shared_group_memory.special_users.pop(1234567890)
+                shared_group_memory.special_users[message.from_user.id] = sheikh_data
                 
                 logging.info(f"تم حفظ معرف الشيخ: {message.from_user.id}")
                 

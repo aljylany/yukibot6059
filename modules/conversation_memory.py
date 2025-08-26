@@ -54,7 +54,8 @@ class ConversationMemory:
                 
                 # ترتيب المحادثات من الأقدم للأحدث للسياق المنطقي
                 conversations = []
-                for row in reversed(rows):
+                rows_list = list(rows)
+                for row in reversed(rows_list):
                     conversations.append({
                         'user_message': row[0],
                         'ai_response': row[1],

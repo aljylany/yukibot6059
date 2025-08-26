@@ -127,8 +127,8 @@ async def main():
     
     # تهيئة نظام الذاكرة المشتركة مع NLTK
     try:
-        from modules.shared_memory import shared_memory
-        await shared_memory.init_shared_memory_db()
+        from modules.shared_memory import shared_group_memory
+        await shared_group_memory.init_shared_memory_db()
         logging.info("🧠 تم تهيئة نظام الذاكرة المشتركة والمواضيع المترابطة")
     except Exception as shared_error:
         logging.warning(f"⚠️ تحذير في تهيئة الذاكرة المشتركة: {shared_error}")
