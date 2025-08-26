@@ -1418,6 +1418,70 @@ async def handle_general_message(message: Message, state: FSMContext):
             await message.reply("❌ حدث خطأ في تحميل ملف الأوامر")
         return
     
+    # === أمر عرض حالة المجموعة الشاملة (للأسياد فقط) ===
+    if text == 'حالة المجموعة' or text == 'تقرير المجموعة' or text == 'إحصائيات المجموعة':
+        from config.hierarchy import MASTERS
+        user_id = message.from_user.id if message.from_user else 0
+        if user_id in MASTERS:
+            try:
+                chat_id = message.chat.id
+                
+                # جلب جميع الأعضاء من قاعدة البيانات
+                query = "SELECT user_id, first_name, last_name, username, bank, balance FROM users"
+                all_users = await execute_query(query, fetch=True)
+                
+                if not all_users:
+                    await message.reply("❌ لا توجد بيانات مستخدمين في قاعدة البيانات")
+                    return
+                
+                # إحصائيات عامة
+                total_users = len(all_users)
+                registered_users = [user for user in all_users if user[4] is not None]  # bank field
+                unregistered_users = [user for user in all_users if user[4] is None]
+                
+                total_balance = sum([user[5] or 0 for user in registered_users])  # balance field
+                avg_balance = total_balance // len(registered_users) if registered_users else 0
+                
+                # بناء التقرير
+                report = f"📊 **تقرير حالة المجموعة الشامل**\n\n"
+                report += f"👥 **إجمالي الأعضاء:** {total_users:,}\n"
+                report += f"✅ **مسجلون في البنك:** {len(registered_users):,}\n"
+                report += f"❌ **غير مسجلين:** {len(unregistered_users):,}\n"
+                report += f"💰 **إجمالي الأموال:** {total_balance:,} ريال\n"
+                report += f"📈 **متوسط الرصيد:** {avg_balance:,} ريال\n\n"
+                
+                # أغنى المستخدمين
+                if registered_users:
+                    richest = sorted(registered_users, key=lambda x: x[5] or 0, reverse=True)[:5]
+                    report += f"👑 **أغنى 5 أعضاء:**\n"
+                    for i, user in enumerate(richest, 1):
+                        name = user[1] or user[3] or f"المستخدم {user[0]}"
+                        balance = user[5] or 0
+                        report += f"{i}. {name}: {balance:,} ريال\n"
+                    report += "\n"
+                
+                # قائمة غير المسجلين
+                if unregistered_users and len(unregistered_users) <= 20:
+                    report += f"❌ **الأعضاء غير المسجلين ({len(unregistered_users)}):**\n"
+                    for user in unregistered_users[:10]:  # أول 10 فقط
+                        name = user[1] or user[3] or f"المستخدم {user[0]}"
+                        report += f"• {name}\n"
+                    if len(unregistered_users) > 10:
+                        report += f"• ... و {len(unregistered_users) - 10} آخرين\n"
+                elif unregistered_users:
+                    report += f"❌ **عدد غير المسجلين كبير:** {len(unregistered_users)}\n"
+                
+                report += f"\n💡 **نصيحة:** شجع الأعضاء على كتابة 'انشاء حساب بنكي'"
+                
+                await message.reply(report, parse_mode="Markdown")
+                
+            except Exception as e:
+                logging.error(f"خطأ في عرض حالة المجموعة: {e}")
+                await message.reply("❌ حدث خطأ في تحميل بيانات المجموعة")
+        else:
+            await message.reply("❌ هذا الأمر متاح للأسياد فقط")
+        return
+    
     # === أمر عرض قائمة الأسياد (للأسياد فقط) ===
     if text == 'الأسياد' or text == 'الاسياد' or text == 'قائمة الأسياد' or text == 'قائمة الاسياد':
         from config.hierarchy import MASTERS
