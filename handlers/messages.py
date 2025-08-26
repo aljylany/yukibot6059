@@ -757,15 +757,33 @@ async def handle_general_message(message: Message, state: FSMContext):
             await message.reply("❌ حدث خطأ في لعبة خمن الرقم")
 
     # لعبة سؤال وجواب سريعة - Quick Quiz Game
-    if (message.text and message.chat.type in ['group', 'supergroup'] and 
-        any(command in text for command in ['سؤال وجواب', 'مسابقة', 'quiz', 'سؤال'])):
-        try:
-            from modules.quick_quiz_game import start_quick_quiz_game
-            await start_quick_quiz_game(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في بدء مسابقة سؤال وجواب: {e}")
-            await message.reply("❌ حدث خطأ في بدء المسابقة")
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        # فحص الأوامر ككلمات مستقلة باستخدام word boundaries
+        import re
+        quiz_commands = ['سؤال وجواب', 'مسابقة', 'quiz', 'سؤال']
+        
+        # فحص كل أمر على حدة ككلمة مستقلة
+        is_quiz_command = False
+        for command in quiz_commands:
+            if command == 'سؤال وجواب':
+                # فحص خاص للعبارة المكونة من كلمتين
+                if re.search(r'\bسؤال\s+وجواب\b', text):
+                    is_quiz_command = True
+                    break
+            else:
+                # فحص الكلمات المفردة كأوامر مستقلة
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_quiz_command = True
+                    break
+        
+        if is_quiz_command:
+            try:
+                from modules.quick_quiz_game import start_quick_quiz_game
+                await start_quick_quiz_game(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء مسابقة سؤال وجواب: {e}")
+                await message.reply("❌ حدث خطأ في بدء المسابقة")
     
     # لعبة اكس اوه - XO/Tic-Tac-Toe Game
     if (message.text and message.chat.type in ['group', 'supergroup'] and 
