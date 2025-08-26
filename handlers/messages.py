@@ -2118,7 +2118,26 @@ async def handle_general_message(message: Message, state: FSMContext):
         except Exception as e:
             logging.error(f"خطأ في معالج أوامر الذاكرة: {e}")
     
-    # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
+    # === منح XP للرسائل العادية في نهاية معالجة الرسائل ===
+    if (message.text and message.chat.type in ['group', 'supergroup'] and 
+        message.from_user and not message.from_user.is_bot):
+        try:
+            # منح XP للنشاط العادي (الرسائل) باستخدام النظام المباشر
+            from modules.leveling import leveling_system
+            success, xp_message = await leveling_system.add_xp(message.from_user.id, "message")
+            
+            # تحديث نشاط المستخدم
+            await update_user_activity(message.from_user.id)
+            
+            if success:
+                logging.info(f"✨ تم منح XP للمستخدم {message.from_user.id} من الرسالة العادية - {xp_message}")
+            else:
+                logging.warning(f"⚠️ فشل منح XP للمستخدم {message.from_user.id}: {xp_message}")
+            
+        except Exception as e:
+            logging.error(f"خطأ في منح XP للرسالة العادية: {e}")
+    
+    # البوت لا يرد على الرسائل غير المعروفة
 
 
 # === دوال مساعدة للأوامر الإدارية ===
