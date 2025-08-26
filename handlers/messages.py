@@ -714,7 +714,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # لعبة عجلة الحظ - Luck Wheel Game
     if (message.text and 
-        any(command in text for command in ['عجلة الحظ', 'عجلة', 'wheel', 'حظ'])):
+        (any(command in text for command in ['عجلة الحظ', 'عجلة', 'wheel']) or
+         (text == 'حظ' or text.startswith('حظ ') or text.endswith(' حظ') or ' حظ ' in text))):
         try:
             from modules.luck_wheel_game import start_luck_wheel
             await start_luck_wheel(message)
