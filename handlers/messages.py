@@ -712,10 +712,31 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في بدء ساحة الموت: {e}")
             await message.reply("❌ حدث خطأ أثناء بدء ساحة الموت الأخيرة")
     
-    # لعبة عجلة الحظ - Luck Wheel Game
+    # نظام مراهنة الحظ - Luck Gambling System
+    if (message.text and (
+        # أوامر المراهنة المحددة
+        any(phrase in text for phrase in ['حظ فلوسي', 'حظ كل فلوسي', 'حظ كامل فلوسي']) or
+        # حظ + مبلغ
+        (text.strip().startswith('حظ ') and len(text.split()) >= 2 and text.split()[1].replace('$', '').replace(',', '').isdigit())
+    )):
+        try:
+            from modules.luck_gambling import parse_gamble_command, process_luck_gamble
+            amount, bet_all = parse_gamble_command(text)
+            
+            if amount is not None or bet_all:
+                await process_luck_gamble(message, amount, bet_all)
+            else:
+                from modules.luck_gambling import show_gambling_help
+                await show_gambling_help(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في مراهنة الحظ: {e}")
+            await message.reply("❌ حدث خطأ في مراهنة الحظ")
+
+    # لعبة عجلة الحظ - Luck Wheel Game  
     if (message.text and 
         (any(command in text for command in ['عجلة الحظ', 'عجلة', 'wheel']) or
-         (text == 'حظ' or text.startswith('حظ ') or text.endswith(' حظ') or ' حظ ' in text))):
+         (text == 'حظ' or text.endswith(' حظ') or ' حظ ' in text))):
         try:
             from modules.luck_wheel_game import start_luck_wheel
             await start_luck_wheel(message)
