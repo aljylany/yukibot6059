@@ -1280,26 +1280,23 @@ async def handle_general_message(message: Message, state: FSMContext):
                             if not display_name.strip():
                                 display_name = f"سيد {i}"
                             
-                            # إنشاء رابط قابل للنقر
-                            mention_link = f"[{display_name}](tg://user?id={master_id})"
-                            
-                            masters_info += f"{i}. 👑 {mention_link}\n"
+                            masters_info += f"{i}. 👑 {display_name}\n"
                             
                             # إضافة اسم المستخدم إذا كان موجوداً
                             if chat_info.username:
                                 masters_info += f"   📱 @{chat_info.username}\n"
                             
-                            masters_info += f"   🆔 `{master_id}`\n\n"
+                            masters_info += f"   🆔 {master_id}\n\n"
                         else:
                             # في حالة عدم توفر المعلومات
-                            masters_info += f"{i}. 👑 [سيد {i}](tg://user?id={master_id})\n"
-                            masters_info += f"   🆔 `{master_id}`\n"
+                            masters_info += f"{i}. 👑 سيد {i}\n"
+                            masters_info += f"   🆔 {master_id}\n"
                             masters_info += f"   ⚠️ البيانات غير محدثة\n\n"
                         
                     except Exception as e:
                         # في حالة عدم القدرة على جلب معلومات المستخدم
-                        masters_info += f"{i}. 👑 [سيد {i}](tg://user?id={master_id})\n"
-                        masters_info += f"   🆔 `{master_id}`\n\n"
+                        masters_info += f"{i}. 👑 سيد {i}\n"
+                        masters_info += f"   🆔 {master_id}\n\n"
                         logging.warning(f"لم يتم العثور على معلومات المستخدم {master_id}: {e}")
                 
                 masters_info += f"📊 إجمالي الأسياد: {len(MASTERS)}\n\n"
@@ -1308,7 +1305,7 @@ async def handle_general_message(message: Message, state: FSMContext):
                 masters_info += "💡 اضغط على أي اسم للانتقال إلى حساب السيد\n"
                 masters_info += "🔄 ملاحظة: إذا لاحظت أي يوزر خاطئ فهذا يعني أن تيليجرام لم يحدث المعلومات"
                 
-                await message.reply(masters_info, parse_mode="Markdown", disable_web_page_preview=True)
+                await message.reply(masters_info, disable_web_page_preview=True)
                 
             except Exception as e:
                 logging.error(f"خطأ في عرض قائمة الأسياد: {e}")
