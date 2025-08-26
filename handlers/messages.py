@@ -1421,6 +1421,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     # === أمر عرض حالة المجموعة الشاملة (للأسياد فقط) ===
     if text == 'حالة المجموعة' or text == 'تقرير المجموعة' or text == 'إحصائيات المجموعة':
         from config.hierarchy import MASTERS
+        from database.operations import execute_query
         user_id = message.from_user.id if message.from_user else 0
         if user_id in MASTERS:
             try:
