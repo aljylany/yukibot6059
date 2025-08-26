@@ -109,6 +109,14 @@ async def main():
     except Exception as protection_error:
         logging.error(f"⚠️ خطأ في تهيئة نظام الحماية: {protection_error}")
     
+    # تهيئة نظام الذكاء الاصطناعي (Yuki AI)
+    try:
+        from modules.yuki_ai import setup_ollama_model
+        await setup_ollama_model()
+        logging.info("🤖 تم تهيئة نظام يوكي الذكي")
+    except Exception as ai_error:
+        logging.warning(f"⚠️ تحذير في تهيئة النظام الذكي: {ai_error}")
+    
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)
     

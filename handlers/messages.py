@@ -624,6 +624,19 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     text = message.text.lower() if message.text else ""
     
+    # فحص كلمة "يوكي" للذكاء الاصطناعي
+    if (message.text and 
+        any(trigger in text for trigger in ['يوكي', 'yuki', 'يوكى']) and
+        message.chat.type in ['group', 'supergroup']):
+        try:
+            from modules.yuki_ai import handle_yuki_ai_message
+            await handle_yuki_ai_message(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في نظام الذكاء الاصطناعي: {e}")
+            await message.reply("🤖 مرحباً! أنا يوكي، النظام الذكي معطل مؤقتاً، لكن يمكنك استخدام جميع ألعاب وأنظمة البوت الأخرى!")
+            return
+    
     # الرد الإسلامي - السلام عليكم ووعليكم السلام
     if (message.text and message.chat.type in ['group', 'supergroup'] and 
         any(greeting in message.text for greeting in ['السلام عليكم', 'السلام عليكم ورحمة الله', 'السلام عليكم ورحمة الله وبركاته'])):

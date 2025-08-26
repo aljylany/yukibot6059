@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["ffmpeg-full", "glibcLocales"]
+packages = ["curl", "ffmpeg-full", "glibcLocales", "pkg-config"]
 
 [workflows]
 runButton = "Project"
