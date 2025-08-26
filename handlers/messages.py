@@ -1944,15 +1944,18 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في معالجة تخمينات الألعاب: {e}")
     
     # === فحص الذكاء الاصطناعي في النهاية (بعد جميع الأوامر المطلقة والمهمة) ===
-    elif (message.text and 
-          any(trigger in message.text.lower() for trigger in ['يوكي', 'yuki', 'يوكى']) and
-          message.chat.type in ['group', 'supergroup']):
+    if (message.text and 
+        any(trigger in message.text.lower() for trigger in ['يوكي', 'yuki', 'يوكى']) and
+        message.chat.type in ['group', 'supergroup']):
+        logging.info(f"🎯 تم اكتشاف رسالة يوكي: '{message.text}' - توجيه للنظام المتقدم")
         try:
             from modules.real_ai import handle_real_yuki_ai_message
             await handle_real_yuki_ai_message(message)
             return
         except Exception as e:
             logging.error(f"خطأ في نظام الذكاء الاصطناعي الحقيقي: {e}")
+            import traceback
+            logging.error(f"تفاصيل الخطأ: {traceback.format_exc()}")
             await message.reply("🤖 مرحباً! أنا يوكي، النظام الذكي معطل مؤقتاً، لكن يمكنك استخدام جميع ألعاب وأنظمة البوت الأخرى!")
             return
     

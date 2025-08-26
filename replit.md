@@ -102,6 +102,15 @@ Bot Configuration:
 - **Anti-Zarf Protection**: Special protection against "زرف"/"سرف" commands targeted at the bot itself with humorous responses.
 - **Notification Channel System**: Comprehensive notification system for sub-channel with detailed bot activity and status updates.
 
+## Recent Changes
+
+### Command Conflict Resolution - COMPLETED (2025-08-26)
+- **Root Cause Found**: "يوكي" was defined as a call_name trigger in `modules/special_responses.py`, intercepting messages before they reached the advanced AI system
+- **Fixed special_responses interference**: Removed "يوكي" and "yuki" from call_name triggers in `modules/special_responses.py`
+- **Fixed command conflict in `modules/master_commands.py`**: Updated `handle_master_commands` function to properly distinguish between absolute commands and regular AI messages
+- **Added comprehensive diagnostic logging**: Enhanced logging in both `modules/real_ai.py` and `handlers/messages.py` for debugging message flow
+- **SUCCESS**: Messages containing "يوكي" now properly route to the advanced Google Gemini AI system instead of simple responses
+
 # External Dependencies
 
 - **aiogram**: Primary framework for Telegram Bot API interaction.
