@@ -12,7 +12,7 @@ from aiogram import html
 from database.operations import execute_query, get_user
 from utils.helpers import format_number, format_user_mention, format_user_id
 from utils.decorators import group_only, admin_required
-from config.hierarchy import get_user_rank, HIERARCHY_LEVELS
+from modules.ranking import get_user_rank
 from config.settings import GROUP_SETTINGS
 
 

@@ -5,6 +5,7 @@ Group Hierarchy Management
 
 import logging
 from aiogram.types import Message
+from aiogram import html
 from config.hierarchy import (
     AdminLevel, get_user_admin_level, add_group_owner, remove_group_owner,
     add_moderator, remove_moderator, get_group_admins, get_user_permissions,
@@ -131,17 +132,17 @@ async def show_admins_list_command(message: Message):
         group_id = message.chat.id
         admins = get_group_admins(group_id)
         
-        admins_text = "👥 **قائمة المديرين**\n\n"
+        admins_text = "👥 قائمة المديرين\n\n"
         
         # الأسياد
-        admins_text += "👑 **الأسياد:**\n"
+        admins_text += "👑 الأسياد:\n"
         for master_id in admins['masters']:
             try:
                 member = await message.bot.get_chat_member(group_id, master_id)
                 name = member.user.first_name or f"المستخدم {master_id}"
                 admins_text += f"  • {name}\n"
             except:
-                admins_text += f"  • السيد `{master_id}`\n"
+                admins_text += f"  • السيد {master_id}\n"
         
         # مالكي المجموعات
         if admins['owners']:
