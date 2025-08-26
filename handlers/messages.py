@@ -629,11 +629,11 @@ async def handle_general_message(message: Message, state: FSMContext):
         any(trigger in text for trigger in ['يوكي', 'yuki', 'يوكى']) and
         message.chat.type in ['group', 'supergroup']):
         try:
-            from modules.yuki_ai import handle_yuki_ai_message
-            await handle_yuki_ai_message(message)
+            from modules.real_ai import handle_real_yuki_ai_message
+            await handle_real_yuki_ai_message(message)
             return
         except Exception as e:
-            logging.error(f"خطأ في نظام الذكاء الاصطناعي: {e}")
+            logging.error(f"خطأ في نظام الذكاء الاصطناعي الحقيقي: {e}")
             await message.reply("🤖 مرحباً! أنا يوكي، النظام الذكي معطل مؤقتاً، لكن يمكنك استخدام جميع ألعاب وأنظمة البوت الأخرى!")
             return
     
