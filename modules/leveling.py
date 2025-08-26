@@ -37,11 +37,22 @@ class LevelingSystem:
                 current_world = "عالم النجوم"
                 current_level = "نجم 1"
             else:
-                if isinstance(level_data, dict):
-                    current_xp = level_data.get('xp', 0)
-                    current_world = level_data.get('world_name', "عالم النجوم")
-                    current_level = level_data.get('level_name', "نجم 1")
-                else:
+                # معالجة أفضل للبيانات
+                try:
+                    if hasattr(level_data, 'keys'):  # Row object
+                        current_xp = level_data['xp'] if 'xp' in level_data.keys() else 0
+                        current_world = level_data['world_name'] if 'world_name' in level_data.keys() else "عالم النجوم"
+                        current_level = level_data['level_name'] if 'level_name' in level_data.keys() else "نجم 1"
+                    elif isinstance(level_data, dict):
+                        current_xp = level_data.get('xp', 0)
+                        current_world = level_data.get('world_name', "عالم النجوم")
+                        current_level = level_data.get('level_name', "نجم 1")
+                    else:
+                        current_xp = 0
+                        current_world = "عالم النجوم"
+                        current_level = "نجم 1"
+                except Exception as data_error:
+                    logging.error(f"خطأ في قراءة بيانات المستوى: {data_error}")
                     current_xp = 0
                     current_world = "عالم النجوم"
                     current_level = "نجم 1"
@@ -83,7 +94,14 @@ class LevelingSystem:
             if next_world and current_xp >= next_world["xp_required"]:
                 # ترقية لعالم جديد
                 new_world_name = next_world["name"]
-                new_level_name = next_world["levels"][0]["name"]
+                # استخدام المفتاح الصحيح للمستويات
+                if "sub_levels" in next_world:
+                    new_level_name = next_world["sub_levels"][0]
+                elif "stages" in next_world:
+                    first_stage_name = list(next_world["stages"].keys())[0]
+                    new_level_name = f"{first_stage_name} - {next_world['stages'][first_stage_name][0]}"
+                else:
+                    new_level_name = "مستوى 1"
                 
                 await execute_query(
                     "UPDATE levels SET world_name = ?, level_name = ? WHERE user_id = ?",
@@ -93,23 +111,34 @@ class LevelingSystem:
                 return True, f"🎉 ترقية للعالم الجديد: {new_world_name}!"
             
             # التحقق من ترقية داخل نفس العالم
-            current_level_index = next((i for i, level in enumerate(world["levels"]) if level["name"] == current_level), -1)
-            if current_level_index >= 0 and current_level_index < len(world["levels"]) - 1:
-                next_level = world["levels"][current_level_index + 1]
-                
-                if current_xp >= next_level["xp_required"]:
-                    # ترقية لمستوى جديد في نفس العالم
-                    await execute_query(
-                        "UPDATE levels SET level_name = ? WHERE user_id = ?",
-                        (next_level["name"], user_id)
-                    )
-                    
-                    return True, f"🌟 ترقية لمستوى جديد: {next_level['name']}!"
+            # معالجة المستويات الفرعية
+            if "sub_levels" in world:
+                try:
+                    current_level_index = world["sub_levels"].index(current_level)
+                    if current_level_index < len(world["sub_levels"]) - 1:
+                        next_level_name = world["sub_levels"][current_level_index + 1]
+                        # حساب XP المطلوب للمستوى التالي (مبسط)
+                        required_xp = (current_level_index + 2) * 200
+                        
+                        if current_xp >= required_xp:
+                            await execute_query(
+                                "UPDATE levels SET level_name = ? WHERE user_id = ?",
+                                (next_level_name, user_id)
+                            )
+                            return True, f"🌟 ترقية لمستوى جديد: {next_level_name}!"
+                except ValueError:
+                    pass
+            
+            # معالجة العوالم ذات المراحل
+            elif "stages" in world:
+                # تنفيذ منطق المراحل لاحقاً
+                pass
             
             return False, "لا توجد ترقية"
             
         except Exception as e:
             logging.error(f"خطأ في فحص ترقية المستوى: {e}")
+            logging.error(f"تفاصيل الخطأ - current_world: {current_world}, current_level: {current_level}, current_xp: {current_xp}")
             return False, f"حدث خطأ: {str(e)}"
     
     async def get_user_level_info(self, user_id):

@@ -1239,8 +1239,16 @@ async def handle_general_message(message: Message, state: FSMContext):
         await show_user_ranking(message)
         return
     
-    # فحص أوامر المستوى أولاً
-    if any(keyword in text for keyword in ["مستواي", "مستوايا", "مستوى", "level", "xp"]):
+    # فحص أوامر المستوى بدقة - استخدام word boundaries
+    import re
+    level_commands = ["مستواي", "مستوايا", "مستوى", "level", "xp", "تقدمي"]
+    is_level_command = False
+    for command in level_commands:
+        if re.search(rf'\b{re.escape(command)}\b', text):
+            is_level_command = True
+            break
+    
+    if is_level_command:
         try:
             from modules.enhanced_xp_handler import handle_level_command
             await handle_level_command(message)
@@ -1973,7 +1981,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'فلوسه' and message.reply_to_message:
         from modules import user_info
         await user_info.show_user_balance(message)
-    elif text == 'مستواي' or text == 'تقدمي':
+    elif re.search(r'\b(مستواي|تقدمي|مستوى)\b', text):
         # استخدام النظام الموحد لعرض المستوى
         try:
             from modules.unified_level_system import get_unified_user_level
