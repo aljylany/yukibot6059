@@ -87,19 +87,26 @@ class RealYukiAI:
                 )
             )
             
-            # التحقق من وجود الرد بعدة طرق
+            # التحقق من وجود الرد بعدة طرق مع تسجيل مفصل
             ai_response = None
             
             # طريقة 1: التحقق من response.text المباشر
             if response and response.text:
                 ai_response = response.text.strip()
+                logging.info(f"✅ تم الحصول على رد مباشر من response.text")
             # طريقة 2: التحقق من candidates
             elif response and response.candidates and len(response.candidates) > 0:
                 candidate = response.candidates[0]
+                logging.info(f"📊 Candidate finish_reason: {candidate.finish_reason}")
                 if candidate.content and candidate.content.parts and len(candidate.content.parts) > 0:
                     ai_response = candidate.content.parts[0].text.strip()
+                    logging.info(f"✅ تم الحصول على رد من candidate.content.parts")
+                else:
+                    logging.warning(f"⚠️ لا يوجد محتوى في candidate.content.parts")
+            else:
+                logging.error(f"❌ لا يوجد candidates أو response صالح")
             
-            if ai_response:
+            if ai_response and len(ai_response.strip()) > 0:
                 # تحسين الرد
                 if len(ai_response) > 400:
                     ai_response = ai_response[:350] + "..."
