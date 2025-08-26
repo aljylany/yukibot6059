@@ -714,28 +714,28 @@ async def handle_master_commands(message: Message) -> bool:
             await message.reply("❓ لا يوجد أمر جاري لإلغائه")
             return True
     
-    # أوامر الأسياد المطلقة
-    if any(phrase in text for phrase in ['يوكي قم بإعادة التشغيل', 'يوكي اعد التشغيل', 'restart bot']):
+    # أوامر الأسياد المطلقة - تحويل كل شيء للأحرف الصغيرة للمطابقة
+    if any(phrase.lower() in text for phrase in ['يوكي قم بإعادة التشغيل', 'يوكي اعد التشغيل', 'restart bot']):
         await restart_bot_command(message)
         return True
     
-    elif any(phrase in text for phrase in ['يوكي قم بإيقاف التشغيل', 'يوكي اوقف البوت', 'shutdown bot']):
+    elif any(phrase.lower() in text for phrase in ['يوكي قم بإيقاف التشغيل', 'يوكي اوقف البوت', 'shutdown bot']):
         await shutdown_bot_command(message)
         return True
     
-    elif any(phrase in text for phrase in ['يوكي قم بالتدمير الذاتي', 'يوكي دمر المجموعة', 'self destruct']):
+    elif any(phrase.lower() in text for phrase in ['يوكي قم بالتدمير الذاتي', 'يوكي دمر المجموعة', 'self destruct']):
         await self_destruct_command(message)
         return True
     
-    elif any(phrase in text for phrase in ['يوكي قم بمغادرة المجموعة', 'يوكي اخرج', 'يوكي غادر']):
+    elif any(phrase.lower() in text for phrase in ['يوكي قم بمغادرة المجموعة', 'يوكي اخرج', 'يوكي غادر']):
         await leave_group_command(message)
         return True
     
-    elif any(phrase in text for phrase in ['يوكي رقي مالك مجموعة', 'رقية مالك']):
+    elif any(phrase.lower() in text for phrase in ['يوكي رقي مالك مجموعة', 'رقية مالك']):
         await promote_group_owner_command(message)
         return True
     
-    elif any(phrase in text for phrase in ['يوكي نزل مالك المجموعة', 'تنزيل مالك']):
+    elif any(phrase.lower() in text for phrase in ['يوكي نزل مالك المجموعة', 'تنزيل مالك']):
         await demote_group_owner_command(message)
         return True
     
