@@ -9,7 +9,7 @@ import os
 from typing import List, Dict, Optional
 
 class ConversationMemoryPG:
-    """نظام ذاكرة المحادثات لحفظ آخر 10 رسائل لكل مستخدم - PostgreSQL"""
+    """نظام ذاكرة المحادثات لحفظ آخر 50 رسالة لكل مستخدم - PostgreSQL"""
     
     async def get_db_connection(self):
         """الحصول على اتصال PostgreSQL"""
@@ -46,14 +46,14 @@ class ConversationMemoryPG:
                     VALUES ($1, $2, $3)
                 ''', user_id, user_message, ai_response)
                 
-                # حذف المحادثات القديمة (أكثر من 10)
+                # حذف المحادثات القديمة (أكثر من 50)
                 await conn.execute('''
                     DELETE FROM conversation_history 
                     WHERE user_id = $1 AND id NOT IN (
                         SELECT id FROM conversation_history 
                         WHERE user_id = $1 
                         ORDER BY timestamp DESC 
-                        LIMIT 10
+                        LIMIT 50
                     )
                 ''', user_id)
                 
@@ -65,8 +65,8 @@ class ConversationMemoryPG:
         except Exception as e:
             logging.error(f"خطأ في حفظ المحادثة: {e}")
 
-    async def get_conversation_history(self, user_id: int, limit: int = 5) -> List[Dict]:
-        """جلب آخر محادثات للمستخدم (افتراضياً آخر 5)"""
+    async def get_conversation_history(self, user_id: int, limit: int = 15) -> List[Dict]:
+        """جلب آخر محادثات للمستخدم (افتراضياً آخر 15)"""
         try:
             conn = await self.get_db_connection()
             if not conn:
