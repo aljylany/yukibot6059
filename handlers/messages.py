@@ -1458,7 +1458,18 @@ async def handle_general_message(message: Message, state: FSMContext):
                 masters_info += "💡 اضغط على أي اسم للانتقال إلى حساب السيد\n"
                 masters_info += "🔄 ملاحظة: إذا لاحظت أي يوزر خاطئ فهذا يعني أن تيليجرام لم يحدث المعلومات"
                 
-                await message.reply(masters_info, parse_mode="Markdown", disable_web_page_preview=True)
+                # تجربة إرسال بتنسيق HTML أولاً، وإذا فشل استخدم النص العادي
+                try:
+                    # تحويل Markdown إلى HTML بشكل صحيح
+                    import re
+                    html_info = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', masters_info)
+                    await message.reply(html_info, parse_mode="HTML", disable_web_page_preview=True)
+                except Exception as html_error:
+                    logging.warning(f"فشل إرسال HTML، جاري التجربة بالنص العادي: {html_error}")
+                    # في حالة فشل HTML، استخدم النص العادي بدون تنسيق
+                    import re
+                    plain_info = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', masters_info)
+                    await message.reply(plain_info, disable_web_page_preview=True)
                 
             except Exception as e:
                 logging.error(f"خطأ في عرض قائمة الأسياد: {e}")
