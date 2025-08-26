@@ -47,7 +47,16 @@ class RealYukiAI:
 - المستويات والنقاط - يمكنك رؤية مستواهم ونقاط XP وترتيبهم
 - النقاط الذهبية والترتيب العام - تعرف أين يقفون بين اللاعبين
 
+🏠 كما يمكنك الوصول لمعلومات المجموعة الشاملة عند السؤال عنها:
+- عدد الأعضاء الحالي والإحصائيات
+- التسلسل الهرمي والطاقم الإداري
+- الإحصائيات الاقتصادية والثروة الإجمالية
+- عدد المسجلين ومعدلات النشاط
+- القلاع والمزارع النشطة في المجموعة
+- أحدث الأنشطة والأعضاء الجدد
+
 🎯 عندما يسأل أي لاعب عن تقدمه أو إحصائياته، ستحصل على بياناته من قاعدة البيانات تلقائياً
+📊 عندما يسأل عن معلومات المجموعة أو الإحصائيات، ستحصل على البيانات الشاملة تلقائياً
 
 📋 عندما يسأل عن "أوامر يوكي" وجهه للأمر مباشرة
 💡 كن صديقاً حقيقياً، مستمعاً جيداً، ومرشداً حكيماً
@@ -216,7 +225,117 @@ class RealYukiAI:
             logging.error(f"خطأ في جمع معلومات اللاعب الشاملة: {e}")
             return "معلومات اللاعب غير متاحة حالياً"
     
-    async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: Optional[int] = None) -> str:
+    async def get_comprehensive_group_data(self, chat_id: int, bot) -> str:
+        """جمع معلومات المجموعة الشاملة للذكاء الاصطناعي"""
+        try:
+            group_info = "معلومات المجموعة الحالية:\n"
+            
+            # معلومات المجموعة الأساسية
+            try:
+                chat = await bot.get_chat(chat_id)
+                member_count = await bot.get_chat_member_count(chat_id)
+                
+                group_info += f"📋 اسم المجموعة: {chat.title or 'غير محدد'}\n"
+                group_info += f"👥 عدد الأعضاء: {member_count:,} عضو\n"
+                group_info += f"🆔 معرف المجموعة: {chat.username or 'لا يوجد'}\n"
+                group_info += f"📱 نوع المجموعة: {chat.type}\n"
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات المجموعة الأساسية: {e}")
+                group_info += "❌ تعذر جلب المعلومات الأساسية\n"
+            
+            # التسلسل الهرمي والإدارة
+            try:
+                from config.hierarchy import get_group_admins, MASTERS
+                
+                # الحصول على المديرين في المجموعة
+                group_admins = get_group_admins(chat_id)
+                
+                masters = MASTERS
+                owners = group_admins.get('owners', [])
+                moderators = group_admins.get('moderators', [])
+                
+                total_staff = len(masters) + len(owners) + len(moderators)
+                
+                group_info += f"\n🏆 التسلسل الإداري:\n"
+                group_info += f"👑 الأسياد: {len(masters)}\n"
+                group_info += f"👑 المالكون: {len(owners)}\n"
+                group_info += f"🛡 المشرفون: {len(moderators)}\n"
+                group_info += f"📊 إجمالي الطاقم: {total_staff}\n"
+                
+                if member_count:
+                    regular_members = member_count - total_staff
+                    group_info += f"👤 الأعضاء العاديون: {regular_members:,}\n"
+                
+            except Exception as e:
+                logging.error(f"خطأ في جلب التسلسل الهرمي: {e}")
+                group_info += "❌ تعذر جلب معلومات التسلسل الهرمي\n"
+            
+            # إحصائيات الأعضاء المسجلين في البوت
+            try:
+                from database.operations import execute_query
+                
+                # عدد المسجلين في النظام المصرفي
+                registered_query = "SELECT COUNT(*) as count FROM users WHERE bank_balance IS NOT NULL"
+                registered_result = await execute_query(registered_query, fetch_one=True)
+                registered_count = registered_result['count'] if registered_result else 0
+                
+                # إجمالي الثروة في المجموعة
+                wealth_query = "SELECT SUM(COALESCE(balance, 0) + COALESCE(bank_balance, 0)) as total_wealth FROM users"
+                wealth_result = await execute_query(wealth_query, fetch_one=True)
+                total_wealth = wealth_result['total_wealth'] if wealth_result and wealth_result['total_wealth'] else 0
+                
+                # عدد القلاع
+                castles_query = "SELECT COUNT(*) as count FROM user_castles"
+                castles_result = await execute_query(castles_query, fetch_one=True)
+                castles_count = castles_result['count'] if castles_result else 0
+                
+                # عدد المزارع النشطة
+                farms_query = "SELECT COUNT(DISTINCT user_id) as count FROM farm"
+                farms_result = await execute_query(farms_query, fetch_one=True)
+                farms_count = farms_result['count'] if farms_result else 0
+                
+                group_info += f"\n💰 الإحصائيات الاقتصادية:\n"
+                group_info += f"✅ مسجلون في البنك: {registered_count:,}\n"
+                group_info += f"💵 إجمالي الثروة: {total_wealth:,}$\n"
+                group_info += f"🏰 عدد القلاع: {castles_count:,}\n"
+                group_info += f"🌾 المزارعون النشطون: {farms_count:,}\n"
+                
+                if member_count and registered_count:
+                    registration_rate = (registered_count / member_count) * 100
+                    group_info += f"📈 معدل التسجيل: {registration_rate:.1f}%\n"
+                
+            except Exception as e:
+                logging.error(f"خطأ في جلب الإحصائيات الاقتصادية: {e}")
+                group_info += "❌ تعذر جلب الإحصائيات الاقتصادية\n"
+            
+            # أحدث الأنشطة
+            try:
+                recent_activities = []
+                
+                # آخر المسجلين الجدد
+                new_users_query = """SELECT first_name, created_at FROM users 
+                                   WHERE bank_balance IS NOT NULL 
+                                   ORDER BY created_at DESC LIMIT 3"""
+                new_users = await execute_query(new_users_query, fetch_all=True)
+                
+                if new_users:
+                    group_info += f"\n🎯 النشاط الأخير:\n"
+                    for user in new_users:
+                        name = user['first_name'] or 'مجهول'
+                        group_info += f"👋 انضم حديثاً: {name}\n"
+                
+            except Exception as e:
+                logging.error(f"خطأ في جلب الأنشطة الأخيرة: {e}")
+            
+            group_info += f"\n🕐 تم تحديث المعلومات: {datetime.now().strftime('%H:%M')}"
+            
+            return group_info
+            
+        except Exception as e:
+            logging.error(f"خطأ في جمع معلومات المجموعة الشاملة: {e}")
+            return "معلومات المجموعة غير متاحة حالياً"
+    
+    async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: Optional[int] = None, chat_id: Optional[int] = None, bot = None) -> str:
         """توليد رد ذكي بناءً على الذكاء الاصطناعي الحقيقي مع ذاكرة المحادثات"""
         
         if not self.gemini_client:
@@ -330,6 +449,28 @@ class RealYukiAI:
                     except Exception as player_error:
                         logging.error(f"خطأ في جلب معلومات اللاعب: {player_error}")
             
+            # جلب معلومات المجموعة إذا كان السؤال متعلق بها
+            group_data_context = ""
+            if chat_id and bot:
+                # كلمات مفتاحية تدل على أن المستخدم يريد معرفة معلومات المجموعة
+                group_triggers = [
+                    'كم اعضاء', 'كم عضو', 'عدد الاعضاء', 'عدد الأعضاء', 'اعضاء المجموعة', 'أعضاء المجموعة',
+                    'احصائيات المجموعة', 'إحصائيات المجموعة', 'معلومات المجموعة', 'تفاصيل المجموعة',
+                    'حالة المجموعة', 'تقرير المجموعة', 'الطاقم الاداري', 'الطاقم الإداري', 'الادارة', 'الإدارة',
+                    'المدراء', 'الاسياد', 'الأسياد', 'المالكين', 'المنشئين', 'الادمنية', 'الإدمنية',
+                    'كم مسجل', 'المسجلين', 'الثروة الاجمالية', 'الثروة الإجمالية', 'كم قلعة', 'عدد القلاع',
+                    'المزارعين', 'النشاط', 'آخر نشاط', 'أخر نشاط', 'جدد المجموعة', 'الاعضاء الجدد',
+                    'معدل التسجيل', 'نسبة المسجلين', 'المجموعة فيها كم', 'كم واحد في المجموعة',
+                    'معرف المجموعة', 'اسم المجموعة', 'نوع المجموعة', 'رابط المجموعة'
+                ]
+                
+                if any(trigger in user_message.lower() for trigger in group_triggers):
+                    try:
+                        group_data_context = await self.get_comprehensive_group_data(chat_id, bot)
+                        logging.info(f"✅ تم جلب معلومات المجموعة للذكاء الاصطناعي للمجموعة {chat_id}")
+                    except Exception as group_error:
+                        logging.error(f"خطأ في جلب معلومات المجموعة: {group_error}")
+            
             # دمج جميع السياقات
             full_context = conversation_context
             if shared_context:
@@ -337,6 +478,9 @@ class RealYukiAI:
             
             if player_data_context:
                 full_context += f"\n\n{player_data_context}\n"
+            
+            if group_data_context:
+                full_context += f"\n\n{group_data_context}\n"
             
             full_prompt = f"{self.system_prompt}{special_prompt}{full_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             
@@ -573,7 +717,7 @@ async def handle_real_yuki_ai_message(message: Message):
             ai_response = real_yuki_ai.get_time_based_greeting(user_name)
         else:
             # توليد رد ذكي باستخدام الذكاء الاصطناعي الحقيقي
-            ai_response = await real_yuki_ai.generate_smart_response(user_message, user_name, message.from_user.id)
+            ai_response = await real_yuki_ai.generate_smart_response(user_message, user_name, message.from_user.id, message.chat.id, message.bot)
         
         # إرسال الرد
         await message.reply(ai_response)
