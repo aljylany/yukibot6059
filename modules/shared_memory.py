@@ -343,4 +343,4 @@ class SharedGroupMemory:
             return ""
 
 # إنشاء نسخة واحدة من نظام الذاكرة المشتركة
-shared_memory = SharedGroupMemory()
+shared_group_memory = SharedGroupMemory()

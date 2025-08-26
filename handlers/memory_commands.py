@@ -147,3 +147,27 @@ async def detect_sheikh_mention(message: Message):
         
     except Exception as e:
         logging.error(f"خطأ في اكتشاف الشيخ: {e}")
+
+
+async def handle_memory_commands(message: Message):
+    """معالج أوامر الذاكرة المشتركة للنصوص العادية"""
+    try:
+        text = message.text.lower().strip()
+        
+        if text == '/ذاكرة' or text == 'ذاكرة':
+            await memory_info_command(message)
+            return True
+        
+        elif text.startswith('ذاكرة المجموعة') or text.startswith('احصائيات الذاكرة'):
+            await memory_stats_command(message)
+            return True
+        
+        elif text.startswith('بحث في الذاكرة') or text.startswith('/بحث'):
+            await search_command(message)
+            return True
+        
+        return False
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج أوامر الذاكرة: {e}")
+        return False

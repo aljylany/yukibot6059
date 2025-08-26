@@ -624,18 +624,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     text = message.text.lower() if message.text else ""
     
-    # فحص كلمة "يوكي" للذكاء الاصطناعي
-    if (message.text and 
-        any(trigger in text for trigger in ['يوكي', 'yuki', 'يوكى']) and
-        message.chat.type in ['group', 'supergroup']):
-        try:
-            from modules.real_ai import handle_real_yuki_ai_message
-            await handle_real_yuki_ai_message(message)
-            return
-        except Exception as e:
-            logging.error(f"خطأ في نظام الذكاء الاصطناعي الحقيقي: {e}")
-            await message.reply("🤖 مرحباً! أنا يوكي، النظام الذكي معطل مؤقتاً، لكن يمكنك استخدام جميع ألعاب وأنظمة البوت الأخرى!")
-            return
+    # نقل فحص الذكاء الاصطناعي لأسفل - بعد الأوامر المطلقة
+    # (تم نقل هذا القسم لأسفل لضمان أولوية الأوامر المطلقة)
     
     # الرد الإسلامي - السلام عليكم ووعليكم السلام
     if (message.text and message.chat.type in ['group', 'supergroup'] and 
@@ -1952,6 +1942,28 @@ async def handle_general_message(message: Message, state: FSMContext):
             await handle_shuffle_guess(message)
         except Exception as e:
             logging.error(f"خطأ في معالجة تخمينات الألعاب: {e}")
+    
+    # === فحص الذكاء الاصطناعي في النهاية (بعد جميع الأوامر المطلقة والمهمة) ===
+    elif (message.text and 
+          any(trigger in message.text.lower() for trigger in ['يوكي', 'yuki', 'يوكى']) and
+          message.chat.type in ['group', 'supergroup']):
+        try:
+            from modules.real_ai import handle_real_yuki_ai_message
+            await handle_real_yuki_ai_message(message)
+            return
+        except Exception as e:
+            logging.error(f"خطأ في نظام الذكاء الاصطناعي الحقيقي: {e}")
+            await message.reply("🤖 مرحباً! أنا يوكي، النظام الذكي معطل مؤقتاً، لكن يمكنك استخدام جميع ألعاب وأنظمة البوت الأخرى!")
+            return
+    
+    # === فحص أوامر الذاكرة المشتركة قبل النهاية ===
+    if message.text:
+        try:
+            from handlers.memory_commands import handle_memory_commands
+            if await handle_memory_commands(message):
+                return
+        except Exception as e:
+            logging.error(f"خطأ في معالج أوامر الذاكرة: {e}")
     
     # إزالة الرد الافتراضي - البوت لن يرد على الرسائل غير المعروفة
 
