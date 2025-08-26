@@ -543,9 +543,23 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول المحادثات (آخر 10 رسائل لكل مستخدم)
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS conversation_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    user_message TEXT NOT NULL,
+                    ai_response TEXT NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             await db.execute('CREATE INDEX IF NOT EXISTS idx_activity_logs_chat_date ON activity_logs(chat_id, date_only)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_daily_stats_chat_date ON daily_stats(chat_id, date)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_performance_metrics_chat_date ON performance_metrics(chat_id, date_only)')
+            
+            # إنشاء فهرس للبحث السريع في المحادثات
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_conversation_user_timestamp ON conversation_history (user_id, timestamp DESC)')
             
             # إنشاء جدول تتبع عدد الرسائل الحقيقي لكل مستخدم في كل مجموعة
             await db.execute('''

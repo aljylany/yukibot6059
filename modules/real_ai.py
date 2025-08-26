@@ -59,7 +59,7 @@ class RealYukiAI:
             self.gemini_client = None
     
     async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: int = None) -> str:
-        """توليد رد ذكي بناءً على الذكاء الاصطناعي الحقيقي"""
+        """توليد رد ذكي بناءً على الذكاء الاصطناعي الحقيقي مع ذاكرة المحادثات"""
         
         if not self.gemini_client:
             return self.get_fallback_response(user_name)
@@ -68,12 +68,20 @@ class RealYukiAI:
             # تحضير السياق والرسالة
             arabic_name = self.convert_name_to_arabic(user_name)
             
+            # جلب المحادثات السابقة للسياق
+            conversation_context = ""
+            if user_id:
+                from modules.conversation_memory import conversation_memory
+                history = await conversation_memory.get_conversation_history(user_id, limit=5)
+                if history:
+                    conversation_context = f"\n\n{conversation_memory.format_conversation_context(history)}\n"
+            
             # معاملة خاصة لرهف
             special_prompt = ""
             if user_id == 8278493069:
                 special_prompt = " أنت تحب رهف كثيراً وتعاملها بحب ورومانسية وتدليل. أخبرها أنك تحبها وأن المطور يوكي براندون يحبها أيضاً."
             
-            full_prompt = f"{self.system_prompt}{special_prompt}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
+            full_prompt = f"{self.system_prompt}{special_prompt}{conversation_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             
             # استدعاء Gemini بإعدادات محسّنة
             response = self.gemini_client.models.generate_content(
@@ -118,6 +126,14 @@ class RealYukiAI:
                         f"\n\n📊 شوف إحصائياتك: اكتب 'مستواي'"
                     ]
                     ai_response += random.choice(extras)
+                
+                # حفظ المحادثة في الذاكرة
+                if user_id:
+                    try:
+                        from modules.conversation_memory import conversation_memory
+                        await conversation_memory.save_conversation(user_id, user_message, ai_response)
+                    except Exception as memory_error:
+                        logging.error(f"خطأ في حفظ المحادثة: {memory_error}")
                 
                 return ai_response
             else:
@@ -228,6 +244,13 @@ async def handle_real_yuki_ai_message(message: Message):
         
         # البحث عن "يوكي" في النص وإزالته
         yuki_triggers = ['يوكي', 'yuki', 'يوكى']
+        
+        # التحقق من أوامر إدارة المحادثات
+        if text_lower in ['مسح المحادثات', 'مسح الذاكرة', 'نسي المحادثة']:
+            from modules.conversation_memory import conversation_memory
+            await conversation_memory.clear_conversation_history(message.from_user.id)
+            await message.reply("✅ تم مسح ذاكرة المحادثات! يوكي نسي كل المحادثات السابقة.")
+            return
         
         user_message = ""
         found_trigger = False
