@@ -133,10 +133,15 @@ async def handle_ban_user(message: Message):
             await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
             return
 
-        # فحص إذا كان المستخدم المستهدف من الأسياد
-        from config.hierarchy import is_master
-        if is_master(target_user.id):
-            await message.reply("👑 لا يمكن حظر الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
+        # فحص إذا كان المستخدم المستهدف هو السيد الأعلى (محمي مطلقاً)
+        from config.hierarchy import is_master, is_supreme_master
+        if is_supreme_master(target_user.id):
+            await message.reply("👑 لا يمكن حظر السيد الأعلى! هو محمي من جميع الأوامر الإدارية")
+            return
+        
+        # فحص إذا كان المستخدم المستهدف من الأسياد ولكن المُنفذ ليس سيد
+        if is_master(target_user.id) and not is_master(message.from_user.id):
+            await message.reply("👑 لا يمكن حظر الأسياد! فقط الأسياد يمكنهم حظر بعضهم البعض")
             return
 
         # التحقق من صلاحيات البوت أولاً
@@ -203,10 +208,15 @@ async def handle_kick_user(message: Message):
             await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
             return
 
-        # فحص إذا كان المستخدم المستهدف من الأسياد
-        from config.hierarchy import is_master
-        if is_master(target_user.id):
-            await message.reply("👑 لا يمكن طرد الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
+        # فحص إذا كان المستخدم المستهدف هو السيد الأعلى (محمي مطلقاً)
+        from config.hierarchy import is_master, is_supreme_master
+        if is_supreme_master(target_user.id):
+            await message.reply("👑 لا يمكن طرد السيد الأعلى! هو محمي من جميع الأوامر الإدارية")
+            return
+        
+        # فحص إذا كان المستخدم المستهدف من الأسياد ولكن المُنفذ ليس سيد
+        if is_master(target_user.id) and not is_master(message.from_user.id):
+            await message.reply("👑 لا يمكن طرد الأسياد! فقط الأسياد يمكنهم طرد بعضهم البعض")
             return
 
         try:
@@ -275,10 +285,15 @@ async def handle_mute_user(message: Message):
             await message.reply("❌ يرجى الرد على رسالة الشخص أو كتابة معرفه")
             return
 
-        # فحص إذا كان المستخدم المستهدف من الأسياد
-        from config.hierarchy import is_master
-        if is_master(target_user.id):
-            await message.reply("👑 لا يمكن كتم الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
+        # فحص إذا كان المستخدم المستهدف هو السيد الأعلى (محمي مطلقاً)
+        from config.hierarchy import is_master, is_supreme_master
+        if is_supreme_master(target_user.id):
+            await message.reply("👑 لا يمكن كتم السيد الأعلى! هو محمي من جميع الأوامر الإدارية")
+            return
+        
+        # فحص إذا كان المستخدم المستهدف من الأسياد ولكن المُنفذ ليس سيد
+        if is_master(target_user.id) and not is_master(message.from_user.id):
+            await message.reply("👑 لا يمكن كتم الأسياد! فقط الأسياد يمكنهم كتم بعضهم البعض")
             return
 
         try:
@@ -372,10 +387,15 @@ async def handle_warn_user(message: Message):
             await message.reply("❌ يرجى الرد على رسالة الشخص")
             return
 
-        # فحص إذا كان المستخدم المستهدف من الأسياد
-        from config.hierarchy import is_master
-        if is_master(target_user.id):
-            await message.reply("👑 لا يمكن تحذير الأسياد! الأسياد محميون من جميع الأوامر الإدارية")
+        # فحص إذا كان المستخدم المستهدف هو السيد الأعلى (محمي مطلقاً)
+        from config.hierarchy import is_master, is_supreme_master
+        if is_supreme_master(target_user.id):
+            await message.reply("👑 لا يمكن تحذير السيد الأعلى! هو محمي من جميع الأوامر الإدارية")
+            return
+        
+        # فحص إذا كان المستخدم المستهدف من الأسياد ولكن المُنفذ ليس سيد
+        if is_master(target_user.id) and not is_master(message.from_user.id):
+            await message.reply("👑 لا يمكن تحذير الأسياد! فقط الأسياد يمكنهم تحذير بعضهم البعض")
             return
 
         # إضافة التحذير

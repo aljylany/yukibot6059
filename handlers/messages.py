@@ -1436,8 +1436,11 @@ async def handle_general_message(message: Message, state: FSMContext):
                         
                         username = f"@{chat_member.username}" if chat_member.username else "بدون يوزر"
                         
+                        # تنظيف الاسم من الرموز الخاصة التي قد تسبب مشاكل في Markdown
+                        clean_name = user_name.replace("[", "").replace("]", "").replace("(", "").replace(")", "").replace("*", "").replace("_", "").replace("`", "")
+                        
                         # جعل الاسم قابلاً للنقر للانتقال إلى حساب المستخدم
-                        clickable_name = f"[{user_name}](tg://user?id={master_id})"
+                        clickable_name = f"[{clean_name}](tg://user?id={master_id})"
                         
                         masters_info += f"{i}. 👑 {clickable_name}\n"
                         masters_info += f"   📱 {username}\n"

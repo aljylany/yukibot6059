@@ -66,6 +66,10 @@ def is_master(user_id: int) -> bool:
     """التحقق من كون المستخدم سيد"""
     return user_id in MASTERS
 
+def is_supreme_master(user_id: int) -> bool:
+    """التحقق من أن المستخدم هو السيد الأعلى (الأول) - محمي من جميع الأوامر"""
+    return user_id == 6524680126
+
 
 async def is_group_owner(user_id: int, group_id: int) -> bool:
     """التحقق من كون المستخدم مالك للمجموعة"""
