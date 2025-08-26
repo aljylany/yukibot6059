@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["curl", "ffmpeg-full", "glibcLocales", "pkg-config"]
+packages = ["curl", "ffmpeg-full", "glibcLocales", "pkg-config", "postgresql"]
 
 [workflows]
 runButton = "Project"

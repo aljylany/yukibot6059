@@ -72,10 +72,10 @@ class RealYukiAI:
             # جلب المحادثات السابقة للسياق
             conversation_context = ""
             if user_id:
-                from modules.conversation_memory import conversation_memory
-                history = await conversation_memory.get_conversation_history(user_id, limit=5)
+                from modules.conversation_memory_pg import conversation_memory_pg
+                history = await conversation_memory_pg.get_conversation_history(user_id, limit=5)
                 if history:
-                    conversation_context = f"\n\n{conversation_memory.format_conversation_context(history)}\n"
+                    conversation_context = f"\n\n{conversation_memory_pg.format_conversation_context(history)}\n"
             
             # معاملة خاصة للمستخدمين المميزين
             special_prompt = ""
@@ -88,22 +88,19 @@ class RealYukiAI:
             elif user_id == 6629947448:
                 special_prompt = " أنت تتحدث مع غيو الأسطورة! اظهر له احترام خاص وحماس. غيو محترف في الألعاب وخبير تقنية."
             
+            # الشيخ - المستخدم المميز
+            elif user_id == 7155814194:
+                special_prompt = " أنت تتحدث مع الشيخ حلال المشاكل وكاتب العقود! اظهر له احترام خاص وتقدير. الشيخ حكيم ومحل ثقة الجميع."
+            
             # جلب السياق من الذاكرة المشتركة
             shared_context = ""
             if user_id:
                 try:
-                    from modules.shared_memory import shared_group_memory
+                    from modules.shared_memory_pg import shared_group_memory_pg
                     
                     # فحص إذا كان السؤال يتطلب البحث في الذاكرة المشتركة
-                    from modules.topic_search import topic_search_engine
-                    search_result = await topic_search_engine.process_query(
-                        user_message, user_id, -1002549788763
-                    )
-                    
-                    if search_result:
-                        shared_context = search_result
-                    elif any(phrase in user_message.lower() for phrase in ['ماذا تعرف عن', 'ماذا كنتم تتحدثون', 'تحدثتم عني', 'قال عني']):
-                        shared_context = await shared_group_memory.get_shared_context_about_user(
+                    if any(phrase in user_message.lower() for phrase in ['ماذا تعرف عن', 'ماذا كنتم تتحدثون', 'تحدثتم عني', 'قال عني']):
+                        shared_context = await shared_group_memory_pg.get_shared_context_about_user(
                             -1002549788763,  # chat_id المجموعة الرئيسية
                             user_id, 
                             user_id, 
@@ -111,7 +108,7 @@ class RealYukiAI:
                         )
                     
                     # إضافة سياق المستخدمين المميزين
-                    special_user_context = shared_group_memory.get_special_user_context(user_id)
+                    special_user_context = shared_group_memory_pg.get_special_user_context(user_id)
                     if special_user_context:
                         special_prompt += f" {special_user_context}"
                     
@@ -177,12 +174,12 @@ class RealYukiAI:
                 # حفظ المحادثة في الذاكرة الفردية والمشتركة
                 if user_id:
                     try:
-                        from modules.conversation_memory import conversation_memory
-                        await conversation_memory.save_conversation(user_id, user_message, ai_response)
+                        from modules.conversation_memory_pg import conversation_memory_pg
+                        await conversation_memory_pg.save_conversation(user_id, user_message, ai_response)
                         
                         # حفظ في الذاكرة المشتركة أيضاً
-                        from modules.shared_memory import shared_group_memory
-                        await shared_group_memory.save_shared_conversation(
+                        from modules.shared_memory_pg import shared_group_memory_pg
+                        await shared_group_memory_pg.save_shared_conversation(
                             -1002549788763,  # chat_id المجموعة الرئيسية
                             user_id,
                             arabic_name,
@@ -314,8 +311,8 @@ async def handle_real_yuki_ai_message(message: Message):
         
         # التحقق من أوامر إدارة المحادثات
         if text_lower in ['مسح المحادثات', 'مسح الذاكرة', 'نسي المحادثة']:
-            from modules.conversation_memory import conversation_memory
-            await conversation_memory.clear_conversation_history(message.from_user.id)
+            from modules.conversation_memory_pg import conversation_memory_pg
+            await conversation_memory_pg.clear_conversation_history(message.from_user.id)
             await message.reply("✅ تم مسح ذاكرة المحادثات! يوكي نسي كل المحادثات السابقة.")
             return
         
