@@ -851,41 +851,46 @@ async def handle_general_message(message: Message, state: FSMContext):
         message.chat.type in ['group', 'supergroup'] and message.from_user):
         try:
             from config.hierarchy import MASTERS
-            user = message.from_user
             
-            # أمر المطور متاح للجميع الآن
+            # أمر المطور متاح للجميع الآن - لكن يعرض معلومات المطور الأساسي فقط
+            # نأخذ السيد الأول من قائمة الأسياد (هو المطور الأساسي)
+            developer_id = MASTERS[0]  # المطور الأساسي هو أول سيد
             
-            # معلومات المطور
-            developer_info = f"👨‍💻 **معلومات المطور**\n\n"
-            developer_info += f"🏷️ **الاسم:** {user.first_name}"
-            if user.last_name:
-                developer_info += f" {user.last_name}"
-            
-            if user.username:
-                developer_info += f"\n📧 **اليوزرنيم:** @{user.username}"
-            else:
-                developer_info += f"\n📧 **اليوزرنيم:** غير محدد"
-            
-            developer_info += f"\n🆔 **المعرف:** `{user.id}`"
-            developer_info += f"\n⭐ **الرتبة:** مطور البوت 👑"
-            developer_info += f"\n🛠️ **الصلاحيات:** صلاحيات مطلقة"
-            developer_info += f"\n💻 **التخصص:** تطوير البوتات والأنظمة"
-            developer_info += f"\n🌟 **الحالة:** نشط ومتاح للدعم"
-            
-            # محاولة إرسال صورة خلفية مميزة مع معلومات المطور
             try:
-                # أولاً محاولة الحصول على صورة الملف الشخصي للمطور
-                photos = await message.bot.get_user_profile_photos(user.id, limit=1)
-                if photos.photos:
-                    # إرسال صورة الملف الشخصي مع المعلومات
-                    photo_file_id = photos.photos[0][-1].file_id
-                    await message.reply_photo(
-                        photo=photo_file_id, 
-                        caption=developer_info
-                    )
+                # محاولة الحصول على معلومات المطور من Telegram
+                developer_user = await message.bot.get_chat(developer_id)
+                
+                # معلومات المطور
+                developer_info = f"👨‍💻 **معلومات المطور**\n\n"
+                developer_info += f"🏷️ **الاسم:** {developer_user.first_name}"
+                if hasattr(developer_user, 'last_name') and developer_user.last_name:
+                    developer_info += f" {developer_user.last_name}"
+                
+                if hasattr(developer_user, 'username') and developer_user.username:
+                    developer_info += f"\n📧 **اليوزرنيم:** @{developer_user.username}"
                 else:
-                    # إذا لم توجد صورة ملف شخصي، إرسال بخلفية نصية مميزة
-                    developer_banner = f"""
+                    developer_info += f"\n📧 **اليوزرنيم:** غير محدد"
+                
+                developer_info += f"\n🆔 **المعرف:** `{developer_id}`"
+                developer_info += f"\n⭐ **الرتبة:** مطور البوت 👑"
+                developer_info += f"\n🛠️ **الصلاحيات:** صلاحيات مطلقة"
+                developer_info += f"\n💻 **التخصص:** تطوير البوتات والأنظمة"
+                developer_info += f"\n🌟 **الحالة:** نشط ومتاح للدعم"
+                
+                # محاولة إرسال صورة خلفية مميزة مع معلومات المطور
+                try:
+                    # أولاً محاولة الحصول على صورة الملف الشخصي للمطور
+                    photos = await message.bot.get_user_profile_photos(developer_id, limit=1)
+                    if photos.photos:
+                        # إرسال صورة الملف الشخصي مع المعلومات
+                        photo_file_id = photos.photos[0][-1].file_id
+                        await message.reply_photo(
+                            photo=photo_file_id, 
+                            caption=developer_info
+                        )
+                    else:
+                        # إذا لم توجد صورة ملف شخصي، إرسال بخلفية نصية مميزة
+                        developer_banner = f"""
 ╔══════════════════════════════════════╗
 ║         🌟 مطور البوت 🌟            ║
 ╠══════════════════════════════════════╣
@@ -895,13 +900,13 @@ async def handle_general_message(message: Message, state: FSMContext):
 ╠══════════════════════════════════════╣
 ║    🚀 شكراً لاستخدام بوت يوكي! 🚀    ║
 ╚══════════════════════════════════════╝
-                    """
-                    await message.reply(developer_banner)
-                    
-            except Exception as photo_error:
-                logging.error(f"خطأ في الحصول على صورة المطور: {photo_error}")
-                # إرسال المعلومات مع تصميم نصي مميز
-                developer_banner = f"""
+                        """
+                        await message.reply(developer_banner)
+                        
+                except Exception as photo_error:
+                    logging.error(f"خطأ في الحصول على صورة المطور: {photo_error}")
+                    # إرسال المعلومات مع تصميم نصي مميز
+                    developer_banner = f"""
 🌟═══════════════════════════════════════🌟
            👨‍💻 معلومات المطور 👨‍💻
 🌟═══════════════════════════════════════🌟
@@ -911,8 +916,23 @@ async def handle_general_message(message: Message, state: FSMContext):
 🚀════════════════════════════════════════🚀
         شكراً لاستخدام بوت يوكي!
 🚀════════════════════════════════════════🚀
-                """
-                await message.reply(developer_banner)
+                    """
+                    await message.reply(developer_banner)
+                    
+            except Exception as get_chat_error:
+                logging.error(f"خطأ في الحصول على معلومات المطور من Telegram: {get_chat_error}")
+                # في حال فشل في جلب البيانات، استخدم المعلومات المحفوظة
+                developer_info = f"""👨‍💻 **معلومات المطور**
+
+🏷️ **الاسم:** Yuki Brandon
+📧 **اليوزرنيم:** @YukiBrandon
+🆔 **المعرف:** `{developer_id}`
+⭐ **الرتبة:** مطور البوت 👑
+🛠️ **الصلاحيات:** صلاحيات مطلقة
+💻 **التخصص:** تطوير البوتات والأنظمة
+🌟 **الحالة:** نشط ومتاح للدعم"""
+                
+                await message.reply(developer_info)
             
             return
             
