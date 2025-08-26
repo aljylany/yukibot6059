@@ -129,7 +129,7 @@ class YukiAI:
 
     def analyze_message(self, message: str) -> Dict[str, Any]:
         """تحليل الرسالة وتحديد المحتوى والمشاعر"""
-        message_lower = message.lower()
+        message_lower = message.lower().strip()
         
         analysis = {
             'category': 'unknown',
@@ -138,21 +138,31 @@ class YukiAI:
             'sentiment': 'neutral'  # positive, negative, neutral
         }
         
-        # تحليل الفئات
+        # تحليل الفئات - نحسب confidence بطريقة أفضل
         max_confidence = 0
         best_category = 'unknown'
         
         for category, data in self.responses_db.items():
             matches = 0
-            total_triggers = len(data['triggers'])
+            matched_triggers = []
             
             for trigger in data['triggers']:
                 if trigger in message_lower:
                     matches += 1
+                    matched_triggers.append(trigger)
                     analysis['keywords'].append(trigger)
             
             if matches > 0:
-                confidence = (matches / total_triggers) * 100
+                # حساب confidence أفضل - كل مطابقة = 100 نقطة مقسومة على عدد الكلمات في الرسالة
+                words_count = len(message_lower.split())
+                confidence = min(matches * 50, 100)  # كل مطابقة تستحق 50 نقطة، بحد أقصى 100
+                
+                # زيادة confidence للمطابقات الدقيقة
+                for trigger in matched_triggers:
+                    if trigger.strip() == message_lower.strip():
+                        confidence = 100
+                        break
+                
                 if confidence > max_confidence:
                     max_confidence = confidence
                     best_category = category
@@ -177,10 +187,13 @@ class YukiAI:
     def generate_smart_response(self, message: str, user_name: str = "الصديق") -> str:
         """توليد رد ذكي بناءً على تحليل الرسالة"""
         
+        # تحويل الأسماء الإنجليزية لعربية إذا أمكن
+        arabic_name = self.convert_name_to_arabic(user_name)
+        
         analysis = self.analyze_message(message)
         
-        # اختيار الرد بناءً على التحليل
-        if analysis['category'] != 'unknown' and analysis['confidence'] > 20:
+        # اختيار الرد بناءً على التحليل - قللت الحد الأدنى
+        if analysis['category'] != 'unknown' and analysis['confidence'] >= 30:
             category_responses = self.responses_db[analysis['category']]['responses']
             response = random.choice(category_responses)
         else:
@@ -188,7 +201,7 @@ class YukiAI:
             response = random.choice(self.fallback_responses)
         
         # تخصيص الرد
-        response = response.format(user=user_name)
+        response = response.format(user=arabic_name)
         
         # إضافة تحسينات بناءً على المشاعر
         if analysis['sentiment'] == 'positive':
@@ -196,17 +209,47 @@ class YukiAI:
             response += f" {random.choice(emojis)}"
         
         # إضافة نصائح ذكية أحياناً
-        if random.random() < 0.3:  # 30% احتمال
+        if random.random() < 0.25:  # 25% احتمال
             tips = [
                 "\n💡 نصيحة: استكشف ألعاب البوت بكتابة 'العاب'!",
                 "\n🎯 لا تنس تجرب النظام البنكي بـ 'رصيد'!",
                 "\n✨ البوت مليان مفاجآت، اكتب 'الأوامر' لتشوف!",
                 "\n🤖 أحب أساعد الناس الطيبين زيك!"
             ]
-            if len(response) < 100:  # فقط للردود القصيرة
+            if len(response) < 120:  # فقط للردود القصيرة
                 response += random.choice(tips)
         
         return response
+
+    def convert_name_to_arabic(self, name: str) -> str:
+        """تحويل الأسماء الإنجليزية الشائعة إلى عربية"""
+        english_to_arabic = {
+            'Brandon': 'براندون',
+            'Yuki': 'يوكي',
+            'Ahmed': 'أحمد', 
+            'Mohammed': 'محمد',
+            'Ali': 'علي',
+            'Omar': 'عمر',
+            'Hassan': 'حسن',
+            'Ibrahim': 'إبراهيم',
+            'Abdullah': 'عبدالله',
+            'Khalid': 'خالد',
+            'Fahad': 'فهد',
+            'Saad': 'سعد',
+            'Faisal': 'فيصل',
+            'Nasser': 'ناصر',
+            'Sultan': 'سلطان',
+            'Turki': 'تركي',
+            'Abdulaziz': 'عبدالعزيز',
+            'Saud': 'سعود',
+            'Majed': 'ماجد',
+            'Rayan': 'ريان',
+            'Adam': 'آدم',
+            'Yousef': 'يوسف',
+            'Zaid': 'زايد'
+        }
+        
+        return english_to_arabic.get(name, name)
 
     def get_time_based_greeting(self, user_name: str) -> str:
         """ردود حسب الوقت"""
