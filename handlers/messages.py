@@ -1427,8 +1427,23 @@ async def handle_general_message(message: Message, state: FSMContext):
                 masters_info = "👑 قائمة الأسياد الحاليين:\n\n"
                 
                 for i, master_id in enumerate(MASTERS, 1):
-                    masters_info += f"{i}. 👑 سيد {i}\n"
-                    masters_info += f"   🆔 {master_id}\n\n"
+                    try:
+                        # محاولة الحصول على معلومات المستخدم من تليجرام
+                        chat_member = await message.bot.get_chat(master_id)
+                        user_name = chat_member.first_name or "بدون اسم"
+                        if chat_member.last_name:
+                            user_name += f" {chat_member.last_name}"
+                        
+                        username = f"@{chat_member.username}" if chat_member.username else "بدون يوزر"
+                        
+                        masters_info += f"{i}. 👑 {user_name}\n"
+                        masters_info += f"   📱 {username}\n"
+                        masters_info += f"   🆔 {master_id}\n\n"
+                        
+                    except Exception as e:
+                        # في حالة فشل الحصول على معلومات المستخدم
+                        masters_info += f"{i}. 👑 سيد {i}\n"
+                        masters_info += f"   🆔 {master_id}\n\n"
                 
                 masters_info += f"📊 إجمالي الأسياد: {len(MASTERS)}\n\n"
                 masters_info += "🔴 الأسياد لديهم صلاحيات مطلقة في جميع المجموعات\n"
