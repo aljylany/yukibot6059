@@ -59,7 +59,7 @@ class RealYukiAI:
             logging.error(f"خطأ في إعداد Gemini: {e}")
             self.gemini_client = None
     
-    async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: int = None) -> str:
+    async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: Optional[int] = None) -> str:
         """توليد رد ذكي بناءً على الذكاء الاصطناعي الحقيقي مع ذاكرة المحادثات"""
         
         if not self.gemini_client:
@@ -90,32 +90,33 @@ class RealYukiAI:
             
             # جلب السياق من الذاكرة المشتركة
             shared_context = ""
-            try:
-                from modules.shared_memory import shared_group_memory
-                
-                # فحص إذا كان السؤال يتطلب البحث في الذاكرة المشتركة
-                from modules.topic_search import topic_search_engine
-                search_result = await topic_search_engine.process_query(
-                    user_message, user_id, -1002549788763
-                )
-                
-                if search_result:
-                    shared_context = search_result
-                elif any(phrase in user_message.lower() for phrase in ['ماذا تعرف عن', 'ماذا كنتم تتحدثون', 'تحدثتم عني', 'قال عني']):
-                    shared_context = await shared_group_memory.get_shared_context_about_user(
-                        -1002549788763,  # chat_id المجموعة الرئيسية
-                        user_id, 
-                        user_id, 
-                        limit=5
-                    )
-                
-                # إضافة سياق المستخدمين المميزين
-                special_user_context = shared_group_memory.get_special_user_context(user_id)
-                if special_user_context:
-                    special_prompt += f" {special_user_context}"
+            if user_id:
+                try:
+                    from modules.shared_memory import shared_group_memory
                     
-            except Exception as memory_error:
-                logging.warning(f"خطأ في جلب الذاكرة المشتركة: {memory_error}")
+                    # فحص إذا كان السؤال يتطلب البحث في الذاكرة المشتركة
+                    from modules.topic_search import topic_search_engine
+                    search_result = await topic_search_engine.process_query(
+                        user_message, user_id, -1002549788763
+                    )
+                    
+                    if search_result:
+                        shared_context = search_result
+                    elif any(phrase in user_message.lower() for phrase in ['ماذا تعرف عن', 'ماذا كنتم تتحدثون', 'تحدثتم عني', 'قال عني']):
+                        shared_context = await shared_group_memory.get_shared_context_about_user(
+                            -1002549788763,  # chat_id المجموعة الرئيسية
+                            user_id, 
+                            user_id, 
+                            limit=5
+                        )
+                    
+                    # إضافة سياق المستخدمين المميزين
+                    special_user_context = shared_group_memory.get_special_user_context(user_id)
+                    if special_user_context:
+                        special_prompt += f" {special_user_context}"
+                    
+                except Exception as memory_error:
+                    logging.warning(f"خطأ في جلب الذاكرة المشتركة: {memory_error}")
             
             # دمج جميع السياقات
             full_context = conversation_context
