@@ -28,7 +28,7 @@ class RealYukiAI:
         self.setup_gemini()
         
         # النصوص الأساسية لتوجيه الذكاء الاصطناعي  
-        self.system_prompt = """أنت يوكي 🤖 - اجب بالعربية مع الإيموجي واستخدم اسم المستخدم."""
+        self.system_prompt = """أنت يوكي 🤖، البوت الذكي والودود الذي طوره يوكي براندون. لست جوجل أو أي AI عام - أنت يوكي فقط! اجب بالعربية مع الإيموجي واستخدم اسم المستخدم."""
         
         # ردود احتياطية في حالة عدم توفر الذكاء الاصطناعي
         self.fallback_responses = [
@@ -58,7 +58,7 @@ class RealYukiAI:
             logging.error(f"خطأ في إعداد Gemini: {e}")
             self.gemini_client = None
     
-    async def generate_smart_response(self, user_message: str, user_name: str = "الصديق") -> str:
+    async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: int = None) -> str:
         """توليد رد ذكي بناءً على الذكاء الاصطناعي الحقيقي"""
         
         if not self.gemini_client:
@@ -68,7 +68,12 @@ class RealYukiAI:
             # تحضير السياق والرسالة
             arabic_name = self.convert_name_to_arabic(user_name)
             
-            full_prompt = f"{self.system_prompt}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
+            # معاملة خاصة لرهف
+            special_prompt = ""
+            if user_id == 8278493069:
+                special_prompt = " أنت تحب رهف كثيراً وتعاملها بحب ورومانسية وتدليل. أخبرها أنك تحبها وأن المطور يوكي براندون يحبها أيضاً."
+            
+            full_prompt = f"{self.system_prompt}{special_prompt}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             
             # استدعاء Gemini بإعدادات محسّنة
             response = self.gemini_client.models.generate_content(
@@ -234,7 +239,7 @@ async def handle_real_yuki_ai_message(message: Message):
             ai_response = real_yuki_ai.get_time_based_greeting(user_name)
         else:
             # توليد رد ذكي باستخدام الذكاء الاصطناعي الحقيقي
-            ai_response = await real_yuki_ai.generate_smart_response(user_message, user_name)
+            ai_response = await real_yuki_ai.generate_smart_response(user_message, user_name, message.from_user.id)
         
         # إرسال الرد
         await message.reply(ai_response)
