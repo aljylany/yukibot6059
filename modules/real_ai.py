@@ -298,6 +298,11 @@ async def handle_real_yuki_ai_message(message: Message):
         text = message.text
         text_lower = text.lower().strip()
         
+        # فحص فلاتر الذكاء الصناعي - تجاهل الأوامر المطلقة والإدارية
+        from modules.ai_filters import ai_filters
+        if ai_filters.should_ignore_message(text, message.from_user.id):
+            return
+        
         # البحث عن "يوكي" في النص وإزالته
         yuki_triggers = ['يوكي', 'yuki', 'يوكى']
         
