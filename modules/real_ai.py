@@ -288,7 +288,11 @@ async def handle_real_yuki_ai_message(message: Message):
     """معالج رسائل الذكاء الاصطناعي الحقيقي"""
     try:
         if not message.text or not message.from_user:
+            logging.error("❌ رسالة فارغة أو بدون مستخدم")
             return
+        
+        # تسجيل دخول الرسالة للنظام المتقدم
+        logging.info(f"🧠 وصلت رسالة للذكاء الاصطناعي المتقدم: '{message.text}' من المستخدم {message.from_user.id}")
         
         # الحصول على اسم المستخدم الحقيقي وتحسينه
         raw_name = message.from_user.first_name or message.from_user.username or "Friend"
@@ -301,6 +305,7 @@ async def handle_real_yuki_ai_message(message: Message):
         # فحص فلاتر الذكاء الصناعي - تجاهل الأوامر المطلقة والإدارية
         from modules.ai_filters import ai_filters
         if ai_filters.should_ignore_message(text, message.from_user.id):
+            logging.info(f"🚫 تم تجاهل الرسالة بواسطة الفلاتر: {text}")
             return
         
         # البحث عن "يوكي" في النص وإزالته
