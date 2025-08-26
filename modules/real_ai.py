@@ -105,9 +105,9 @@ class RealYukiAI:
                 logging.error(f"❌ لا يوجد candidates أو response صالح")
             
             if ai_response and len(ai_response.strip()) > 0:
-                # تحسين الرد
-                if len(ai_response) > 400:
-                    ai_response = ai_response[:350] + "..."
+                # تحسين الرد - زيادة الحد الأقصى للردود الطويلة
+                if len(ai_response) > 1800:
+                    ai_response = ai_response[:1700] + "..."
                 
                 # إضافة لمسة خاصة أحياناً
                 if random.random() < 0.15:  # 15% احتمال
