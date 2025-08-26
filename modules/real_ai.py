@@ -28,7 +28,7 @@ class RealYukiAI:
         self.setup_gemini()
         
         # النصوص الأساسية لتوجيه الذكاء الاصطناعي  
-        self.system_prompt = """أنت يوكي، البوت الذكي والودود باللغة العربية. كن مفيداً ومرحاً، استخدم الإيموجي، واجب دائماً بالعربية مع اسم المستخدم في الرد."""
+        self.system_prompt = """أنت يوكي 🤖 - اجب بالعربية مع الإيموجي واستخدم اسم المستخدم."""
         
         # ردود احتياطية في حالة عدم توفر الذكاء الاصطناعي
         self.fallback_responses = [
@@ -68,14 +68,7 @@ class RealYukiAI:
             # تحضير السياق والرسالة
             arabic_name = self.convert_name_to_arabic(user_name)
             
-            full_prompt = f"""
-{self.system_prompt}
-
-اسم المستخدم: {arabic_name}
-سؤال/رسالة المستخدم: {user_message}
-
-اجب بذكاء ومرح باللغة العربية، واستخدم اسم المستخدم في الرد:
-"""
+            full_prompt = f"{self.system_prompt}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             
             # استدعاء Gemini بإعدادات محسّنة
             response = self.gemini_client.models.generate_content(
@@ -83,7 +76,7 @@ class RealYukiAI:
                 contents=full_prompt,
                 config=genai.types.GenerateContentConfig(
                     temperature=0.7,
-                    max_output_tokens=500
+                    max_output_tokens=2000
                 )
             )
             
