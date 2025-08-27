@@ -1634,7 +1634,13 @@ async def handle_general_message(message: Message, state: FSMContext):
     #     await handle_simple_progress_command(message)
     #     return
     
-    # فحص السباب والكتم التلقائي بالنظام الجديد المتطور (أولوية عالية جداً)
+    # === فحص النظام الشامل للمحتوى (الأساسي) ===
+    # النظام الشامل يتعامل مع النصوص، الصور، الفيديو، الملصقات وجميع أنواع المحتوى
+    if await comprehensive_handler.process_message_content(message):
+        return
+    
+    # === النظام الاحتياطي للحماية من الألفاظ المسيئة ===
+    # يعمل كنظام احتياطي إذا فشل النظام الشامل
     from modules.profanity_handler_new import handle_new_profanity_system
     if await handle_new_profanity_system(message):
         return
