@@ -1717,3 +1717,53 @@ async def reset_violations_handler(message: Message, state: FSMContext):
     """معالج أمر إعادة تعيين مخالفات المستخدم"""
     await reset_user_violations_command(message, state)
 
+# ===== الأوامر العربية لاختبار نظام كشف المحتوى =====
+
+@router.message(F.text.in_({
+    "اختبار النظام", "اختبار_النظام", "اختبار نظام الحماية", "اختبار_نظام_الحماية",
+    "فحص النظام", "فحص_النظام", "حالة نظام الحماية", "حالة_نظام_الحماية",
+    "اختبار الفلتر", "اختبار_الفلتر", "تجربة النظام", "تجربة_النظام"
+}))
+@group_only
+async def arabic_test_filter_command(message: Message, state: FSMContext):
+    """أمر اختبار النظام باللغة العربية"""
+    await test_content_filter_command(message, state)
+
+@router.message(F.text.regexp(r"^(اختبار السباب|اختبار_السباب|فحص السباب|فحص_السباب|تجربة السباب|تجربة_السباب)\s+(.+)"))
+@group_only
+async def arabic_test_profanity_command(message: Message, state: FSMContext):
+    """أمر اختبار السباب باللغة العربية"""
+    # استخراج النص من الأمر
+    import re
+    if message.text:
+        match = re.search(r"^(اختبار السباب|اختبار_السباب|فحص السباب|فحص_السباب|تجربة السباب|تجربة_السباب)\s+(.+)", message.text)
+        if match:
+            test_text = match.group(2)
+            # تعديل النص ليناسب النظام الإنجليزي
+            message.text = f"/test_profanity {test_text}"
+            await test_profanity_command(message, state)
+
+@router.message(F.text.in_({
+    "مراقبة النظام", "مراقبة_النظام", "تفعيل المراقبة", "تفعيل_المراقبة",
+    "مراقبة مكثفة", "مراقبة_مكثفة", "مراقبة الفلتر", "مراقبة_الفلتر",
+    "تشغيل المراقبة", "تشغيل_المراقبة"
+}))
+@group_only
+async def arabic_monitor_filter_command(message: Message, state: FSMContext):
+    """أمر مراقبة النظام باللغة العربية"""
+    await monitor_filter_command(message, state)
+
+@router.message(F.text.regexp(r"^(مسح المخالفات|مسح_المخالفات|حذف المخالفات|حذف_المخالفات|إعادة تعيين|اعادة_تعيين)\s+(\d+)"))
+@group_only
+async def arabic_reset_violations_command(message: Message, state: FSMContext):
+    """أمر إعادة تعيين المخالفات باللغة العربية"""
+    # استخراج معرف المستخدم من الأمر
+    import re
+    if message.text:
+        match = re.search(r"^(مسح المخالفات|مسح_المخالفات|حذف المخالفات|حذف_المخالفات|إعادة تعيين|اعادة_تعيين)\s+(\d+)", message.text)
+        if match:
+            user_id = match.group(2)
+            # تعديل النص ليناسب النظام الإنجليزي
+            message.text = f"/reset_violations {user_id}"
+            await reset_user_violations_command(message, state)
+
