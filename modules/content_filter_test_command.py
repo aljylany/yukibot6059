@@ -45,7 +45,7 @@ async def test_content_filter_command(message: Message, state: FSMContext):
             has_violation = result['has_violation']
             
             # اختبار نظام السباب
-            profanity_result = check_message_advanced(test['text'])
+            profanity_result = await check_message_advanced(test['text'], message.from_user.id, message.chat.id)
             has_profanity = profanity_result['is_abusive']
             
             status = "✅" if (has_violation or has_profanity) == test['expected'] else "❌"
@@ -99,7 +99,7 @@ async def test_profanity_command(message: Message, state: FSMContext):
         comprehensive_result = await comprehensive_filter._check_text_content(test_text)
         
         # فحص السباب المتقدم
-        profanity_result = check_message_advanced(test_text)
+        profanity_result = await check_message_advanced(test_text, message.from_user.id, message.chat.id)
         
         # إعداد النتيجة
         result_message = f"""
