@@ -41,16 +41,16 @@ async def handle_xo_ai_join(callback: CallbackQuery):
         game_text = (
             "🎮 **لعبة اكس اوه ضد AI بدأت!**\n\n"
             f"👤 **⭕ اللاعب:** {game.players[0]['name']}\n"
-            f"🤖 **❌ الذكاء الاصطناعي:** {game.players[1]['name']}\n\n"
+            f"🤖 **❌ يوكي:** {game.players[1]['name']}\n\n"
             f"🎯 **دور اللاعب:** {game.players[game.current_player]['name']} ({game.players[game.current_player]['symbol']})\n\n"
             f"🏆 **الجائزة:** الفائز يحصل على 100 XP\n"
             f"🎖️ **المشاركة:** الخاسر يحصل على 5 XP\n\n"
-            f"🤖 لعبة ضد الذكاء الاصطناعي المتطور!"
+            f"🤖 لعبة ضد يوكي المتطور!"
         )
         
         if callback.message:
             await callback.message.edit_text(game_text, reply_markup=game.get_board_keyboard())
-        await callback.answer("✅ تم بدء اللعبة ضد يوكي AI!")
+        await callback.answer("✅ تم بدء اللعبة ضد يوكي!")
         
         logging.info(f"بدأت لعبة ضد AI في المجموعة {group_id}")
         
@@ -85,7 +85,7 @@ async def process_ai_move(game, callback: CallbackQuery = None):
                     game_text = (
                         "🎮 **لعبة اكس اوه ضد AI جارية**\n\n"
                         f"👤 **⭕ اللاعب:** {game.players[0]['name']}\n"
-                        f"🤖 **❌ الذكاء الاصطناعي:** {game.players[1]['name']}\n\n"
+                        f"🤖 **❌ يوكي:** {game.players[1]['name']}\n\n"
                         f"🎯 **دور اللاعب:** {current_player_name} ({current_symbol})\n\n"
                         f"🤖 {ai_msg}"
                     )
@@ -142,7 +142,7 @@ async def handle_ai_game_end(callback: CallbackQuery, game, ai_msg: Optional[str
             game_text = (
                 "🤝 **تعادل!**\n\n"
                 "🎖️ لعبتم بمهارة عالية! حصل كل لاعب على 50 XP\n\n"
-                "🤖 حتى الذكاء الاصطناعي يقدر مهارتكم!"
+                "🤖 حتى يوكي يقدر مهارتكم!"
             )
             
             # إعطاء جوائز التعادل

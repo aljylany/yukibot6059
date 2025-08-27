@@ -82,6 +82,14 @@ AVAILABLE_GAMES = {
         "players": "مفتوح للجميع",
         "duration": "1 دقيقة",
         "status": "متاحة"
+    },
+    "rock_paper_scissors": {
+        "name": "🎮 حجر ورقة مقص",
+        "description": "لعبة سريعة ضد يوكي - 3 جولات",
+        "commands": ["حجر ورقة مقص", "حجر ورقة", "rps"],
+        "players": "لاعب واحد ضد يوكي",
+        "duration": "دقيقة واحدة",
+        "status": "متاحة"
     }
 }
 
@@ -253,6 +261,11 @@ async def handle_game_start_callback(callback_query, game_command: str):
             from modules.letter_shuffle_game import start_letter_shuffle_game
             await start_letter_shuffle_game(fake_message)
             await callback_query.answer("🎯 تم بدء لعبة خلط الحروف!")
+            
+        elif game_command in ["حجر ورقة مقص", "حجر ورقة", "rps"]:
+            from modules.rock_paper_scissors_game import start_rock_paper_scissors_game
+            await start_rock_paper_scissors_game(fake_message)
+            await callback_query.answer("🎮 تم بدء لعبة حجر ورقة مقص!")
             
         else:
             await callback_query.answer("❌ هذه اللعبة غير متاحة حالياً", show_alert=True)

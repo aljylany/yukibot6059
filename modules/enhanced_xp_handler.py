@@ -35,7 +35,8 @@ class EnhancedXPSystem:
             "treasure_hunt": 6,
             "simple_investment": 8,
             "ai_interaction": 2,
-            "music_search": 3
+            "music_search": 3,
+            "gaming": 10
         }
     
     async def add_xp(self, user_id: int, activity_type: str, amount: int = None):
@@ -186,6 +187,7 @@ class EnhancedXPSystem:
 • الاستثمار البسيط: +8 XP
 • التفاعل مع الذكاء الاصطناعي: +2 XP
 • البحث عن الموسيقى: +3 XP
+• الألعاب: +10 XP
             """
             
             return display.strip()

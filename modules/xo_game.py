@@ -120,7 +120,7 @@ class XOGame:
         if len(self.players) == 1 and not self.has_ai_player:
             ai_player = {
                 'id': -1,  # معرف خاص للـ AI
-                'name': 'يوكي AI 🤖',
+                'name': 'يوكي',
                 'username': 'yuki_ai'
             }
             self.players.append(ai_player)
@@ -200,7 +200,7 @@ async def start_xo_game(message: Message):
         buttons.append([InlineKeyboardButton(text="🎯 انضمام للعبة", callback_data=f"xo_join_{group_id}")])
         
         if ai_will_join:
-            buttons.append([InlineKeyboardButton(text="🤖 العب ضد يوكي AI", callback_data=f"xo_ai_join_{group_id}")])
+            buttons.append([InlineKeyboardButton(text="🤖 العب ضد يوكي", callback_data=f"xo_ai_join_{group_id}")])
         
         keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
         

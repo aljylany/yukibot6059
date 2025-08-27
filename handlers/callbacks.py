@@ -180,6 +180,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_shuffle_close_callback(callback)
             return
         
+        # معالجة callbacks لعبة حجر ورقة مقص
+        if data.startswith('rps_choice_'):
+            from modules.rock_paper_scissors_game import handle_rps_choice
+            await handle_rps_choice(callback)
+            return
+        
         # معالجة callbacks المزرعة
         if data == 'farm_harvest':
             from modules.farm import handle_harvest_callback

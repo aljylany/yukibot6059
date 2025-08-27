@@ -921,6 +921,34 @@ async def handle_general_message(message: Message, state: FSMContext):
                 logging.error(f"خطأ في بدء لعبة اكس اوه: {e}")
                 await message.reply("❌ حدث خطأ أثناء بدء لعبة اكس اوه")
     
+    # لعبة حجر ورقة مقص - Rock Paper Scissors Game
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        rps_commands = ['حجر ورقة مقص', 'حجر ورقة', 'rps']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_rps_command = False
+        for command in rps_commands:
+            if command in ['حجر ورقة مقص', 'حجر ورقة']:
+                command_words = command.split()
+                pattern = r'\b' + r'\s+'.join(re.escape(word) for word in command_words) + r'\b'
+                if re.search(pattern, text):
+                    is_rps_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_rps_command = True
+                    break
+        
+        if is_rps_command:
+            try:
+                from modules.rock_paper_scissors_game import start_rock_paper_scissors_game
+                await start_rock_paper_scissors_game(message)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء لعبة حجر ورقة مقص: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء لعبة حجر ورقة مقص")
+    
     # معالج خاص لحرف "ا" منفرداً في المجموعات - عرض معلومات الملف الشخصي
     if (message.text and message.text.strip() == "ا" and 
         message.chat.type in ['group', 'supergroup'] and message.from_user):
