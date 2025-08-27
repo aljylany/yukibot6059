@@ -40,6 +40,8 @@ from modules.utility_commands import WhisperStates
 from modules.ai_integration_handler import ai_integration
 # استيراد معالج القوائم الذكية
 from modules.smart_menu_handler import smart_menu_handler
+# استيراد نظام كشف المحتوى الإباحي
+from modules.content_filter import content_filter
 
 router = Router()
 
@@ -2926,6 +2928,196 @@ async def handle_location_messages(message: Message):
         "في المستقبل قد نضيف ميزات تعتمد على الموقع، "
         "لكن حالياً يمكنك استخدام الأوامر العادية."
     )
+
+
+# معالجات الصور والملفات
+@router.message(F.photo)
+@group_only
+async def handle_photo_content_filter(message: Message):
+    """معالج فحص الصور للمحتوى الإباحي"""
+    try:
+        if not content_filter.is_enabled():
+            return
+            
+        # فحص الصورة
+        result = await content_filter.check_photo(message)
+        
+        if result.get("is_inappropriate", False):
+            confidence = result.get("confidence", 0)
+            reason = result.get("reason", "محتوى غير مناسب")
+            
+            # إذا كان مستوى الثقة عالي، احذف الصورة
+            if confidence >= 0.7:
+                try:
+                    await message.delete()
+                    
+                    # إرسال تحذير للمجموعة
+                    warning_msg = (
+                        f"⚠️ **تحذير: محتوى غير مناسب**\n\n"
+                        f"👤 المستخدم: {message.from_user.first_name}\n"
+                        f"🚨 السبب: {reason}\n"
+                        f"📊 مستوى الثقة: {confidence:.0%}\n\n"
+                        f"تم حذف الصورة تلقائياً لحماية المجموعة"
+                    )
+                    
+                    await message.bot.send_message(message.chat.id, warning_msg)
+                    
+                    # إضافة سجل
+                    logging.warning(
+                        f"تم حذف صورة غير مناسبة من المستخدم {message.from_user.id} "
+                        f"في المجموعة {message.chat.id} - السبب: {reason} - الثقة: {confidence:.2f}"
+                    )
+                    
+                except Exception as delete_error:
+                    logging.error(f"خطأ في حذف الصورة: {delete_error}")
+            
+            elif confidence >= 0.5:
+                # إرسال تحذير بدون حذف
+                warning_msg = (
+                    f"⚠️ **تحذير:** تم اكتشاف محتوى مشبوه\n\n"
+                    f"👤 {message.from_user.first_name}\n"
+                    f"📝 السبب: {reason}\n"
+                    f"يرجى التأكد من مناسبة المحتوى للمجموعة"
+                )
+                
+                await message.reply(warning_msg)
+        
+        # تسجيل الفحص
+        logging.info(
+            f"فحص صورة للمستخدم {message.from_user.id}: "
+            f"مناسب={not result.get('is_inappropriate', False)}, "
+            f"ثقة={result.get('confidence', 0):.2f}"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج فحص الصور: {e}")
+
+
+@router.message(F.document)
+@group_only 
+async def handle_document_content_filter(message: Message):
+    """معالج فحص الملفات للمحتوى الإباحي"""
+    try:
+        if not content_filter.is_enabled():
+            return
+            
+        # فحص الملف
+        result = await content_filter.check_document(message)
+        
+        if result.get("is_inappropriate", False):
+            confidence = result.get("confidence", 0)
+            reason = result.get("reason", "محتوى غير مناسب")
+            file_name = result.get("file_name", "ملف غير معروف")
+            
+            # إذا كان مستوى الثقة عالي، احذف الملف
+            if confidence >= 0.6:
+                try:
+                    await message.delete()
+                    
+                    warning_msg = (
+                        f"⚠️ **تحذير: ملف غير مناسب**\n\n"
+                        f"👤 المستخدم: {message.from_user.first_name}\n"
+                        f"📁 اسم الملف: {file_name}\n"
+                        f"🚨 السبب: {reason}\n"
+                        f"📊 مستوى الثقة: {confidence:.0%}\n\n"
+                        f"تم حذف الملف تلقائياً لحماية المجموعة"
+                    )
+                    
+                    await message.bot.send_message(message.chat.id, warning_msg)
+                    
+                    logging.warning(
+                        f"تم حذف ملف غير مناسب من المستخدم {message.from_user.id} "
+                        f"في المجموعة {message.chat.id} - الملف: {file_name} - السبب: {reason}"
+                    )
+                    
+                except Exception as delete_error:
+                    logging.error(f"خطأ في حذف الملف: {delete_error}")
+        
+        # تسجيل الفحص
+        logging.info(
+            f"فحص ملف للمستخدم {message.from_user.id}: "
+            f"اسم الملف={result.get('file_name', 'N/A')}, "
+            f"مناسب={not result.get('is_inappropriate', False)}"
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج فحص الملفات: {e}")
+
+
+@router.message(F.video)
+@group_only
+async def handle_video_content_filter(message: Message):
+    """معالج فحص الفيديوهات للمحتوى الإباحي"""
+    try:
+        if not content_filter.is_enabled():
+            return
+            
+        # فحص الفيديو
+        result = await content_filter.check_video(message)
+        
+        if result.get("is_inappropriate", False):
+            confidence = result.get("confidence", 0)
+            reason = result.get("reason", "محتوى غير مناسب")
+            file_name = result.get("file_name", "فيديو غير معروف")
+            
+            if confidence >= 0.5:
+                try:
+                    await message.delete()
+                    
+                    warning_msg = (
+                        f"⚠️ **تحذير: فيديو غير مناسب**\n\n"
+                        f"👤 المستخدم: {message.from_user.first_name}\n"
+                        f"🎥 اسم الفيديو: {file_name}\n"
+                        f"🚨 السبب: {reason}\n\n"
+                        f"تم حذف الفيديو تلقائياً لحماية المجموعة"
+                    )
+                    
+                    await message.bot.send_message(message.chat.id, warning_msg)
+                    
+                    logging.warning(f"تم حذف فيديو غير مناسب من المستخدم {message.from_user.id}")
+                    
+                except Exception as delete_error:
+                    logging.error(f"خطأ في حذف الفيديو: {delete_error}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج فحص الفيديوهات: {e}")
+
+
+@router.message(F.animation)
+@group_only
+async def handle_animation_content_filter(message: Message):
+    """معالج فحص الصور المتحركة (GIF) للمحتوى الإباحي"""
+    try:
+        if not content_filter.is_enabled():
+            return
+            
+        # فحص الصورة المتحركة
+        result = await content_filter.check_animation(message)
+        
+        if result.get("is_inappropriate", False):
+            confidence = result.get("confidence", 0)
+            reason = result.get("reason", "محتوى غير مناسب")
+            
+            if confidence >= 0.5:
+                try:
+                    await message.delete()
+                    
+                    warning_msg = (
+                        f"⚠️ **تحذير: صورة متحركة غير مناسبة**\n\n"
+                        f"👤 المستخدم: {message.from_user.first_name}\n"
+                        f"🚨 السبب: {reason}\n\n"
+                        f"تم حذف الصورة المتحركة تلقائياً لحماية المجموعة"
+                    )
+                    
+                    await message.bot.send_message(message.chat.id, warning_msg)
+                    
+                    logging.warning(f"تم حذف صورة متحركة غير مناسبة من المستخدم {message.from_user.id}")
+                    
+                except Exception as delete_error:
+                    logging.error(f"خطأ في حذف الصورة المتحركة: {delete_error}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج فحص الصور المتحركة: {e}")
 
 
 # معالج الذكاء الاصطناعي الشامل - يأتي كآخر معالج

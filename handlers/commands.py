@@ -15,6 +15,7 @@ from modules import banks, real_estate, theft, stocks, investment, ranking, admi
 from utils.decorators import user_required, admin_required, group_only
 from config.settings import SYSTEM_MESSAGES, ADMIN_IDS, NOTIFICATION_CHANNEL
 from handlers.advanced_admin_handler import handle_advanced_admin_commands
+from modules.content_filter import content_filter
 
 router = Router()
 
@@ -1177,3 +1178,147 @@ async def ai_status_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في عرض حالة أنظمة الذكاء الاصطناعي: {e}")
         await message.reply(SYSTEM_MESSAGES["error"])
+
+
+
+# أوامر إدارة نظام كشف المحتوى الإباحي
+@router.message(Command("content_filter"))
+@admin_required
+async def content_filter_command(message: Message):
+    """إدارة نظام كشف المحتوى الإباحي /content_filter"""
+    try:
+        status = "🟢 مفعل" if content_filter.is_enabled() else "🔴 معطل"
+        
+        filter_menu = f"""
+🛡️ **نظام كشف المحتوى الإباحي**
+
+📊 **الحالة الحالية:** {status}
+
+⚙️ **الأوامر المتاحة:**
+• `/enable_filter` - تفعيل النظام
+• `/disable_filter` - إلغاء تفعيل النظام
+• `/filter_status` - حالة النظام
+
+📋 **معلومات النظام:**
+• يستخدم Google AI لتحليل الصور
+• يحذف المحتوى غير المناسب تلقائياً
+• يرسل تحذيرات للمديرين
+• يدعم الصور والملفات والفيديوهات
+
+🔧 **مستويات الثقة:**
+• 70%+ للصور - حذف تلقائي
+• 60%+ للملفات - حذف تلقائي  
+• 50%+ للفيديوهات - حذف تلقائي
+        """
+        
+        await message.reply(filter_menu.strip())
+        
+    except Exception as e:
+        logging.error(f"خطأ في قائمة كشف المحتوى: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض معلومات النظام")
+
+
+@router.message(Command("enable_filter"))
+@admin_required
+async def enable_filter_command(message: Message):
+    """تفعيل نظام كشف المحتوى /enable_filter"""
+    try:
+        if content_filter.is_enabled():
+            await message.reply(
+                "✅ **نظام كشف المحتوى مفعل بالفعل**\\n\\n"
+                "🛡️ النظام يعمل بشكل طبيعي\\n"
+                "📸 جميع الصور والملفات تُفحص تلقائياً"
+            )
+            return
+        
+        content_filter.toggle_system(True)
+        
+        await message.reply(
+            "✅ **تم تفعيل نظام كشف المحتوى بنجاح!**\\n\\n"
+            "🛡️ النظام الآن يحمي المجموعة من:\\n"
+            "• الصور الإباحية\\n"
+            "• المحتوى غير المناسب\\n"
+            "• الملفات المشبوهة\\n"
+            "• الفيديوهات غير اللائقة\\n\\n"
+            "⚡ سيتم حذف المحتوى المشبوه تلقائياً"
+        )
+        
+        logging.info(f"تم تفعيل نظام كشف المحتوى بواسطة المدير {message.from_user.id}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في تفعيل كشف المحتوى: {e}")
+        await message.reply("❌ حدث خطأ أثناء تفعيل النظام")
+
+
+@router.message(Command("disable_filter"))
+@admin_required
+async def disable_filter_command(message: Message):
+    """إلغاء تفعيل نظام كشف المحتوى /disable_filter"""
+    try:
+        if not content_filter.is_enabled():
+            await message.reply(
+                "🔴 **نظام كشف المحتوى معطل بالفعل**\\n\\n"
+                "⚠️ المجموعة غير محمية من المحتوى الإباحي\\n"
+                "💡 استخدم `/enable_filter` لتفعيل الحماية"
+            )
+            return
+        
+        content_filter.toggle_system(False)
+        
+        await message.reply(
+            "🔴 **تم إلغاء تفعيل نظام كشف المحتوى**\\n\\n"
+            "⚠️ تحذير: المجموعة لم تعد محمية\\n"
+            "📸 لن يتم فحص الصور والملفات\\n"
+            "🚨 قد يتم نشر محتوى غير مناسب\\n\\n"
+            "💡 يمكنك إعادة التفعيل بـ `/enable_filter`"
+        )
+        
+        logging.warning(f"تم إلغاء تفعيل نظام كشف المحتوى بواسطة المدير {message.from_user.id}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في إلغاء تفعيل كشف المحتوى: {e}")
+        await message.reply("❌ حدث خطأ أثناء إلغاء تفعيل النظام")
+
+
+@router.message(Command("filter_status"))
+@admin_required
+async def filter_status_command(message: Message):
+    """حالة نظام كشف المحتوى /filter_status"""
+    try:
+        is_enabled = content_filter.is_enabled()
+        num_keys = len(content_filter.api_keys)
+        current_key = content_filter.current_key_index + 1 if content_filter.api_keys else 0
+        
+        status_icon = "🟢" if is_enabled else "🔴"
+        status_text = "مفعل ويعمل" if is_enabled else "معطل"
+        
+        status_info = f"""
+🛡️ **حالة نظام كشف المحتوى**
+
+{status_icon} **الحالة:** {status_text}
+🔑 **مفاتيح API:** {num_keys} متوفر
+📊 **المفتاح الحالي:** {current_key}/{num_keys}
+
+📈 **الإحصائيات:**
+• الصور: فحص مع حذف تلقائي عند 70%+
+• الملفات: فحص اسم الملف والمحتوى عند 60%+
+• الفيديوهات: فحص اسم الملف عند 50%+
+• الصور المتحركة: فحص اسم الملف عند 50%+
+
+🔧 **التقنية المستخدمة:**
+• Google AI (Gemini)
+• تحليل ذكي للصور
+• كشف الكلمات المفاتيح
+
+⚡ **الأداء:**
+• استجابة فورية
+• دقة عالية في الكشف
+• حماية تلقائية
+        """
+        
+        await message.reply(status_info.strip())
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض حالة كشف المحتوى: {e}")
+        await message.reply("❌ حدث خطأ أثناء جلب معلومات النظام")
+
