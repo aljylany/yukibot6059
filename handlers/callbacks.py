@@ -111,6 +111,11 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_xo_join(callback)
             return
         
+        if data.startswith('xo_ai_join_'):
+            from modules.xo_ai_handler import handle_xo_ai_join
+            await handle_xo_ai_join(callback)
+            return
+        
         if data.startswith('xo_move_'):
             from modules.xo_game import handle_xo_move
             await handle_xo_move(callback)

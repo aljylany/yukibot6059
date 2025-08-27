@@ -11,6 +11,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database.operations import get_or_create_user, update_user_balance, add_transaction
 from modules.leveling import LevelingSystem
 from utils.helpers import format_number
+from modules.ai_player import quiz_ai, should_ai_participate
 
 # الألعاب النشطة {group_id: game_data}
 ACTIVE_QUIZ_GAMES: Dict[int, dict] = {}
@@ -156,6 +157,8 @@ class QuickQuizGame:
         self.question_start_time = 0
         self.answer_time_limit = 30  # 30 ثانية لكل سؤال
         self.prize_per_correct = 5000  # 5K لكل إجابة صحيحة
+        self.ai_enabled = False  # هل AI مفعل في اللعبة
+        self.ai_participation_chance = 0.7  # احتمال مشاركة AI في كل سؤال
         
         # بدء أول سؤال
         self.start_new_question()
@@ -213,6 +216,44 @@ class QuickQuizGame:
             result = f"❌ إجابة خاطئة! الإجابة الصحيحة: {correct_answer}"
         
         return result, all_answered
+    
+    async def get_ai_response(self) -> Optional[str]:
+        """الحصول على رد AI للسؤال الحالي"""
+        if not self.ai_enabled or not self.current_question:
+            return None
+        
+        try:
+            # AI يشارك بناءً على الاحتمالية
+            if random.random() < self.ai_participation_chance:
+                response = await quiz_ai.discuss_question(
+                    self.current_question['question'],
+                    self.current_question['options'],
+                    self.current_question['category']
+                )
+                return response
+        except Exception as e:
+            logging.error(f"خطأ في AI response: {e}")
+        
+        return None
+    
+    async def get_ai_comment_on_answer(self, correct: bool) -> Optional[str]:
+        """تعليق AI على الإجابة"""
+        if not self.ai_enabled:
+            return None
+        
+        try:
+            if correct:
+                return await quiz_ai.get_game_response('encouragement', 
+                    "ممتاز! إجابة صحيحة")
+            else:
+                return await quiz_ai.give_explanation(
+                    self.current_question['question'],
+                    self.current_question['options'][self.current_question['correct']]
+                )
+        except Exception as e:
+            logging.error(f"خطأ في AI comment: {e}")
+        
+        return None
     
     def get_question_display(self) -> str:
         """عرض السؤال الحالي"""
@@ -305,12 +346,23 @@ async def start_quick_quiz_game(message: Message):
         game = QuickQuizGame(group_id, creator_id, creator_name)
         ACTIVE_QUIZ_GAMES[group_id] = game
         
+        # فحص إذا كان AI سيشارك
+        if await should_ai_participate('quiz', 1):
+            game.ai_enabled = True
+        
         # عرض أول سؤال
         question_text = game.get_question_display()
         keyboard = game.get_question_keyboard()
         
         await message.reply(question_text, reply_markup=keyboard)
-        logging.info(f"تم بدء مسابقة سؤال وجواب في المجموعة {group_id} بواسطة {creator_name}")
+        
+        # رد AI على السؤال إذا كان مفعل
+        if game.ai_enabled:
+            ai_response = await game.get_ai_response()
+            if ai_response:
+                await message.reply(ai_response)
+        
+        logging.info(f"تم بدء مسابقة سؤال وجواب في المجموعة {group_id} بواسطة {creator_name} - AI: {game.ai_enabled}")
         
         # إعداد مؤقت السؤال
         import asyncio
@@ -347,6 +399,13 @@ async def handle_quiz_answer(callback_query, choice: int):
         # الإجابة على السؤال
         result, all_answered = game.answer_question(user_id, user_name, choice)
         await callback_query.answer(result)
+        
+        # تعليق AI على الإجابة إذا كان مفعل
+        if game.ai_enabled:
+            is_correct = choice == game.current_question["correct"]
+            ai_comment = await game.get_ai_comment_on_answer(is_correct)
+            if ai_comment:
+                await callback_query.message.reply(ai_comment)
         
         # إذا أجاب الجميع، انتقل للسؤال التالي فوراً
         if all_answered or len(game.participants) >= 3:  # إذا أجاب 3+ لاعبين انتقل للسؤال التالي
@@ -396,6 +455,12 @@ async def move_to_next_question(game: QuickQuizGame, message):
             await message.reply(answer_text + "⬇️ **السؤال التالي:**")
             await message.reply(question_text, reply_markup=keyboard)
             
+            # رد AI على السؤال الجديد
+            if game.ai_enabled:
+                ai_response = await game.get_ai_response()
+                if ai_response:
+                    await message.reply(ai_response)
+            
     except Exception as e:
         logging.error(f"خطأ في الانتقال للسؤال التالي: {e}")
 
@@ -442,6 +507,12 @@ async def question_timer(game: QuickQuizGame, message: Message):
             
             await message.reply(answer_text + "⬇️ **السؤال التالي:**")
             await message.reply(question_text, reply_markup=keyboard)
+            
+            # رد AI على السؤال الجديد
+            if game.ai_enabled:
+                ai_response = await game.get_ai_response()
+                if ai_response:
+                    await message.reply(ai_response)
 
 async def distribute_prizes(game: QuickQuizGame):
     """توزيع الجوائز على المشاركين"""

@@ -12,6 +12,7 @@ from aiogram.fsm.context import FSMContext
 from database.operations import get_or_create_user, update_user_balance, add_transaction
 from modules.leveling import LevelingSystem
 from utils.helpers import format_number
+from modules.ai_player import xo_ai, should_ai_participate
 
 # قاموس الألعاب النشطة {group_id: game_data}
 ACTIVE_XO_GAMES: Dict[int, 'XOGame'] = {}
@@ -35,6 +36,8 @@ class XOGame:
         self.game_ended = False
         self.winner = None
         self.created_at = time.time()
+        self.has_ai_player = False  # هل يوجد AI في اللعبة
+        self.ai_player_index = None  # فهرس لاعب AI
     
     def get_board_keyboard(self):
         """إنشاء لوحة مفاتيح اللعبة"""
@@ -111,6 +114,37 @@ class XOGame:
             return True
         
         return False
+    
+    async def add_ai_player(self):
+        """إضافة AI كلاعب ثاني"""
+        if len(self.players) == 1 and not self.has_ai_player:
+            ai_player = {
+                'id': -1,  # معرف خاص للـ AI
+                'name': 'يوكي AI 🤖',
+                'username': 'yuki_ai'
+            }
+            self.players.append(ai_player)
+            self.has_ai_player = True
+            self.ai_player_index = 1
+            self.game_started = True
+            return True
+        return False
+    
+    async def get_ai_move(self):
+        """الحصول على حركة AI"""
+        if not self.has_ai_player or self.current_player != self.ai_player_index:
+            return None, None
+        
+        # تحديد رموز اللاعبين
+        ai_symbol = X if self.ai_player_index == 1 else O
+        player_symbol = O if self.ai_player_index == 1 else X
+        
+        # الحصول على أفضل حركة من AI
+        move, response = await xo_ai.make_move_with_personality(
+            self.board, ai_symbol, player_symbol
+        )
+        
+        return move, response
 
 async def start_xo_game(message: Message):
     """بدء لعبة اكس اوه جديدة"""
@@ -137,6 +171,16 @@ async def start_xo_game(message: Message):
         game = XOGame(group_id, creator_id, creator_name)
         ACTIVE_XO_GAMES[group_id] = game
         
+        # إضافة المنشئ كأول لاعب
+        game.players.append({
+            'id': creator_id,
+            'name': creator_name,
+            'symbol': O
+        })
+        
+        # فحص إذا كان AI سيشارك
+        ai_will_join = await should_ai_participate('xo', len(game.players))
+        
         # إرسال رسالة اللعبة
         game_text = (
             "🎮 **لعبة اكس اوه (Tic-Tac-Toe)**\n\n"
@@ -149,12 +193,16 @@ async def start_xo_game(message: Message):
             f"• الهدف: ترتيب 3 رموز في خط مستقيم\n"
             f"• {O} للاعب الأول، {X} للاعب الثاني\n"
             f"• انقر على المربع الفارغ للعب\n\n"
-            f"👥 **انضم للعبة بالضغط على الزر أدناه!**"
+            f"👥 **انضم للعبة أو العب ضد الذكاء الاصطناعي!**"
         )
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎯 انضمام للعبة", callback_data=f"xo_join_{group_id}")]
-        ])
+        buttons = []
+        buttons.append([InlineKeyboardButton(text="🎯 انضمام للعبة", callback_data=f"xo_join_{group_id}")])
+        
+        if ai_will_join:
+            buttons.append([InlineKeyboardButton(text="🤖 العب ضد يوكي AI", callback_data=f"xo_ai_join_{group_id}")])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
         
         await message.reply(game_text, reply_markup=keyboard)
         logging.info(f"تم إنشاء لعبة اكس اوه في المجموعة {group_id} بواسطة {creator_name}")
@@ -206,14 +254,6 @@ async def handle_xo_join(callback: CallbackQuery):
         if not user_data:
             await callback.answer("❌ يجب إنشاء حساب أولاً! اكتب 'انشاء حساب بنكي'", show_alert=True)
             return
-        
-        # إضافة اللاعب
-        if not game.players:  # إضافة المنشئ كأول لاعب
-            game.players.append({
-                'id': game.creator_id,
-                'name': game.creator_name,
-                'symbol': O
-            })
         
         # إضافة اللاعب الثاني
         game.players.append({
@@ -299,19 +339,28 @@ async def handle_xo_move(callback: CallbackQuery):
         if game.game_ended:
             await handle_game_end(callback, game)
         else:
-            # تحديث اللوحة
-            current_player_name = game.players[game.current_player]['name']
-            current_symbol = game.players[game.current_player]['symbol']
+            # فحص إذا كان دور AI
+            if game.has_ai_player and game.current_player == game.ai_player_index:
+                # معالجة حركة AI
+                from modules.xo_ai_handler import process_ai_move
+                await process_ai_move(game, callback)
+            else:
+                # تحديث اللوحة
+                current_player_name = game.players[game.current_player]['name']
+                current_symbol = game.players[game.current_player]['symbol']
+                
+                emoji = "🤖" if game.has_ai_player else "👤"
+                
+                game_text = (
+                    "🎮 **لعبة اكس اوه جارية**\n\n"
+                    f"👤 **{O} اللاعب الأول:** {game.players[0]['name']}\n"
+                    f"{emoji} **{X} اللاعب الثاني:** {game.players[1]['name']}\n\n"
+                    f"🎯 **دور اللاعب:** {current_player_name} ({current_symbol})"
+                )
+                
+                if callback.message:
+                    await callback.message.edit_text(game_text, reply_markup=game.get_board_keyboard())
             
-            game_text = (
-                "🎮 **لعبة اكس اوه جارية**\n\n"
-                f"👤 **{O} اللاعب الأول:** {game.players[0]['name']}\n"
-                f"👤 **{X} اللاعب الثاني:** {game.players[1]['name']}\n\n"
-                f"🎯 **دور اللاعب:** {current_player_name} ({current_symbol})"
-            )
-            
-            if callback.message:
-                await callback.message.edit_text(game_text, reply_markup=game.get_board_keyboard())
             await callback.answer("✅ تم تنفيذ الحركة!")
         
     except Exception as e:

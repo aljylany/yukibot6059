@@ -11,6 +11,7 @@ from typing import Dict, Optional
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database.operations import get_or_create_user, update_user_balance, add_transaction
 from utils.helpers import format_number
+from modules.ai_player import word_ai, should_ai_participate
 
 # قاموس الألعاب النشطة {group_id: LetterShuffleGame}
 ACTIVE_SHUFFLE_GAMES: Dict[int, 'LetterShuffleGame'] = {}
@@ -147,6 +148,8 @@ class LetterShuffleGame:
         self.prize_pool = 5000  # الجائزة الأساسية
         self.hint_used = False
         self.game_message_id = None  # لحذف الرسالة لاحقاً
+        self.ai_enabled = False  # هل AI مفعل في اللعبة
+        self.ai_hints_given = 0  # عدد التلميحات من AI
         
         # اختيار كلمة عشوائية
         self.select_random_word()
@@ -164,6 +167,39 @@ class LetterShuffleGame:
         
         self.hint_used = True
         return f"💡 **تلميح:** {self.current_word['hint']}"
+    
+    async def get_ai_analysis(self, guess: str) -> str:
+        """تحليل AI للتخمين"""
+        if not self.ai_enabled:
+            return ""
+        
+        try:
+            analysis = await word_ai.analyze_guess(
+                guess, 
+                self.current_word['word'], 
+                self.current_word['shuffled']
+            )
+            return analysis
+        except Exception as e:
+            logging.error(f"خطأ في AI analysis: {e}")
+            return ""
+    
+    async def get_ai_hint(self) -> str:
+        """تلميح ذكي من AI"""
+        if not self.ai_enabled or self.ai_hints_given >= 2:
+            return ""
+        
+        try:
+            self.ai_hints_given += 1
+            hint = await word_ai.give_hint(
+                self.current_word['word'],
+                self.current_word['shuffled'],
+                self.current_word['hint']
+            )
+            return hint
+        except Exception as e:
+            logging.error(f"خطأ في AI hint: {e}")
+            return ""
     
     def check_guess(self, user_id: int, user_name: str, guess: str) -> str:
         """فحص تخمين اللاعب"""
@@ -301,6 +337,10 @@ async def start_letter_shuffle_game(message: Message):
         game = LetterShuffleGame(group_id, creator_id, creator_name)
         ACTIVE_SHUFFLE_GAMES[group_id] = game
         
+        # فحص إذا كان AI سيشارك
+        if await should_ai_participate('word_shuffle', 1):
+            game.ai_enabled = True
+        
         # تعيين الحد الزمني
         set_game_cooldown(group_id)
         
@@ -319,10 +359,16 @@ async def start_letter_shuffle_game(message: Message):
         game_message = await message.reply(game_text, reply_markup=game.get_game_keyboard())
         game.game_message_id = game_message.message_id
         
+        # رسالة ترحيب من AI إذا كان مفعل
+        if game.ai_enabled:
+            ai_welcome = await word_ai.get_game_response('encouragement', 
+                f"🎯 لعبة رائعة! سأساعدكم في حل الكلمة")
+            await message.reply(ai_welcome)
+        
         # بدء مؤقت انتهاء اللعبة (منع الإزعاج)
         asyncio.create_task(auto_end_game(group_id, game.game_duration))
         
-        logging.info(f"تم بدء لعبة خلط الحروف في المجموعة {group_id}")
+        logging.info(f"تم بدء لعبة خلط الحروف في المجموعة {group_id} - AI: {game.ai_enabled}")
         
     except Exception as e:
         logging.error(f"خطأ في بدء لعبة ترتيب الحروف: {e}")
@@ -384,8 +430,18 @@ async def handle_shuffle_guess(message: Message):
         # إرسال النتيجة
         await message.reply(result)
         
+        # إضافة تحليل AI إذا كان مفعل ولم يفز اللاعب
+        if game.ai_enabled and not game.winner:
+            ai_analysis = await game.get_ai_analysis(guess)
+            if ai_analysis:
+                await message.reply(f"🤖 **تحليل يوكي:** {ai_analysis}")
+        
         # إذا فاز أحد
         if game.winner:
+            # رسالة تهنئة من AI
+            if game.ai_enabled:
+                ai_congrats = await word_ai.get_game_response('victory', "مبروك للفائز!")
+                await message.reply(ai_congrats)
             # منح الجائزة
             await update_user_balance(user_id, game.prize_pool)
             await add_transaction(
@@ -443,6 +499,13 @@ async def handle_shuffle_hint_callback(callback_query):
             return
         
         hint = game.get_hint()
+        
+        # إضافة تلميح AI إضافي إذا كان متاح
+        if game.ai_enabled and not game.hint_used:  # إذا لم يُستخدم التلميح الأساسي بعد
+            ai_hint = await game.get_ai_hint()
+            if ai_hint:
+                hint += f"\n\n🤖 {ai_hint}"
+        
         await callback_query.answer(hint, show_alert=True)
         
     except Exception as e:

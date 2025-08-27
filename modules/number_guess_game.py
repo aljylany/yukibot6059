@@ -11,6 +11,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database.operations import get_or_create_user, update_user_balance, add_transaction
 from modules.leveling import LevelingSystem
 from utils.helpers import format_number
+from modules.ai_player import number_ai, should_ai_participate
 
 # الألعاب النشطة {group_id: game_data}
 ACTIVE_GUESS_GAMES: Dict[int, dict] = {}
@@ -30,6 +31,8 @@ class NumberGuessGame:
         self.winner = None
         self.created_at = time.time()
         self.prize_pool = 50000  # جائزة ثابتة
+        self.ai_enabled = False  # هل AI مفعل في اللعبة
+        self.ai_hints_given = 0  # عدد التلميحات المعطاة
     
     def make_guess(self, user_id: int, user_name: str, guess: int) -> str:
         """تسجيل محاولة تخمين"""
@@ -68,6 +71,34 @@ class NumberGuessGame:
         
         return result
     
+    async def get_ai_hint(self) -> Optional[str]:
+        """الحصول على تلميح من AI"""
+        if not self.ai_enabled or len(self.attempts) < 3:
+            return None
+        
+        try:
+            # تحليل آخر تخمين
+            last_attempt = self.attempts[-1]
+            hint = await number_ai.analyze_guess(
+                last_attempt['guess'], 
+                self.target_number, 
+                len(self.attempts)
+            )
+            
+            # إعطاء نصيحة استراتيجية أحياناً
+            if len(self.attempts) >= 7 and self.ai_hints_given < 2:
+                all_guesses = [attempt['guess'] for attempt in self.attempts]
+                strategic_hint = await number_ai.give_strategic_hint(
+                    all_guesses, self.target_number, self.max_attempts
+                )
+                hint += f"\n{strategic_hint}"
+                self.ai_hints_given += 1
+            
+            return hint
+        except Exception as e:
+            logging.error(f"خطأ في AI hint: {e}")
+            return None
+    
     def get_game_status(self) -> str:
         """الحصول على حالة اللعبة"""
         status_text = (
@@ -94,6 +125,10 @@ class NumberGuessGame:
             status_text += "\n\n🎯 **آخر المحاولات:**\n"
             for attempt in self.attempts[-5:]:
                 status_text += f"• {attempt['name']}: {attempt['guess']} → {attempt['result']}\n"
+        
+        # عرض معلومات AI إذا كان مفعل
+        if self.ai_enabled:
+            status_text += f"\n🤖 **مساعد ذكي مفعّل!**"
         
         return status_text
 
@@ -124,10 +159,21 @@ async def start_number_guess_game(message: Message):
         game = NumberGuessGame(group_id, creator_id, creator_name)
         ACTIVE_GUESS_GAMES[group_id] = game
         
+        # فحص إذا كان AI سيشارك
+        if await should_ai_participate('number_guess', 1):
+            game.ai_enabled = True
+        
         game_text = game.get_game_status()
         
         await message.reply(game_text)
-        logging.info(f"تم بدء لعبة خمن الرقم في المجموعة {group_id} بواسطة {creator_name}")
+        
+        # رسالة ترحيب من AI إذا كان مفعل
+        if game.ai_enabled:
+            ai_welcome = await number_ai.get_game_response('encouragement', 
+                f"🎯 هيا نلعب لعبة خمن الرقم! سأساعدكم بالتلميحات الذكية")
+            await message.reply(ai_welcome)
+        
+        logging.info(f"تم بدء لعبة خمن الرقم في المجموعة {group_id} بواسطة {creator_name} - AI: {game.ai_enabled}")
         
         # إعداد مؤقت انتهاء اللعبة (3 دقائق)
         import asyncio
@@ -180,6 +226,12 @@ async def handle_number_input(message: Message):
             # استمرار اللعبة
             quick_response = f"{user_name}: {guess} → {result}"
             await message.reply(quick_response)
+            
+            # إعطاء تلميح من AI إذا كان مفعل ولم يفز
+            if game.ai_enabled and not game.winner and not game.game_ended:
+                ai_hint = await game.get_ai_hint()
+                if ai_hint:
+                    await message.reply(ai_hint)
         
     except Exception as e:
         logging.error(f"خطأ في معالجة التخمين: {e}")
