@@ -336,6 +336,20 @@ class ComprehensiveContentFilter:
         try:
             text_lower = text.lower()
             
+            # فحص متقدم باستخدام Google Gemini
+            if self.model:
+                ai_result = await self._check_text_with_ai(text)
+                if ai_result.get('has_profanity', False):
+                    result['has_violation'] = True
+                    result['violation_type'] = ViolationType.TEXT_PROFANITY.value
+                    result['severity'] = ai_result.get('severity', SeverityLevel.MEDIUM.value)
+                    result['details'] = {
+                        'ai_analysis': ai_result.get('reason', 'محتوى غير مناسب'),
+                        'confidence': ai_result.get('confidence', 0),
+                        'method': 'ai_gemini'
+                    }
+                    return result
+            
             # فحص السياق الجنسي
             sexual_matches = []
             for keyword in self.sexual_context_keywords:
@@ -347,29 +361,27 @@ class ComprehensiveContentFilter:
                 result['violation_type'] = ViolationType.SEXUAL_CONTENT.value
                 result['severity'] = SeverityLevel.MEDIUM.value
                 result['details'] = {
-                    'matched_keywords': sexual_matches[:3],  # أول 3 كلمات فقط
+                    'matched_keywords': sexual_matches[:3],
                     'context': 'sexual_content_detected'
                 }
                 return result
             
-            # فحص السباب (استخدام النظام الموجود)
-            from modules.profanity_filter import ALL_BANNED_WORDS, generate_text_variations, create_arabic_pattern
-            import re
+            # فحص السباب التقليدي (احتياطي)
+            banned_words_list = [
+                "شرموط", "عاهرة", "منيك", "نيك", "كس", "زب", "طيز", "خرا",
+                "منيوك", "ايري", "انيك", "عرص", "حمار", "احمق", "غبي", "قحبة", "كسمك"
+            ]
             
-            text_variations = generate_text_variations(text_lower.strip())
-            
-            for text_variant in text_variations:
-                for banned_word in ALL_BANNED_WORDS[:20]:  # فحص أول 20 كلمة للسرعة
-                    arabic_pattern = create_arabic_pattern(banned_word.lower())
-                    if re.search(arabic_pattern, text_variant):
-                        result['has_violation'] = True
-                        result['violation_type'] = ViolationType.TEXT_PROFANITY.value
-                        result['severity'] = SeverityLevel.HIGH.value
-                        result['details'] = {
-                            'matched_word': banned_word,
-                            'context': 'profanity_detected'
-                        }
-                        return result
+            for banned_word in banned_words_list:
+                if banned_word in text_lower:
+                    result['has_violation'] = True
+                    result['violation_type'] = ViolationType.TEXT_PROFANITY.value
+                    result['severity'] = SeverityLevel.HIGH.value
+                    result['details'] = {
+                        'matched_word': banned_word,
+                        'method': 'database_fallback'
+                    }
+                    return result
             
             return result
             
@@ -1327,5 +1339,45 @@ class ComprehensiveContentFilter:
                 'recent_violations': []
             }
 
-# إنشاء كائن النظام الشامل
+    async def _check_text_with_ai(self, text: str) -> Dict[str, Any]:
+        """فحص النص باستخدام Google Gemini"""
+        try:
+            if not self.model:
+                return {'has_profanity': False}
+            
+            prompt = f"""
+أنت نظام ذكي لكشف السباب والألفاظ المسيئة في النصوص العربية.
+قم بتحليل النص التالي وحدد:
+1. هل يحتوي على سباب أو ألفاظ مسيئة؟
+2. ما مستوى الخطورة من 1-5؟
+3. ما السبب؟
+
+النص للتحليل: "{text}"
+
+أجب فقط بـ JSON:
+{{"has_profanity": true/false, "severity": 1-5, "reason": "السبب", "confidence": 0.0-1.0}}
+"""
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content, 
+                prompt
+            )
+            
+            import json
+            try:
+                result = json.loads(response.text.strip())
+                return result
+            except:
+                # تحليل النص بطريقة بديلة
+                response_text = response.text.lower()
+                if any(word in response_text for word in ['true', 'profanity', 'سباب', 'مسيء']):
+                    return {'has_profanity': True, 'severity': 3, 'reason': 'كُشف بواسطة الذكاء الاصطناعي', 'confidence': 0.8}
+                else:
+                    return {'has_profanity': False, 'severity': 0, 'reason': 'نص نظيف', 'confidence': 0.9}
+                    
+        except Exception as e:
+            logging.error(f"❌ خطأ في فحص النص بالذكاء الاصطناعي: {e}")
+            return {'has_profanity': False}
+
+# إنشاء كائج النظام الشامل
 comprehensive_filter = ComprehensiveContentFilter()
