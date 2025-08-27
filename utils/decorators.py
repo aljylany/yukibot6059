@@ -9,7 +9,11 @@ from aiogram.types import Message, CallbackQuery
 from typing import Union, Callable, Any
 
 from database.operations import get_user, is_user_banned, update_user_activity
-from config.settings import ADMIN_IDS, SYSTEM_MESSAGES
+from config.settings import SYSTEM_MESSAGES
+# تجنب الاستيراد الدائري لـ ADMIN_IDS
+def get_admin_ids():
+    from config.settings import ADMIN_IDS
+    return ADMIN_IDS
 
 
 def group_only(func: Callable) -> Callable:
@@ -121,7 +125,8 @@ def admin_required(func: Callable) -> Callable:
                 chat_method = message_or_query.reply
             
             # التحقق من صلاحيات الإدارة
-            if user_id not in ADMIN_IDS:
+            admin_ids = get_admin_ids()
+            if user_id not in admin_ids:
                 await chat_method(SYSTEM_MESSAGES["unauthorized"])
                 return
             
@@ -291,7 +296,8 @@ def maintenance_mode(maintenance_message: str = None):
                         user_id = message_or_query.from_user.id
                         chat_method = message_or_query.reply
                     
-                    if user_id not in ADMIN_IDS:
+                    admin_ids = get_admin_ids()
+                    if user_id not in admin_ids:
                         msg = maintenance_message or SYSTEM_MESSAGES["maintenance"]
                         await chat_method(msg)
                         return
@@ -385,7 +391,8 @@ def premium_required(func: Callable) -> Callable:
             
             # التحقق من الاشتراك المميز (يمكن إضافة منطق التحقق هنا)
             # مؤقتاً نسمح للمديرين
-            if user_id not in ADMIN_IDS:
+            admin_ids = get_admin_ids()
+            if user_id not in admin_ids:
                 # يمكن إضافة فحص قاعدة البيانات للاشتراك المميز
                 has_premium = False  # placeholder
                 

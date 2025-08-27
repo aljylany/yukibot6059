@@ -5,8 +5,14 @@ Main Bot Settings Configuration
 
 import os
 
+# تحميل المفاتيح من ملف api.txt
+from utils.api_loader import api_loader
+
+# تعيين متغيرات البيئة من الملف
+api_loader.set_environment_variables()
+
 # معلومات البوت الأساسية
-BOT_TOKEN = "7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
+BOT_TOKEN = api_loader.get_key('BOT_TOKEN') or "7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
 BOT_USERNAME = "theyuki_bot"
 
 # قائمة المديرين والمالكين

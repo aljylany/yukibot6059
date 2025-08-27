@@ -14,7 +14,7 @@ from aiogram.client.default import DefaultBotProperties
 
 from config.settings import BOT_TOKEN
 from config.database import init_database
-from handlers import commands, callbacks, messages
+from handlers import commands, callbacks, messages, smart_commands
 from utils.helpers import setup_logging
 
 # متغير عام لتتبع وقت بدء التشغيل
@@ -69,6 +69,7 @@ async def main():
     # تسجيل معالجات الأحداث
     dp.include_router(commands.router)
     dp.include_router(callbacks.router)
+    dp.include_router(smart_commands.router)
     dp.include_router(messages.router)
     
     # تسجيل معالج أحداث المجموعات

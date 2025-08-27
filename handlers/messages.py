@@ -38,6 +38,8 @@ from config.hierarchy import MASTERS
 from modules.utility_commands import WhisperStates
 # استيراد نظام الذكاء الاصطناعي الشامل
 from modules.ai_integration_handler import ai_integration
+# استيراد معالج القوائم الذكية
+from modules.smart_menu_handler import smart_menu_handler
 
 router = Router()
 
@@ -197,12 +199,276 @@ async def handle_text_messages(message: Message, state: FSMContext):
                 await handle_keyword_input(message, state)
             elif current_state == CustomReplyStates.waiting_for_response.state:
                 await handle_response_input(message, state)
+        elif current_state.startswith("SmartCommand"):
+            await handle_smart_menu_states(message, state, current_state)
         else:
             await handle_general_message(message, state)
             
     except Exception as e:
         logging.error(f"خطأ في معالجة الرسالة: {e}")
         await message.reply(SYSTEM_MESSAGES["error"])
+        await state.clear()
+
+
+async def handle_smart_menu_states(message: Message, state: FSMContext, current_state: str):
+    """معالج حالات القوائم الذكية"""
+    try:
+        from utils.states import SmartCommandStates
+        
+        if current_state == SmartCommandStates.waiting_smart_menu_choice.state:
+            await smart_menu_handler.handle_smart_menu_choice(message, state, 'main_smart_menu')
+            
+        elif current_state == SmartCommandStates.waiting_smart_games_choice.state:
+            await smart_menu_handler.handle_smart_menu_choice(message, state, 'games_menu')
+            
+        elif current_state == SmartCommandStates.waiting_quiz_answer.state:
+            await handle_quiz_answer(message, state)
+            
+        elif current_state == SmartCommandStates.waiting_story_choice.state:
+            await handle_story_choice(message, state)
+            
+        elif current_state == SmartCommandStates.waiting_battle_answer.state:
+            await handle_battle_answer(message, state)
+            
+        elif current_state == SmartCommandStates.waiting_challenge_answer.state:
+            await handle_challenge_answer(message, state)
+            
+    except Exception as e:
+        logging.error(f"خطأ في معالج القوائم الذكية: {e}")
+        await message.reply("❌ حدث خطأ أثناء معالجة اختيارك")
+        await state.clear()
+
+
+async def handle_quiz_answer(message: Message, state: FSMContext):
+    """معالج إجابات الكويز الذكي"""
+    try:
+        user_input = message.text.strip()
+        if not user_input.isdigit():
+            await message.reply("❌ يرجى إدخال رقم الإجابة (1-4)")
+            return
+            
+        choice = int(user_input)
+        if choice < 1 or choice > 4:
+            await message.reply("❌ يرجى اختيار رقم من 1 إلى 4")
+            return
+            
+        # الحصول على بيانات الكويز
+        data = await state.get_data()
+        quiz_data = data.get('quiz_data')
+        
+        if not quiz_data:
+            await message.reply("❌ انتهت صلاحية الكويز، ابدأ كويز جديد")
+            await state.clear()
+            return
+            
+        # معالجة الإجابة
+        result = f"🧠 **نتيجة الكويز**\n\n"
+        
+        if choice == quiz_data.get('correct_answer', 1):
+            result += "✅ **إجابة صحيحة!**\n"
+            result += f"🏆 لقد ربحت {quiz_data.get('xp_reward', 10)} XP\n"
+            
+            # إضافة XP
+            try:
+                from modules.simple_level_display import add_simple_xp
+                await add_simple_xp(message.from_user.id, quiz_data.get('xp_reward', 10))
+            except Exception as xp_error:
+                logging.error(f"خطأ في إضافة XP: {xp_error}")
+        else:
+            result += "❌ **إجابة خاطئة**\n"
+            result += f"💡 الإجابة الصحيحة هي: {quiz_data.get('correct_answer', 1)}\n"
+            
+        result += f"📚 **التفسير:** {quiz_data.get('explanation', 'لا يوجد تفسير')}\n\n"
+        result += "🎮 اكتب 'كويز ذكي' لبدء كويز جديد!"
+        
+        await message.reply(result)
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج إجابة الكويز: {e}")
+        await message.reply("❌ حدث خطأ أثناء معالجة إجابتك")
+        await state.clear()
+
+
+async def handle_story_choice(message: Message, state: FSMContext):
+    """معالج اختيار القصة التفاعلية"""
+    try:
+        user_input = message.text.strip()
+        if not user_input.isdigit():
+            await message.reply("❌ يرجى إدخال رقم الخيار")
+            return
+            
+        choice = int(user_input)
+        
+        # الحصول على بيانات القصة
+        data = await state.get_data()
+        story_data = data.get('story_data')
+        
+        if not story_data:
+            await message.reply("❌ انتهت صلاحية القصة، ابدأ قصة جديدة")
+            await state.clear()
+            return
+            
+        choices = story_data.get('choices', [])
+        if choice < 1 or choice > len(choices):
+            await message.reply(f"❌ يرجى اختيار رقم من 1 إلى {len(choices)}")
+            return
+            
+        # معالجة الاختيار وعرض النتيجة
+        selected_choice = choices[choice - 1]
+        result = f"📖 **نتيجة اختيارك:**\n\n"
+        result += f"✨ لقد اخترت: {selected_choice}\n"
+        result += f"📜 {story_data.get('outcomes', {}).get(str(choice), 'مغامرة رائعة تنتظرك!')}\n\n"
+        
+        # إضافة XP
+        xp_reward = story_data.get('xp_reward', 15)
+        result += f"🏆 لقد ربحت {xp_reward} XP لإكمال القصة!\n\n"
+        result += "📚 اكتب 'قصة ذكية' لبدء قصة جديدة!"
+        
+        try:
+            from modules.simple_level_display import add_simple_xp
+            await add_simple_xp(message.from_user.id, xp_reward)
+        except Exception as xp_error:
+            logging.error(f"خطأ في إضافة XP: {xp_error}")
+        
+        await message.reply(result)
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج اختيار القصة: {e}")
+        await message.reply("❌ حدث خطأ أثناء معالجة اختيارك")
+        await state.clear()
+
+
+async def handle_battle_answer(message: Message, state: FSMContext):
+    """معالج إجابات معركة الذكاء"""
+    try:
+        user_input = message.text.strip()
+        if not user_input.isdigit():
+            await message.reply("❌ يرجى إدخال رقم الإجابة")
+            return
+            
+        choice = int(user_input)
+        
+        # الحصول على بيانات المعركة
+        data = await state.get_data()
+        battle_data = data.get('battle_data')
+        
+        if not battle_data:
+            await message.reply("❌ انتهت صلاحية المعركة")
+            await state.clear()
+            return
+            
+        options = battle_data.get('options', [])
+        if choice < 1 or choice > len(options):
+            await message.reply(f"❌ يرجى اختيار رقم من 1 إلى {len(options)}")
+            return
+            
+        # معالجة النتيجة
+        user_name = message.from_user.first_name or "اللاعب"
+        
+        result = f"⚔️ **نتيجة معركة الذكاء**\n\n"
+        
+        if choice == battle_data.get('correct_answer', 1):
+            result += f"🏆 **انتصار! {user_name} فاز على يوكي!**\n"
+            result += f"🤖 يوكي: هااااه! لقد هزمتني! أحسنت يا {user_name}!\n"
+            result += f"💎 مكافأة الانتصار: {battle_data.get('victory_reward', 25)} XP\n"
+            
+            try:
+                from modules.simple_level_display import add_simple_xp
+                await add_simple_xp(message.from_user.id, battle_data.get('victory_reward', 25))
+            except Exception as xp_error:
+                logging.error(f"خطأ في إضافة XP: {xp_error}")
+        else:
+            result += f"🤖 **يوكي انتصر!**\n"
+            result += f"🤖 يوكي: أحسنت يا {user_name}، لكن الذكاء الاصطناعي فاز هذه المرة!\n"
+            result += f"💡 الإجابة الصحيحة كانت: {battle_data.get('correct_answer', 1)}\n"
+            result += f"🎁 مكافأة المشاركة: {battle_data.get('participation_reward', 10)} XP\n"
+            
+            try:
+                from modules.simple_level_display import add_simple_xp
+                await add_simple_xp(message.from_user.id, battle_data.get('participation_reward', 10))
+            except Exception as xp_error:
+                logging.error(f"خطأ في إضافة XP: {xp_error}")
+                
+        result += f"\n🔥 اكتب 'معركة ذكية' لتحدٍ جديد!"
+        
+        await message.reply(result)
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج معركة الذكاء: {e}")
+        await message.reply("❌ حدث خطأ أثناء معالجة المعركة")
+        await state.clear()
+
+
+async def handle_challenge_answer(message: Message, state: FSMContext):
+    """معالج إجابات التحدي الاقتصادي"""
+    try:
+        user_input = message.text.strip()
+        if not user_input.isdigit():
+            await message.reply("❌ يرجى إدخال رقم القرار")
+            return
+            
+        choice = int(user_input)
+        
+        # الحصول على بيانات التحدي
+        data = await state.get_data()
+        challenge_data = data.get('challenge_data')
+        
+        if not challenge_data:
+            await message.reply("❌ انتهت صلاحية التحدي")
+            await state.clear()
+            return
+            
+        options = challenge_data.get('options', [])
+        if choice < 1 or choice > len(options):
+            await message.reply(f"❌ يرجى اختيار رقم من 1 إلى {len(options)}")
+            return
+            
+        # معالجة النتيجة
+        selected_option = options[choice - 1]
+        user_name = message.from_user.first_name or "المستثمر"
+        
+        result = f"💼 **نتيجة التحدي الاقتصادي**\n\n"
+        result += f"📊 **قرارك:** {selected_option}\n\n"
+        
+        # تحديد النتيجة بناءً على الاختيار
+        outcomes = challenge_data.get('outcomes', {})
+        outcome = outcomes.get(str(choice), 'قرار جيد!')
+        
+        result += f"📈 **النتيجة:** {outcome}\n"
+        
+        # المكافآت
+        xp_reward = challenge_data.get('xp_reward', 20)
+        money_reward = challenge_data.get('money_reward', 0)
+        
+        result += f"🏆 مكافأة XP: {xp_reward}\n"
+        if money_reward > 0:
+            result += f"💰 مكافأة نقدية: {money_reward}$\n"
+            
+            # إضافة المال للرصيد
+            try:
+                from database.operations import update_user_balance
+                await update_user_balance(message.from_user.id, money_reward)
+            except Exception as money_error:
+                logging.error(f"خطأ في إضافة المال: {money_error}")
+        
+        result += f"\n💡 اكتب 'تحدي اقتصادي' لتحدٍ جديد!"
+        
+        # إضافة XP
+        try:
+            from modules.simple_level_display import add_simple_xp
+            await add_simple_xp(message.from_user.id, xp_reward)
+        except Exception as xp_error:
+            logging.error(f"خطأ في إضافة XP: {xp_error}")
+        
+        await message.reply(result)
+        await state.clear()
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج التحدي الاقتصادي: {e}")
+        await message.reply("❌ حدث خطأ أثناء معالجة التحدي")
         await state.clear()
 
 

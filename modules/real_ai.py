@@ -81,9 +81,16 @@ class RealYukiAI:
                 logging.error("Google Gemini SDK not available")
                 return
                 
-            api_key = os.getenv('GEMINI_API_KEY')
+            # أولاً، محاولة تحميل من ملف api.txt
+            from utils.api_loader import api_loader
+            api_key = api_loader.get_random_ai_key()
+            
+            # إذا لم نجد، نحاول من متغيرات البيئة
             if not api_key:
-                logging.error("GEMINI_API_KEY not found in environment variables")
+                api_key = os.getenv('GEMINI_API_KEY')
+                
+            if not api_key:
+                logging.error("لم يتم العثور على مفتاح Gemini في api.txt أو متغيرات البيئة")
                 return
                 
             # إعداد العميل

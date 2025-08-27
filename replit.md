@@ -1,80 +1,102 @@
-# Overview
+# 🤖 بوت يوكي - Yuki Bot
 
-This project is an advanced Arabic-language Telegram economic simulation bot named "يوكي" (Yuki), designed to offer a comprehensive virtual economy experience powered by artificial intelligence. Its core purpose is to provide an engaging and interactive platform for users to participate in banking, real estate, stock trading, farming, and player-vs-player systems within a virtual environment. The project now integrates comprehensive AI systems across all modules, creating natural conversations, intelligent economic analysis, and adaptive gaming experiences. The bot features advanced AI-driven message processing, smart economic suggestions, interactive AI games, and personality protection mechanisms. The business vision is to create the leading AI-powered virtual economic game within the Telegram ecosystem, attracting a wide user base through its unique intelligent features and immersive Arabic-centric design.
+## 📋 نظرة عامة على المشروع
+بوت تيليجرام ذكي ومتقدم يوفر ميزات متنوعة للمستخدمين في المجموعات بما في ذلك الذكاء الاصطناعي، الألعاب، الإدارة المالية، والأنظمة التفاعلية.
 
-# User Preferences
+## 🔄 التحديثات الأخيرة (27 أغسطس 2025)
 
-Preferred communication style: Simple, everyday language.
+### ✅ الإنجازات الرئيسية:
+- **إصلاح نظام الخيارات المرقمة:** تم حل المشكلة التي كانت تمنع البوت من الاستجابة للأرقام في القوائم الذكية
+- **نظام API جديد:** تم تطوير نظام لقراءة جميع مفاتيح API من ملف `api.txt` بدلاً من متغيرات البيئة
+- **حالات FSM محدثة:** إضافة حالات جديدة للتعامل مع الخيارات الذكية المرقمة
+- **معالجات متخصصة:** إنشاء معالجات مخصصة للقوائم الذكية والتفاعل معها
 
-Bot Configuration:
-- Remove all keyboard buttons (inline keyboards)
-- Bot works only in groups (not private messages except /start)
-- /start command works ONLY in private chats, completely disabled in groups
-- /start in private asks user to add bot to group as admin
-- All functionality integrated into text messages/commands instead of buttons
-- Reply-based theft system where players reply to victim messages and write "سرقة" or "سرف"
-- Theft functionality works through text commands only: reply to messages with "سرقة"/"سرف" for stealing
-- Castle deletion confirmation now accepts "تأكيد" or "نعم", cancellation with "لا"
-- New Farm Commands: "حصاد محاصيلي" for harvesting all ready crops and "حصاد [النوع] [العدد]" for harvesting specific quantities of specific crops
-- Master-only delete custom reply functionality: "حذف رد [keyword]" command for Masters to delete any custom keyword/reply
-- Master Account Deletion Command: "حذف حسابه" command allows Masters to completely delete any user's account with 10-second countdown and cancellation option. Includes protection against deleting other Masters
-- Master Level Fix Command: "اصلح مستواه" command allows Masters to fix level inconsistencies by deleting and resetting user level data
-- Natural Arabic Protection Commands: Group owners can control protection with intuitive commands: "تفعيل الحماية", "تعطيل الحماية", "حالة الحماية" (restricted to group owners and masters)
+### 🔧 التحديثات التقنية:
 
-# System Architecture
+#### 1. نظام تحميل API الجديد
+- **الملف:** `utils/api_loader.py`
+- **الوظيفة:** قراءة مفاتيح API من ملف `api.txt` بصيغة محددة
+- **الدعم:** OpenAI, Anthropic, Telegram Bot Token, YouTube API
 
-## Framework and Technology Stack
-- **Bot Framework**: `aiogram` (Python async Telegram bot framework)
-- **Database**: SQLite with `aiosqlite` for async operations
-- **Programming Language**: Python with async/await patterns
+#### 2. حالات FSM محدثة  
+- **الملف:** `utils/states.py`
+- **الحالات الجديدة:** SmartCommandStates مع 6 حالات مختلفة للتفاعل الذكي
+- **الميزات:** دعم الكويز، القصص التفاعلية، معارك الذكاء، التحديات الاقتصادية
 
-## Core Architectural Decisions
-- **Modular Design**: Features are separated into distinct modules for clear separation of concerns.
-- **Command-Based Interface**: All user interactions are driven by text commands.
-- **Group-Exclusive Operation**: The bot functions primarily within Telegram groups; private messages guide users to group setup.
-- **State Management**: `aiogram`'s Finite State Machine (FSM) manages complex multi-step user interactions.
-- **Database Layer**: Asynchronous database operations using `aiosqlite` ensure efficient CRUD functionality.
-- **Admin & Access Control**: A multi-level admin privilege system with decorator-based access control and comprehensive moderation tools, featuring a 4-level administrative hierarchy (Masters, Group Owners, Moderators, Members).
-- **Arabic Language Support**: Designed for native Arabic language interaction.
-- **UI/UX Decisions**: The interface is text-command driven, focusing on clear, concise Arabic messages. Visual elements are text-based charts (ASCII art).
-- **AI Integration**: Enhanced Google Gemini AI system to access player database for comprehensive statistics and provide detailed user progress information via natural language queries.
-- **Bot Personality Protection**: Anti-insult mechanisms and response systems protect the bot's identity and dignity.
-- **Comprehensive AI System**: Fully integrated AI across all bot functions including smart message processing, intelligent economics, adaptive gaming, and unified AI coordination through dedicated handler systems.
-- **Smart Message Processing**: Advanced message analysis with intent detection, context awareness, priority scoring, and intelligent routing to appropriate AI systems.
-- **Intelligent Economic Analysis**: AI-powered economic strategies, investment suggestions, market analysis, and personalized financial recommendations based on user behavior and performance.
-- **Adaptive Gaming System**: Dynamic game difficulty adjustment, personalized quiz generation, interactive storytelling, AI battle mechanics, and intelligent game recommendations.
+#### 3. معالج القوائم الذكية
+- **الملف:** `modules/smart_menu_handler.py`  
+- **الوظائف:** معالجة مخصصة لكل نوع من أنواع التفاعل الذكي
+- **التكامل:** يستخدم الذكاء الاصطناعي لإنشاء محتوى مخصص
 
-## Key Feature Specifications
-- **Economic Simulation**:
-    - **Banking System**: Account creation, deposits, withdrawals, transfers, daily salaries, and bank-specific features.
-    - **Real Estate**: Buying, selling, and income generation from virtual properties.
-    - **Stock Market**: Trading virtual stocks with portfolio management.
-    - **Theft Mechanics**: Player-vs-player robbery with security levels and detailed statistics.
-    - **Investment System**: Dual investment architecture with simple (instant random returns) and advanced (long-term company investments) options.
-    - **Farming**: Crop planting and command-based harvesting with detailed profit analysis.
-    - **Castle System**: Management and upgrade of virtual castles, including resource management, shop, pricing, visibility controls, attack/war system, and battle history.
-- **User Management**: Registration, profiles, ranking system, ban system, and detailed player statistics.
-- **Group Management**: Moderation tools (ban, kick, mute), lock/unlock features, and entertainment commands.
-- **Analytics Dashboard**: Text-based visual analytics and health score for administrators, showing group performance, financial data, and user activity.
-- **Special Response System**: Personalized greetings and automatic responses to keywords.
-- **Master Commands**: Ultimate control commands for Masters, including bot restart, shutdown, self-destruct, and financial control.
-- **Custom Commands System**: Authorized users can create custom bot commands with keywords and responses.
-- **Music Search Feature**: Search and play songs from YouTube, Instagram, and TikTok.
-- **Advanced AI-Powered Protection System**: Sophisticated profanity detection using machine learning (TfidfVectorizer + LogisticRegression) with database-driven word classification, severity levels, automated message deletion, progressive warnings, and punishment escalation. Includes smart detection methods for encrypted/obfuscated text.
-- **Fixed Game Commands Word Boundary Detection**: Implemented comprehensive word boundary detection for all game commands to prevent accidental activation when mentioned within sentences. Applied regex-based standalone word detection to all games including quiz, royal battle, word game, symbols, battle arena, luck wheel, number guess, and XO game. Commands now require exact matching instead of substring matching. Date: August 26, 2025
-- **Enhanced Gaming System**: Added new games with choice between playing against Yuki or other players. Created True/False game and Math Challenge game. Enhanced XO game interface with choice options. Added proper protection for single-player games ensuring only initiators can control them. All games integrated with XP system and AI participation. Date: August 27, 2025
-- **Notification System**: Comprehensive notification system for sub-channels detailing bot activity and status updates.
-- **Comprehensive AI Integration**: Complete artificial intelligence integration across all bot systems transforming user interactions with natural language processing, intelligent economic analysis, adaptive gaming, and smart message handling. Includes smart_message_processor.py for message analysis, intelligent_economics.py for economic AI, intelligent_games.py for adaptive gaming, and ai_integration_handler.py for unified AI coordination. Features comprehensive message understanding, context-aware responses, AI-powered economic strategies, adaptive quiz systems, interactive storytelling, and intelligent battle mechanics. Date: August 27, 2025
-- **Arabic AI Commands**: All 8 AI commands converted from English with "/" prefix to natural Arabic commands without "/" prefix for intuitive user interaction. Commands work with multiple Arabic variations: "تحليل اقتصادي/تحليل ذكي/حلل وضعي/تحليل مالي", "استراتيجية ذكية/استراتيجية استثمار/اقترح استراتيجية/نصائح استثمار", "العاب ذكية/اقترح لعبة/العاب مناسبة/ألعاب ذكية", "كويز ذكي/اختبار ذكي/سؤال وجواب/اختبار تكيفي", "تحدي اقتصادي/تحدي ذكي/تحدي مالي/اختبار اقتصادي", "قصة ذكية/قصة تفاعلية/احكي قصة/قصة مغامرة", "معركة ذكية/تحدي يوكي/معركة مع يوكي/باتل ذكي", "حالة الذكاء الاصطناعي/حالة الانظمة الذكية/وضع الذكاء/فحص الانظمة". Enhanced with Google Gemini API key integration for superior AI performance. Date: August 27, 2025
+#### 4. معالج الرسائل المحدث
+- **الملف:** `handlers/messages.py`
+- **إضافات:** معالجات جديدة للحالات الذكية مع دوال مخصصة لكل نوع تفاعل
+- **الوظائف:** handle_quiz_answer, handle_story_choice, handle_battle_answer, handle_challenge_answer
 
-# External Dependencies
+#### 5. أوامر ذكية جديدة
+- **الملف:** `handlers/smart_commands.py`
+- **الأوامر:** قائمة شاملة من الأوامر الذكية المباشرة والتفاعلية
+- **الميزات:** كشف النصوص العربية المتنوعة للأوامر
 
-- **aiogram**: Primary framework for Telegram Bot API interaction.
-- **aiosqlite**: Asynchronous adapter for SQLite database operations.
-- **aiohttp**: Used for making asynchronous HTTP requests.
-- **SQLite**: The chosen database for storing all user data, game states, transactions, and administrative records.
-- **Python logging**: Utilized for error tracking, debugging, and operational monitoring.
-- **asyncio**: Python's built-in library for writing concurrent code.
-- **Google Gemini AI**: Integrated for natural language processing and database querying.
-- **scikit-learn**: Used for machine learning models (TfidfVectorizer, LogisticRegression) in the profanity detection system.
-- **External APIs (supported)**: Architecture supports integration with external services like Stock APIs, Payment Providers, and Crypto APIs.
+### 📁 الملفات المهمة المُحدّثة:
+- `utils/api_loader.py` - نظام تحميل API جديد
+- `utils/states.py` - حالات FSM للخيارات الذكية
+- `modules/smart_menu_handler.py` - معالج القوائم الذكية
+- `config/settings.py` - تحديث لاستخدام النظام الجديد
+- `modules/real_ai.py` - تحديث للتكامل مع النظام الجديد
+- `handlers/messages.py` - معالجات الحالات الذكية
+- `handlers/smart_commands.py` - أوامر ذكية جديدة
+- `main.py` - إدراج المعالجات الجديدة
+- `utils/decorators.py` - إصلاح مشاكل الاستيراد الدائرية
+
+### 🎯 الميزات الجديدة المتاحة:
+
+#### 1. القائمة الذكية الرئيسية
+- **الأمر:** "قائمة ذكية" أو "القائمة الذكية"
+- **الخيارات:** 8 خيارات ذكية مع أرقام للاختيار
+- **التفاعل:** يكتب المستخدم رقم الخيار ويحصل على الخدمة
+
+#### 2. الأوامر الذكية المباشرة:
+- **التحليل الاقتصادي:** "تحليل اقتصادي" أو "حلل وضعي"
+- **استراتيجية الاستثمار:** "استراتيجية ذكية" أو "اقترح استراتيجية"  
+- **الألعاب الذكية:** "العاب ذكية" أو "اقترح لعبة"
+- **الكويز الذكي:** "كويز ذكي" أو "اختبار ذكي"
+- **التحدي الاقتصادي:** "تحدي اقتصادي" أو "تحدي ذكي"
+- **القصة التفاعلية:** "قصة ذكية" أو "احكي قصة"
+- **معركة الذكاء:** "معركة ذكية" أو "تحدي يوكي"
+- **حالة الأنظمة:** "حالة الذكاء الاصطناعي"
+
+### 📋 تنسيق ملف api.txt:
+```
+ai 1:your-openai-api-key-here
+ai 2:your-anthropic-api-key-here  
+tokenBot:your-telegram-bot-token-here
+apiyutube:your-youtube-api-key-here
+```
+
+## 🎮 كيفية استخدام الميزات الجديدة:
+
+### للمستخدمين:
+1. **ابدأ بـ:** "قائمة ذكية" لرؤية جميع الخيارات
+2. **اكتب رقم الخيار** (1-8) للاختيار
+3. **تابع التعليمات** للحصول على تجربة تفاعلية مخصصة
+4. **استخدم الأوامر المباشرة** للوصول السريع للميزات
+
+### للمطورين:
+1. **ملف API:** قم بتحديث ملف `api.txt` بمفاتيح API الصحيحة
+2. **الاختبار:** جرب "قائمة ذكية" في مجموعة تيليجرام
+3. **المتابعة:** راقب السجلات للتأكد من عمل جميع المعالجات
+4. **التخصيص:** يمكن إضافة المزيد من الخيارات في `smart_menu_handler.py`
+
+## 🔧 الحالة الحالية:
+- ✅ البوت يعمل بنجاح
+- ✅ نظام الخيارات المرقمة يعمل
+- ✅ قراءة API من الملف تعمل  
+- ✅ جميع المعالجات مُسجّلة
+- ✅ لا توجد أخطاء في الكود
+
+## 📝 ملاحظات المطور:
+- تم إصلاح مشكلة الاستيراد الدائري في decorators.py
+- تم إضافة معالجات XP و مكافآت للتفاعلات
+- النظام يدعم اللغة العربية بشكل كامل
+- جميع الرسائل والردود مُحسّنة للمستخدم العربي

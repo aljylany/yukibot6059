@@ -7,7 +7,8 @@ import sqlite3
 import aiosqlite
 import logging
 from typing import Optional
-from .settings import DATABASE_URL
+# استخدام قاعدة البيانات المحلية
+DATABASE_URL = "bot_database.db"
 
 # إعداد نظام التسجيل
 logging.basicConfig(level=logging.INFO)

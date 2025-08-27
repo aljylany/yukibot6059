@@ -255,3 +255,20 @@ class RankManagementStates(StatesGroup):
     waiting_for_reason = State()
     waiting_for_target_user = State()
     waiting_for_confirmation = State()
+
+
+class SmartCommandStates(StatesGroup):
+    """حالات الأوامر الذكية"""
+    waiting_smart_menu_choice = State()
+    waiting_economic_analysis_choice = State()
+    waiting_investment_strategy_choice = State()
+    waiting_smart_games_choice = State()
+    waiting_adaptive_quiz_choice = State()
+    waiting_economic_challenge_choice = State()
+    waiting_interactive_story_choice = State()
+    waiting_ai_battle_choice = State()
+    waiting_system_status_choice = State()
+    waiting_quiz_answer = State()
+    waiting_story_choice = State()
+    waiting_battle_answer = State()
+    waiting_challenge_answer = State()
