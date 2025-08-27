@@ -949,6 +949,62 @@ async def handle_general_message(message: Message, state: FSMContext):
                 logging.error(f"خطأ في بدء لعبة حجر ورقة مقص: {e}")
                 await message.reply("❌ حدث خطأ أثناء بدء لعبة حجر ورقة مقص")
     
+    # لعبة صدق أم كذب - True False Game
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        tf_commands = ['صدق أم كذب', 'صدق كذب', 'true false']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_tf_command = False
+        for command in tf_commands:
+            if command in ['صدق أم كذب', 'صدق كذب']:
+                command_words = command.split()
+                pattern = r'\b' + r'\s+'.join(re.escape(word) for word in command_words) + r'\b'
+                if re.search(pattern, text):
+                    is_tf_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_tf_command = True
+                    break
+        
+        if is_tf_command:
+            try:
+                from modules.true_false_game import start_true_false_game
+                await start_true_false_game(message, vs_ai=True)
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء لعبة صدق أم كذب: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء لعبة صدق أم كذب")
+    
+    # لعبة التحدي الرياضي - Math Challenge Game
+    if (message.text and message.chat.type in ['group', 'supergroup']):
+        import re
+        math_commands = ['تحدي رياضي', 'رياضيات', 'math challenge']
+        
+        # فحص الأوامر ككلمات مستقلة
+        is_math_command = False
+        for command in math_commands:
+            if command in ['تحدي رياضي']:
+                command_words = command.split()
+                pattern = r'\b' + r'\s+'.join(re.escape(word) for word in command_words) + r'\b'
+                if re.search(pattern, text):
+                    is_math_command = True
+                    break
+            else:
+                if re.search(rf'\b{re.escape(command)}\b', text):
+                    is_math_command = True
+                    break
+        
+        if is_math_command:
+            try:
+                from modules.math_challenge_game import start_math_challenge_game
+                await start_math_challenge_game(message, vs_ai=True, difficulty="easy")
+                return
+            except Exception as e:
+                logging.error(f"خطأ في بدء التحدي الرياضي: {e}")
+                await message.reply("❌ حدث خطأ أثناء بدء التحدي الرياضي")
+    
     # معالج خاص لحرف "ا" منفرداً في المجموعات - عرض معلومات الملف الشخصي
     if (message.text and message.text.strip() == "ا" and 
         message.chat.type in ['group', 'supergroup'] and message.from_user):

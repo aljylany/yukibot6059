@@ -186,6 +186,33 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_rps_choice(callback)
             return
         
+        # معالجة callbacks لعبة صدق أم كذب
+        if data.startswith('tf_join_'):
+            from modules.true_false_game import handle_tf_join
+            await handle_tf_join(callback)
+            return
+        
+        if data.startswith('tf_answer_true_'):
+            from modules.true_false_game import handle_tf_answer
+            await handle_tf_answer(callback, True)
+            return
+        
+        if data.startswith('tf_answer_false_'):
+            from modules.true_false_game import handle_tf_answer
+            await handle_tf_answer(callback, False)
+            return
+        
+        # معالجة callbacks التحدي الرياضي
+        if data.startswith('math_join_'):
+            from modules.math_challenge_game import handle_math_join
+            await handle_math_join(callback)
+            return
+        
+        if data.startswith('math_answer_'):
+            from modules.math_challenge_game import handle_math_answer
+            await handle_math_answer(callback)
+            return
+        
         # معالجة callbacks المزرعة
         if data == 'farm_harvest':
             from modules.farm import handle_harvest_callback

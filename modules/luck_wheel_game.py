@@ -80,6 +80,15 @@ async def start_luck_wheel(message: Message):
 async def handle_wheel_spin(callback: CallbackQuery):
     """معالجة دوران العجلة"""
     try:
+        # استخراج معرف المستخدم من البيانات
+        user_id_from_data = int(callback.data.split("_")[-1])
+        current_user_id = callback.from_user.id
+        
+        # التحقق من أن المستخدم الذي يضغط الزر هو نفسه الذي بدأ اللعبة
+        if current_user_id != user_id_from_data:
+            await callback.answer("❌ هذه ليست عجلة الحظ الخاصة بك!", show_alert=True)
+            return
+        
         user_id = callback.from_user.id
         user_name = callback.from_user.first_name or "اللاعب"
         username = callback.from_user.username or ""

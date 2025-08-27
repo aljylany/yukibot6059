@@ -90,6 +90,22 @@ AVAILABLE_GAMES = {
         "players": "لاعب واحد ضد يوكي",
         "duration": "دقيقة واحدة",
         "status": "متاحة"
+    },
+    "true_false": {
+        "name": "🤔 صدق أم كذب",
+        "description": "لعبة أسئلة ثقافية - ضد يوكي أو لاعب آخر",
+        "commands": ["صدق أم كذب", "صدق كذب", "true false"],
+        "players": "لاعب واحد ضد يوكي أو لاعبين",
+        "duration": "3-5 دقائق",
+        "status": "متاحة"
+    },
+    "math_challenge": {
+        "name": "🧮 التحدي الرياضي",
+        "description": "حل المعادلات البسيطة - ضد يوكي أو لاعب آخر",
+        "commands": ["تحدي رياضي", "رياضيات", "math challenge"],
+        "players": "لاعب واحد ضد يوكي أو لاعبين",
+        "duration": "3-5 دقائق",
+        "status": "متاحة"
     }
 }
 
@@ -266,6 +282,16 @@ async def handle_game_start_callback(callback_query, game_command: str):
             from modules.rock_paper_scissors_game import start_rock_paper_scissors_game
             await start_rock_paper_scissors_game(fake_message)
             await callback_query.answer("🎮 تم بدء لعبة حجر ورقة مقص!")
+            
+        elif game_command in ["صدق أم كذب", "صدق كذب", "true false"]:
+            from modules.true_false_game import start_true_false_game
+            await start_true_false_game(fake_message, vs_ai=True)
+            await callback_query.answer("🤔 تم بدء لعبة صدق أم كذب!")
+            
+        elif game_command in ["تحدي رياضي", "رياضيات", "math challenge"]:
+            from modules.math_challenge_game import start_math_challenge_game
+            await start_math_challenge_game(fake_message, vs_ai=True, difficulty="easy")
+            await callback_query.answer("🧮 تم بدء التحدي الرياضي!")
             
         else:
             await callback_query.answer("❌ هذه اللعبة غير متاحة حالياً", show_alert=True)
