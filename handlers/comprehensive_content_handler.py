@@ -52,15 +52,43 @@ class ComprehensiveContentHandler:
                     return False
                 
                 # الفحص الشامل للمحتوى
+                logging.info(f"🔍 بدء الفحص الشامل للمحتوى من المستخدم {message.from_user.id}")
+                
+                # تسجيل تفاصيل المحتوى
+                content_details = []
+                if message.text:
+                    content_details.append(f"نص: '{message.text[:50]}{'...' if len(message.text) > 50 else ''}'")
+                if message.photo:
+                    content_details.append("صورة")
+                if message.video:
+                    content_details.append("فيديو")
+                if message.sticker:
+                    content_details.append(f"ملصق: {message.sticker.emoji or 'غير محدد'}")
+                if message.animation:
+                    content_details.append("رسم متحرك")
+                if message.document:
+                    content_details.append(f"ملف: {message.document.file_name or 'غير محدد'}")
+                
+                if content_details:
+                    logging.info(f"📋 المحتوى المراد فحصه: {' | '.join(content_details)}")
+                
                 check_result = await self.filter.comprehensive_content_check(message)
                 
                 if not check_result['has_violations']:
+                    logging.info(f"✅ المحتوى نظيف - لا توجد مخالفات")
                     return False
                 
-                logging.info(
+                logging.warning(
                     f"🚨 تم اكتشاف مخالفات من المستخدم {message.from_user.id} "
                     f"في المجموعة {message.chat.id}: {len(check_result['violations'])} مخالفة"
                 )
+                
+                # تسجيل تفاصيل كل مخالفة
+                for i, violation in enumerate(check_result['violations'], 1):
+                    logging.warning(
+                        f"📝 مخالفة {i}: {violation['violation_type']} "
+                        f"(خطورة: {violation['severity']}) - {violation.get('content_summary', 'غير محدد')}"
+                    )
                 
                 # تطبيق العقوبة
                 punishment_result = await self.filter.apply_punishment(

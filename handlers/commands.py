@@ -19,6 +19,13 @@ from modules.content_filter import content_filter
 from config.hierarchy import has_permission, AdminLevel
 # استيراد أوامر النظام الشامل للمشرفين
 from modules.comprehensive_admin_commands import comprehensive_admin
+# استيراد أوامر اختبار نظام كشف المحتوى
+from modules.content_filter_test_command import (
+    test_content_filter_command,
+    test_profanity_command, 
+    monitor_filter_command,
+    reset_user_violations_command
+)
 
 router = Router()
 
@@ -1682,4 +1689,31 @@ async def comprehensive_help_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في مساعدة النظام الشامل: {e}")
         await message.reply("❌ حدث خطأ في عرض المساعدة")
+
+
+# ===== أوامر اختبار نظام كشف المحتوى =====
+
+@router.message(Command("test_filter"))
+@group_only
+async def test_filter_handler(message: Message, state: FSMContext):
+    """معالج أمر اختبار نظام كشف المحتوى"""
+    await test_content_filter_command(message, state)
+
+@router.message(Command("test_profanity"))
+@group_only
+async def test_profanity_handler(message: Message, state: FSMContext):
+    """معالج أمر اختبار كشف السباب"""
+    await test_profanity_command(message, state)
+
+@router.message(Command("monitor_filter"))
+@group_only
+async def monitor_filter_handler(message: Message, state: FSMContext):
+    """معالج أمر مراقبة نظام التصفية"""
+    await monitor_filter_command(message, state)
+
+@router.message(Command("reset_violations"))
+@group_only
+async def reset_violations_handler(message: Message, state: FSMContext):
+    """معالج أمر إعادة تعيين مخالفات المستخدم"""
+    await reset_user_violations_command(message, state)
 

@@ -234,45 +234,69 @@ class ComprehensiveContentFilter:
         try:
             # فحص النص
             if message.text:
+                logging.info(f"🔍 فحص النص: '{message.text[:30]}{'...' if len(message.text) > 30 else ''}'")
                 text_result = await self._check_text_content(message.text)
                 if text_result['has_violation']:
+                    logging.warning(f"⚠️ مخالفة نصية: {text_result['violation_type']} (خطورة: {text_result['severity']})")
                     results['violations'].append(text_result)
                     results['total_severity'] += text_result['severity']
+                else:
+                    logging.info("✅ النص نظيف")
             
             # فحص الصور
             if message.photo:
+                logging.info("🔍 فحص الصورة...")
                 image_result = await self._check_image_content(message)
                 if image_result['has_violation']:
+                    logging.warning(f"⚠️ مخالفة في الصورة: {image_result['violation_type']} (خطورة: {image_result['severity']})")
                     results['violations'].append(image_result)
                     results['total_severity'] += image_result['severity']
+                else:
+                    logging.info("✅ الصورة نظيفة")
             
             # فحص الملصقات
             if message.sticker:
+                logging.info(f"🔍 فحص الملصق: {message.sticker.emoji or 'غير محدد'}")
                 sticker_result = await self._check_sticker_content(message)
                 if sticker_result['has_violation']:
+                    logging.warning(f"⚠️ مخالفة في الملصق: {sticker_result['violation_type']} (خطورة: {sticker_result['severity']})")
                     results['violations'].append(sticker_result)
                     results['total_severity'] += sticker_result['severity']
+                else:
+                    logging.info("✅ الملصق نظيف")
             
             # فحص الفيديو
             if message.video:
+                logging.info("🔍 فحص الفيديو...")
                 video_result = await self._check_video_content(message)
                 if video_result['has_violation']:
+                    logging.warning(f"⚠️ مخالفة في الفيديو: {video_result['violation_type']} (خطورة: {video_result['severity']})")
                     results['violations'].append(video_result)
                     results['total_severity'] += video_result['severity']
+                else:
+                    logging.info("✅ الفيديو نظيف")
             
             # فحص الرسوم المتحركة
             if message.animation:
+                logging.info("🔍 فحص الرسم المتحرك...")
                 animation_result = await self._check_animation_content(message)
                 if animation_result['has_violation']:
+                    logging.warning(f"⚠️ مخالفة في الرسم المتحرك: {animation_result['violation_type']} (خطورة: {animation_result['severity']})")
                     results['violations'].append(animation_result)
                     results['total_severity'] += animation_result['severity']
+                else:
+                    logging.info("✅ الرسم المتحرك نظيف")
             
             # فحص الملفات
             if message.document:
+                logging.info(f"🔍 فحص الملف: {message.document.file_name or 'غير محدد'}")
                 document_result = await self._check_document_content(message)
                 if document_result['has_violation']:
+                    logging.warning(f"⚠️ مخالفة في الملف: {document_result['violation_type']} (خطورة: {document_result['severity']})")
                     results['violations'].append(document_result)
                     results['total_severity'] += document_result['severity']
+                else:
+                    logging.info("✅ الملف نظيف")
             
             # تحديد الإجراء المطلوب
             if results['violations']:
