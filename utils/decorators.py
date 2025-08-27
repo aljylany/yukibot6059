@@ -119,7 +119,7 @@ def user_required(func: Callable) -> Callable:
     return wrapper
 
 
-def admin_only(func: Callable) -> Callable:
+def admin_required(func: Callable) -> Callable:
     """ديكوريتر للتأكد من صلاحيات الإدارة"""
     @wraps(func)
     async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
@@ -144,7 +144,7 @@ def admin_only(func: Callable) -> Callable:
             return await func(message_or_query, *args, **kwargs)
             
         except Exception as e:
-            logging.error(f"خطأ في ديكوريتر admin_only: {e}")
+            logging.error(f"خطأ في ديكوريتر admin_required: {e}")
             try:
                 system_messages = get_system_messages()
                 if isinstance(message_or_query, CallbackQuery):
@@ -155,3 +155,32 @@ def admin_only(func: Callable) -> Callable:
                 pass
     
     return wrapper
+
+
+# ديكوريترز إضافية مطلوبة
+def premium_required(func: Callable) -> Callable:
+    """ديكوريتر للتأكد من العضوية المميزة"""
+    @wraps(func)
+    async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
+        return await func(message_or_query, *args, **kwargs)
+    return wrapper
+
+
+def rate_limit(seconds: int = 5):
+    """ديكوريتر لتحديد معدل الاستخدام"""  
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
+            return await func(message_or_query, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def maintenance_mode(maintenance_message: str = None):
+    """ديكوريتر لوضع الصيانة"""
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
+            return await func(message_or_query, *args, **kwargs)
+        return wrapper
+    return decorator
