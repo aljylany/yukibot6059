@@ -36,6 +36,8 @@ from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
 from config.hierarchy import MASTERS
 from modules.utility_commands import WhisperStates
+# استيراد نظام الذكاء الاصطناعي الشامل
+from modules.ai_integration_handler import ai_integration
 
 router = Router()
 
@@ -2658,4 +2660,52 @@ async def handle_location_messages(message: Message):
         "في المستقبل قد نضيف ميزات تعتمد على الموقع، "
         "لكن حالياً يمكنك استخدام الأوامر العادية."
     )
+
+
+# معالج الذكاء الاصطناعي الشامل - يأتي كآخر معالج
+@router.message(F.text)
+@group_only  # يعمل فقط في المجموعات
+async def handle_ai_comprehensive_response(message: Message):
+    """المعالج الذكي الشامل للرسائل - يدمج جميع أنظمة الذكاء الاصطناعي"""
+    try:
+        # التحقق من أن الرسالة تحتوي على نص
+        if not message.text or message.text.strip() == "":
+            return
+        
+        # تجاهل الأوامر التي بدأت بـ /
+        if message.text.startswith('/'):
+            return
+            
+        # تجاهل الرسائل التي تحتوي على أوامر معروفة تم التعامل معها
+        text_lower = message.text.lower().strip()
+        
+        # قائمة الأوامر المعروفة التي لا نريد الرد عليها بالذكاء الاصطناعي
+        known_commands = [
+            'الأوامر', 'معلوماتي', 'راتب', 'ايداع', 'سحب', 'تحويل',
+            'عقار', 'استثمار', 'أسهم', 'مزرعة', 'قلعة', 'ترتيب',
+            'بان', 'كتم', 'طرد', 'قفل', 'الغاء القفل',
+            'انشاء حساب', 'انشئ حساب', 'سرقة', 'سرف'
+        ]
+        
+        # إذا كانت الرسالة تحتوي على أوامر معروفة، لا نرد بالذكاء الاصطناعي
+        if any(cmd in text_lower for cmd in known_commands):
+            return
+        
+        # معالجة الرسالة بنظام الذكاء الاصطناعي الشامل
+        ai_response = await ai_integration.handle_message_with_ai(message)
+        
+        if ai_response:
+            # إرسال الرد الذكي
+            await message.reply(ai_response, parse_mode='Markdown')
+            
+            # إضافة XP إضافي للتفاعل مع الذكاء الاصطناعي
+            try:
+                from modules.simple_level_display import add_simple_xp
+                await add_simple_xp(message.from_user.id, 5)  # 5 XP إضافي للتفاعل الذكي
+            except Exception as xp_error:
+                logging.error(f"خطأ في إضافة XP للتفاعل الذكي: {xp_error}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج الذكاء الاصطناعي الشامل: {e}")
+        # لا نرسل رسالة خطأ حتى لا نزعج المستخدمين، فقط نسجل الخطأ
 

@@ -703,3 +703,242 @@ async def groups_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في أمر المجموعات: {e}")
         await message.reply("❌ حدث خطأ أثناء جلب معلومات المجموعات.")
+
+
+# أوامر الذكاء الاصطناعي الجديدة
+from modules.ai_integration_handler import ai_integration
+
+
+@router.message(Command("ai_analysis"))
+@user_required
+async def ai_analysis_command(message: Message):
+    """تحليل اقتصادي ذكي شخصي /ai_analysis"""
+    try:
+        analysis = await ai_integration.generate_economic_analysis(
+            message.from_user.id, message.chat.id
+        )
+        await message.reply(analysis, parse_mode='Markdown')
+    except Exception as e:
+        logging.error(f"خطأ في التحليل الاقتصادي الذكي: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("ai_strategy"))
+@user_required
+async def ai_strategy_command(message: Message):
+    """اقتراح استراتيجية استثمار ذكية /ai_strategy"""
+    try:
+        strategy = await ai_integration.suggest_investment_strategy(
+            message.from_user.id, message.chat.id
+        )
+        await message.reply(strategy, parse_mode='Markdown')
+    except Exception as e:
+        logging.error(f"خطأ في اقتراح الاستراتيجية الذكية: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("ai_games"))
+@user_required
+async def ai_games_command(message: Message):
+    """اقتراح ألعاب ذكية مخصصة /ai_games"""
+    try:
+        games_suggestion = await ai_integration.get_game_suggestions(
+            message.from_user.id, message.chat.id
+        )
+        await message.reply(games_suggestion, parse_mode='Markdown')
+    except Exception as e:
+        logging.error(f"خطأ في اقتراح الألعاب الذكية: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("smart_quiz"))
+@user_required
+async def smart_quiz_command(message: Message):
+    """بدء كويز ذكي تكيفي /smart_quiz"""
+    try:
+        # استخراج الفئة من الأمر إذا وجدت
+        command_parts = message.text.split()
+        category = 'general'
+        if len(command_parts) > 1:
+            category = command_parts[1].lower()
+            if category not in ['general', 'math', 'gaming']:
+                category = 'general'
+        
+        quiz_data = await ai_integration.start_adaptive_quiz(
+            message.from_user.id, message.chat.id, category
+        )
+        
+        if quiz_data:
+            quiz_text = f"""
+🧠 **{quiz_data['quiz_id']}**
+
+📚 **الفئة:** {quiz_data['category']}
+📊 **الصعوبة:** {quiz_data['difficulty']}
+❓ **عدد الأسئلة:** {quiz_data['total_questions']}
+⏰ **الوقت المحدد:** {quiz_data['time_limit']} ثانية
+🏆 **مكافأة XP:** {quiz_data['xp_reward']}
+
+**السؤال الأول:**
+{quiz_data['questions'][0]['q']}
+
+**الخيارات:**
+{chr(10).join([f"{i+1}. {opt}" for i, opt in enumerate(quiz_data['questions'][0]['options'])])}
+
+💡 أرسل رقم الإجابة (1-4)
+            """
+            await message.reply(quiz_text.strip(), parse_mode='Markdown')
+        else:
+            await message.reply("❌ لا يمكن إنشاء كويز في الوقت الحالي")
+            
+    except Exception as e:
+        logging.error(f"خطأ في بدء الكويز الذكي: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("eco_challenge"))
+@user_required
+async def eco_challenge_command(message: Message):
+    """بدء تحدي اقتصادي ذكي /eco_challenge"""
+    try:
+        challenge_data = await ai_integration.start_economic_challenge(
+            message.from_user.id, message.chat.id
+        )
+        
+        if challenge_data:
+            challenge_text = f"""
+💼 **{challenge_data['title']}**
+
+📋 **الوصف:** {challenge_data['description']}
+
+🎯 **السيناريو:**
+{challenge_data['scenario']['situation']}
+
+**الخيارات:**
+{chr(10).join([f"{i+1}. {opt}" for i, opt in enumerate(challenge_data['scenario']['options'])])}
+
+🏆 **مكافأة XP:** {challenge_data['xp_reward']}
+💰 **مكافأة ثروة:** {challenge_data['wealth_bonus']}$
+
+💡 أرسل رقم الإجابة (1-4)
+            """
+            await message.reply(challenge_text.strip(), parse_mode='Markdown')
+        else:
+            await message.reply("❌ لا يمكن إنشاء تحدي في الوقت الحالي")
+            
+    except Exception as e:
+        logging.error(f"خطأ في بدء التحدي الاقتصادي: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("ai_story"))
+@user_required
+async def ai_story_command(message: Message):
+    """بدء قصة تفاعلية ذكية /ai_story"""
+    try:
+        story_data = await ai_integration.start_interactive_story(
+            message.from_user.id, message.chat.id
+        )
+        
+        if story_data:
+            story_text = f"""
+📖 **{story_data['title']}**
+
+{story_data['chapter_data']['text']}
+
+**الخيارات:**
+{chr(10).join([f"{i+1}. {choice['text']}" for i, choice in enumerate(story_data['chapter_data']['choices'])])}
+
+🏆 **مكافأة XP:** {story_data['xp_reward']}
+
+💡 أرسل رقم الاختيار (1-{len(story_data['chapter_data']['choices'])})
+            """
+            await message.reply(story_text.strip(), parse_mode='Markdown')
+        else:
+            await message.reply("❌ لا يمكن بدء القصة في الوقت الحالي")
+            
+    except Exception as e:
+        logging.error(f"خطأ في بدء القصة التفاعلية: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("ai_battle"))
+@user_required
+async def ai_battle_command(message: Message):
+    """بدء معركة ذكية مع يوكي /ai_battle"""
+    try:
+        battle_data = await ai_integration.start_ai_battle(
+            message.from_user.id, message.chat.id
+        )
+        
+        if battle_data:
+            battle_text = f"""
+⚔️ **معركة الذكاء مع يوكي**
+
+🎮 **نوع التحدي:** {battle_data['type_name']}
+📊 **مستوى الصعوبة:** {battle_data['difficulty_level']}/5
+⏰ **الوقت المحدد:** {battle_data['time_limit']} ثانية
+🏆 **مكافأة XP:** {battle_data['xp_reward']}
+
+**التحدي:**
+{battle_data['challenge']['question']}
+
+💡 أرسل إجابتك الآن!
+
+🤖 يوكي مستعد للتحدي... هل أنت؟
+            """
+            await message.reply(battle_text.strip(), parse_mode='Markdown')
+        else:
+            await message.reply("❌ لا يمكن بدء معركة الذكاء في الوقت الحالي")
+            
+    except Exception as e:
+        logging.error(f"خطأ في بدء معركة الذكاء: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
+
+
+@router.message(Command("ai_status"))
+@user_required
+async def ai_status_command(message: Message):
+    """حالة أنظمة الذكاء الاصطناعي /ai_status"""
+    try:
+        status = await ai_integration.get_ai_system_status()
+        
+        if 'error' not in status:
+            status_text = f"""
+🤖 **حالة أنظمة الذكاء الاصطناعي**
+
+**النظام الشامل:**
+✅ متاح: {'نعم' if status['comprehensive_ai']['available'] else 'لا'}
+🔧 المزود: {status['comprehensive_ai']['provider']}
+🧠 الذاكرة: {'مفعلة' if status['comprehensive_ai']['memory_enabled'] else 'معطلة'}
+🛡️ حماية الشخصية: {'مفعلة' if status['comprehensive_ai']['personality_protection'] else 'معطلة'}
+
+**معالج الرسائل الذكي:**
+✅ متاح: {'نعم' if status['smart_processor']['available'] else 'لا'}
+🤖 الذكاء الأساسي: {'نعم' if status['smart_processor']['basic_ai'] else 'لا'}
+💬 الردود الخاصة: {'محملة' if status['smart_processor']['special_responses'] else 'غير محملة'}
+🚫 حماية الكلام البذيء: {'مفعلة' if status['smart_processor']['profanity_protection'] else 'معطلة'}
+
+**النظام الاقتصادي الذكي:**
+✅ متاح: {'نعم' if status['intelligent_economics']['available'] else 'لا'}
+📊 الاستراتيجيات: {status['intelligent_economics']['strategies_loaded']} استراتيجية
+📈 أنماط السوق: {status['intelligent_economics']['market_patterns']} نمط
+
+**نظام الألعاب الذكية:**
+✅ متاح: {'نعم' if status['intelligent_games']['available'] else 'لا'}
+🎮 الألعاب: {status['intelligent_games']['games_loaded']} لعبة
+📚 القصص: {status['intelligent_games']['stories_loaded']} قصة
+
+**إعدادات التكامل:**
+🔧 الردود الذكية: {'مفعلة' if status['integration_settings']['ai_responses_enabled'] else 'معطلة'}
+💰 الاقتصاد الذكي: {'مفعل' if status['integration_settings']['smart_economics_enabled'] else 'معطل'}
+🎯 الألعاب الذكية: {'مفعلة' if status['integration_settings']['intelligent_games_enabled'] else 'معطلة'}
+📚 وضع التعلم: {'مفعل' if status['integration_settings']['learning_mode'] else 'معطل'}
+💡 الاقتراحات التلقائية: {'مفعلة' if status['integration_settings']['auto_suggestions'] else 'معطلة'}
+            """
+            await message.reply(status_text.strip(), parse_mode='Markdown')
+        else:
+            await message.reply(f"❌ خطأ في الحصول على حالة الأنظمة: {status['error']}")
+            
+    except Exception as e:
+        logging.error(f"خطأ في عرض حالة أنظمة الذكاء الاصطناعي: {e}")
+        await message.reply(SYSTEM_MESSAGES["error"])
