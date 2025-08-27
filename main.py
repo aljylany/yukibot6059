@@ -70,6 +70,11 @@ async def main():
     dp.include_router(commands.router)
     dp.include_router(callbacks.router)
     dp.include_router(smart_commands.router)
+    
+    # تسجيل النظام الشامل لكشف المحتوى (قبل معالج الرسائل العام)
+    from handlers import comprehensive_content_handler
+    dp.include_router(comprehensive_content_handler.router)
+    
     dp.include_router(messages.router)
     
     # تسجيل معالج أحداث المجموعات
