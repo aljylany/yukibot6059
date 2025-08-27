@@ -220,14 +220,21 @@ class SmartMenuHandler:
             story_data = await ai_integration.start_interactive_story(user_id, chat_id)
             
             if story_data:
-                story_text = story_data.get('story_text', '')
-                choices = story_data.get('choices', [])
+                # الحصول على بيانات الفصل الأول من القصة
+                chapter_data = story_data.get('chapter_data', {})
+                story_text = chapter_data.get('text', 'قصة مثيرة تنتظرك...')
+                choices = chapter_data.get('choices', [])
                 
-                story_display = f"📖 **القصة التفاعلية الذكية**\n\n{story_text}\n\n"
+                story_display = f"📖 **{story_data.get('title', 'القصة التفاعلية الذكية')}**\n\n"
+                story_display += f"{story_text}\n\n"
+                story_display += "**الخيارات:**\n"
+                
                 for i, choice in enumerate(choices, 1):
-                    story_display += f"{i}️⃣ {choice}\n"
+                    choice_text = choice.get('text', f'خيار {i}') if isinstance(choice, dict) else str(choice)
+                    story_display += f"{i}️⃣ {choice_text}\n"
                 
-                story_display += "\n✨ اختر مسارك، اكتب الرقم:"
+                story_display += f"\n🏆 **مكافأة XP:** {story_data.get('xp_reward', 400)}\n\n"
+                story_display += "💡 **أرسل رقم الاختيار (1-3):**"
                 
                 await loading_msg.edit_text(story_display)
                 await state.set_state(SmartCommandStates.waiting_story_choice)

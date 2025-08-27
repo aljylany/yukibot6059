@@ -316,21 +316,33 @@ async def handle_story_choice(message: Message, state: FSMContext):
             await state.clear()
             return
             
-        choices = story_data.get('choices', [])
+        # الحصول على خيارات الفصل الحالي
+        chapter_data = story_data.get('chapter_data', {})
+        choices = chapter_data.get('choices', [])
+        
         if choice < 1 or choice > len(choices):
             await message.reply(f"❌ يرجى اختيار رقم من 1 إلى {len(choices)}")
             return
             
         # معالجة الاختيار وعرض النتيجة
-        selected_choice = choices[choice - 1]
-        result = f"📖 **نتيجة اختيارك:**\n\n"
-        result += f"✨ لقد اخترت: {selected_choice}\n"
-        result += f"📜 {story_data.get('outcomes', {}).get(str(choice), 'مغامرة رائعة تنتظرك!')}\n\n"
+        selected_choice_data = choices[choice - 1]
+        choice_text = selected_choice_data.get('text', f'الخيار {choice}') if isinstance(selected_choice_data, dict) else str(selected_choice_data)
+        
+        result = f"📖 **{story_data.get('title', 'رحلة التاجر')}**\n\n"
+        result += f"✨ **اختيارك:** {choice_text}\n\n"
+        
+        # إضافة نتيجة مخصصة حسب الاختيار
+        if choice == 1:
+            result += f"⚡ لقد اخترت المخاطرة! قد تكون مربحة أو خطيرة...\n\n"
+        elif choice == 2:
+            result += f"🧠 اختيار حكيم! الدراسة قبل القرار أمر مهم.\n\n"
+        elif choice == 3:
+            result += f"🛡️ اختيار آمن! أحياناً الحذر أفضل من الندم.\n\n"
         
         # إضافة XP
-        xp_reward = story_data.get('xp_reward', 15)
-        result += f"🏆 لقد ربحت {xp_reward} XP لإكمال القصة!\n\n"
-        result += "📚 اكتب 'قصة ذكية' لبدء قصة جديدة!"
+        xp_reward = story_data.get('xp_reward', 400)
+        result += f"🏆 لقد ربحت **{xp_reward} XP** لإكمال القصة!\n\n"
+        result += "📚 اكتب 'قصة ذكية' لبدء مغامرة جديدة!"
         
         try:
             from modules.simple_level_display import add_simple_xp
