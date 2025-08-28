@@ -51,11 +51,14 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **System Integration:** Properly integrated the comprehensive AI detection system with the bot's message routing
 - **Enhanced Protection Hierarchy:** Implemented differentiated protection levels where Supreme Master (ID: 6524680126) has absolute protection from all content filtering, while other Masters can be tested for system verification purposes
 - **Master Testing Mode:** Added `other_masters_testing_enabled` flag to allow selective testing of content detection on regular Masters while maintaining Supreme Master immunity
-- **Supreme Master Commands System:** Added exclusive commands for Supreme Master to control punishment system on other Masters:
-  - `/تفعيل_عقوبات_الاسياد` - Enable full punishments on other Masters (treat them as regular members)
-  - `/الغاء_عقوبات_الاسياد` - Disable punishments on Masters (return to protection mode)
-  - `/حالة_الاسياد` - Check current punishment status for Masters
+- **Supreme Master Commands System:** Added exclusive commands for Supreme Master to control punishment system on other Masters with simplified Arabic commands:
+  - `تفعيل العقوبات` / `تفعيل عقوبات الاسياد` - Enable full punishments on other Masters (treat them as regular members)
+  - `الغاء العقوبات` / `تعطيل العقوبات` - Disable punishments on Masters (return to protection mode)
+  - `حالة العقوبات` / `وضع الاسياد` - Check current punishment status for Masters
 - **Dynamic Punishment Control:** Masters can now be dynamically switched between protection mode and full punishment mode while Supreme Master remains permanently protected
+- **Simplified Command Structure:** Updated commands to use simple Arabic phrases for better user experience
+- **Commands Documentation Update:** Updated `commands_list.txt` with new Supreme Master exclusive commands section and proper organization
+- **Added Help Command:** Added `اوامر النظام الجديد` command for Supreme Master to view new system commands
 
 ## External Dependencies
 - **Telegram Bot API:** For core bot functionality and interaction.
