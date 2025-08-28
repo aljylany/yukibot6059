@@ -6,6 +6,7 @@ Supreme Master Special Commands
 import logging
 from aiogram import Router, F
 from aiogram.types import Message
+from aiogram.filters import Command
 from config.hierarchy import is_supreme_master
 
 # Router للأوامر الخاصة
@@ -29,7 +30,7 @@ async def enable_masters_punishment(message: Message):
     """تفعيل نظام العقوبات على الأسياد الآخرين"""
     try:
         # التحقق من أن المرسل هو السيد الأعلى فقط
-        if not message.from_user or not is_supreme_master(message.from_user.id):
+        if not is_supreme_master(message.from_user.id):
             await message.reply("⛔ هذا الأمر متاح للسيد الأعلى فقط")
             return
         
@@ -42,7 +43,7 @@ async def enable_masters_punishment(message: Message):
             "• الأسياد الآخرين سيُعاملون كأعضاء عاديين\n"
             "• سيتم تطبيق العقوبات الكاملة عليهم (كتم، بان، إلخ)\n"
             "• أنت (السيد الأعلى) محمي دائماً\n\n"
-            "🛠️ **للإلغاء:** استخدم الأمر `الغاء العقوبات`\n\n"
+            "🛠️ **للإلغاء:** استخدم الأمر `/الغاء_عقوبات_الاسياد`\n\n"
             "👑 **السيد الأعلى:** أنت الوحيد المحمي من جميع الأنظمة"
         )
         
@@ -58,7 +59,7 @@ async def disable_masters_punishment(message: Message):
     """إلغاء تفعيل نظام العقوبات على الأسياد"""
     try:
         # التحقق من أن المرسل هو السيد الأعلى فقط
-        if not message.from_user or not is_supreme_master(message.from_user.id):
+        if not is_supreme_master(message.from_user.id):
             await message.reply("⛔ هذا الأمر متاح للسيد الأعلى فقط")
             return
         
@@ -75,7 +76,7 @@ async def disable_masters_punishment(message: Message):
         )
         
         await message.reply(response, parse_mode="Markdown")
-        logging.warning(f"👑 السيد الأعلى {message.from_user.id} ألغى نظام العقوبات على الأسياد")
+        logging.info(f"👑 السيد الأعلى {message.from_user.id} ألغى نظام العقوبات على الأسياد")
         
     except Exception as e:
         logging.error(f"خطأ في إلغاء عقوبات الأسياد: {e}")
@@ -86,27 +87,23 @@ async def check_masters_status(message: Message):
     """فحص حالة نظام العقوبات على الأسياد"""
     try:
         # التحقق من أن المرسل هو السيد الأعلى فقط
-        if not message.from_user or not is_supreme_master(message.from_user.id):
+        if not is_supreme_master(message.from_user.id):
             await message.reply("⛔ هذا الأمر متاح للسيد الأعلى فقط")
             return
         
-        current_status = get_masters_punishment_status()
+        status = get_masters_punishment_status()
         
-        if current_status:
+        if status:
             response = (
-                "🔥 **نظام العقوبات مُفعل**\n\n"
-                "⚠️ **الوضع الحالي:**\n"
-                "• الأسياد الآخرين يُعاملون كأعضاء عاديين\n"
-                "• العقوبات مُفعلة عليهم (كتم، بان، إلخ)\n"
-                "• السيد الأعلى محمي دائماً\n\n"
-                "🛑 للإلغاء: `الغاء العقوبات`"
+                "🔥 **نظام العقوبات على الأسياد مفعل**\n\n"
+                "⚠️ الأسياد الآخرين يُعاملون كأعضاء عاديين\n"
+                "🛠️ للإلغاء: `/الغاء_عقوبات_الاسياد`"
             )
         else:
             response = (
-                "🛡️ **نظام العقوبات غير مُفعل**\n\n"
-                "✅ **الوضع الحالي:**\n"
-                "• الأسياد محميين من جميع العقوبات\n"
-                "🔥 للتفعيل: `تفعيل العقوبات`"
+                "🛡️ **نظام العقوبات على الأسياد معطل**\n\n"
+                "✅ الأسياد محميين من جميع العقوبات\n"
+                "🔥 للتفعيل: `/تفعيل_عقوبات_الاسياد`"
             )
         
         await message.reply(response, parse_mode="Markdown")
@@ -120,7 +117,7 @@ async def check_masters_status(message: Message):
 async def show_new_system_commands(message: Message):
     """عرض أوامر النظام الجديد للسيد الأعلى"""
     try:
-        if not message.from_user or not is_supreme_master(message.from_user.id):
+        if not is_supreme_master(message.from_user.id):
             await message.reply("⛔ هذا الأمر متاح للسيد الأعلى فقط")
             return
         
