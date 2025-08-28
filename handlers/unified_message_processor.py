@@ -47,19 +47,24 @@ class UnifiedMessageProcessor:
                 if not message.from_user:
                     return False
                 
-                # فحص خاص: إذا كانت الرسالة تحتوي على "اختبار النظام" فحتى الأسياد يتم فحصهم
+                # السيد الأعلى محمي دائماً من جميع أنواع الفحص
+                if is_supreme_master(message.from_user.id):
+                    logging.info(f"👑 تم استثناء السيد الأعلى {message.from_user.id} من الفحص (حماية مطلقة)")
+                    return False
+                
+                # فحص خاص: إذا كانت الرسالة تحتوي على "اختبار النظام" فالأسياد الآخرين يتم فحصهم
                 is_testing = message.text and "اختبار النظام" in message.text
                 
-                # متغير لتفعيل فحص الأسياد مؤقتاً (لأغراض الاختبار)
-                master_testing_enabled = True  # يمكن تغييره إلى False لتعطيل فحص الأسياد
+                # متغير لتفعيل فحص الأسياد الآخرين (غير السيد الأعلى)
+                other_masters_testing_enabled = True  # يمكن تغييره إلى False لتعطيل فحص الأسياد الآخرين
                 
-                # استثناء الأسياد من الفحص (إلا في حالة الاختبار أو إذا كان فحص الأسياد مفعل)
-                if not is_testing and not master_testing_enabled and (is_supreme_master(message.from_user.id) or is_master(message.from_user.id)):
+                # استثناء الأسياد الآخرين من الفحص (إلا في حالة الاختبار أو إذا كان فحص الأسياد مفعل)
+                if not is_testing and not other_masters_testing_enabled and is_master(message.from_user.id):
                     logging.info(f"🔓 تم استثناء السيد {message.from_user.id} من الفحص")
                     return False
                 
-                # إذا كان فحص الأسياد مفعل، سجل ذلك
-                if master_testing_enabled and (is_supreme_master(message.from_user.id) or is_master(message.from_user.id)):
+                # إذا كان فحص الأسياد الآخرين مفعل، سجل ذلك
+                if other_masters_testing_enabled and is_master(message.from_user.id):
                     logging.info(f"🔍 وضع اختبار الأسياد مفعل - سيتم فحص السيد {message.from_user.id}")
                 
                 # تسجيل تفاصيل الرسالة

@@ -49,6 +49,8 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Ensured Complete Coverage:** Now ALL message types (text, images, videos, stickers, files, voice messages) are processed through the same comprehensive detection system
 - **Improved Logging:** Enhanced logging to track exactly which messages are being processed and detected
 - **System Integration:** Properly integrated the comprehensive AI detection system with the bot's message routing
+- **Enhanced Protection Hierarchy:** Implemented differentiated protection levels where Supreme Master (ID: 6524680126) has absolute protection from all content filtering, while other Masters can be tested for system verification purposes
+- **Master Testing Mode:** Added `other_masters_testing_enabled` flag to allow selective testing of content detection on regular Masters while maintaining Supreme Master immunity
 
 ## External Dependencies
 - **Telegram Bot API:** For core bot functionality and interaction.
