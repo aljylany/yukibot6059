@@ -5,12 +5,13 @@
 import logging
 from aiogram import Router
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from aiogram.filters import Command
+from aiogram.filters import Command, Text
 from config.hierarchy import is_master, is_group_owner, is_moderator
 from .ai_profanity_detector import ai_detector
 
 router = Router()
 
+@router.message(Text("نظام السباب"))
 @router.message(Command("نظام_السباب"))
 async def profanity_system_status(message: Message):
     """عرض حالة نظام كشف السباب الذكي"""
@@ -61,6 +62,7 @@ async def profanity_system_status(message: Message):
         logging.error(f"خطأ في عرض حالة النظام: {e}")
         await message.reply("❌ خطأ في الحصول على معلومات النظام")
 
+@router.message(Text(text=lambda text: text.startswith("اختبار ذكي")))
 @router.message(Command("اختبار_ذكي"))
 async def test_smart_detection(message: Message):
     """اختبار النظام الذكي على نص معين"""
@@ -73,12 +75,18 @@ async def test_smart_detection(message: Message):
         return
         
     # استخراج النص للاختبار
-    command_parts = message.text.split(' ', 1)
-    if len(command_parts) < 2:
-        await message.reply("📝 استخدام: /اختبار_ذكي [النص المراد اختباره]\n\nمثال: /اختبار_ذكي ك*س*ك")
+    text = message.text
+    if text.startswith("/اختبار_ذكي "):
+        test_text = text.replace("/اختبار_ذكي ", "", 1)
+    elif text.startswith("اختبار ذكي "):
+        test_text = text.replace("اختبار ذكي ", "", 1)
+    else:
+        await message.reply("📝 استخدام: اختبار ذكي [النص المراد اختباره]\n\nمثال: اختبار ذكي ك*س*ك")
         return
     
-    test_text = command_parts[1]
+    if not test_text.strip():
+        await message.reply("📝 استخدام: اختبار ذكي [النص المراد اختباره]\n\nمثال: اختبار ذكي ك*س*ك")
+        return
     
     try:
         # اختبار النص بالنظام الذكي
@@ -121,6 +129,7 @@ async def test_smart_detection(message: Message):
         logging.error(f"خطأ في اختبار النص: {e}")
         await message.reply(f"❌ خطأ في اختبار النص: {e}")
 
+@router.message(Text(text=lambda text: text.startswith("تدريب ذكي")))
 @router.message(Command("تدريب_ذكي"))
 async def train_smart_system(message: Message):
     """تدريب النظام الذكي بنص جديد"""
@@ -130,21 +139,28 @@ async def train_smart_system(message: Message):
         return
     
     # استخراج النص والتصنيف
-    command_parts = message.text.split()
-    if len(command_parts) < 3:
+    text = message.text
+    parts = None
+    
+    if text.startswith("/تدريب_ذكي "):
+        parts = text.replace("/تدريب_ذكي ", "", 1).split()
+    elif text.startswith("تدريب ذكي "):
+        parts = text.replace("تدريب ذكي ", "", 1).split()
+    
+    if not parts or len(parts) < 2:
         await message.reply("""
 📚 **تدريب النظام الذكي**
 
-استخدام: `/تدريب_ذكي [سباب/نظيف] [النص]`
+استخدام: `تدريب ذكي [سباب/نظيف] [النص]`
 
 أمثلة:
-• `/تدريب_ذكي سباب ك@#$ك`
-• `/تدريب_ذكي نظيف أنت شخص رائع`
+• `تدريب ذكي سباب ك@#$ك`
+• `تدريب ذكي نظيف أنت شخص رائع`
         """)
         return
     
-    classification = command_parts[1].lower()
-    training_text = ' '.join(command_parts[2:])
+    classification = parts[0].lower()
+    training_text = ' '.join(parts[1:])
     
     if classification not in ['سباب', 'نظيف']:
         await message.reply("❌ التصنيف يجب أن يكون 'سباب' أو 'نظيف'")
