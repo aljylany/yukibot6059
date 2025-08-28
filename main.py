@@ -71,12 +71,12 @@ async def main():
     dp.include_router(callbacks.router)
     dp.include_router(smart_commands.router)
     
-    # تسجيل المعالج الموحد للرسائل (أولوية عليا - يجب أن يكون أولاً)
+    # تسجيل معالج الرسائل العادي أولاً للأوامر المهمة مثل يوكي
+    dp.include_router(messages.router)
+    
+    # تسجيل المعالج الموحد للرسائل (أولوية أقل - للفحص فقط)
     from handlers import unified_message_processor
     dp.include_router(unified_message_processor.router)
-    
-    # تسجيل معالج الرسائل العادي مع أولوية أقل
-    dp.include_router(messages.router)
     
     # تسجيل معالج أحداث المجموعات
     from handlers import group_events
