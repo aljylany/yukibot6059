@@ -14,6 +14,7 @@ router = Router()
 
 @router.message(F.text == "نظام السباب")
 @router.message(Command("نظام_السباب"))
+@router.message(lambda message: message.text and message.text.strip().lower() in ["نظام السباب", "/نظام_السباب"])
 async def profanity_system_status(message: Message):
     """عرض حالة نظام كشف السباب الذكي"""
     
@@ -65,6 +66,7 @@ async def profanity_system_status(message: Message):
 
 @router.message(F.text.startswith("اختبار ذكي"))
 @router.message(Command("اختبار_ذكي"))
+@router.message(lambda message: message.text and (message.text.startswith("اختبار ذكي") or message.text.startswith("/اختبار_ذكي")))
 async def test_smart_detection(message: Message):
     """اختبار النظام الذكي على نص معين"""
     
@@ -132,6 +134,7 @@ async def test_smart_detection(message: Message):
 
 @router.message(F.text.startswith("تدريب ذكي"))
 @router.message(Command("تدريب_ذكي"))
+@router.message(lambda message: message.text and (message.text.startswith("تدريب ذكي") or message.text.startswith("/تدريب_ذكي")))
 async def train_smart_system(message: Message):
     """تدريب النظام الذكي بنص جديد"""
     
