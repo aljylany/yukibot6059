@@ -5,13 +5,14 @@
 import logging
 from aiogram import Router
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from aiogram.filters import Command, Text
+from aiogram.filters import Command
+from aiogram import F
 from config.hierarchy import is_master, is_group_owner, is_moderator
 from .ai_profanity_detector import ai_detector
 
 router = Router()
 
-@router.message(Text("نظام السباب"))
+@router.message(F.text == "نظام السباب")
 @router.message(Command("نظام_السباب"))
 async def profanity_system_status(message: Message):
     """عرض حالة نظام كشف السباب الذكي"""
@@ -62,7 +63,7 @@ async def profanity_system_status(message: Message):
         logging.error(f"خطأ في عرض حالة النظام: {e}")
         await message.reply("❌ خطأ في الحصول على معلومات النظام")
 
-@router.message(Text(text=lambda text: text.startswith("اختبار ذكي")))
+@router.message(F.text.startswith("اختبار ذكي"))
 @router.message(Command("اختبار_ذكي"))
 async def test_smart_detection(message: Message):
     """اختبار النظام الذكي على نص معين"""
@@ -129,7 +130,7 @@ async def test_smart_detection(message: Message):
         logging.error(f"خطأ في اختبار النص: {e}")
         await message.reply(f"❌ خطأ في اختبار النص: {e}")
 
-@router.message(Text(text=lambda text: text.startswith("تدريب ذكي")))
+@router.message(F.text.startswith("تدريب ذكي"))
 @router.message(Command("تدريب_ذكي"))
 async def train_smart_system(message: Message):
     """تدريب النظام الذكي بنص جديد"""
