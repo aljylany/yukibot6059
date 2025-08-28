@@ -71,7 +71,11 @@ async def main():
     dp.include_router(callbacks.router)
     dp.include_router(smart_commands.router)
     
-    # تسجيل معالج الرسائل العادي أولاً للأوامر المهمة مثل يوكي
+    # تسجيل أوامر السيد الأعلى الخاصة (أولوية عليا)
+    from modules import supreme_master_commands
+    dp.include_router(supreme_master_commands.router)
+    
+    # تسجيل معالج الرسائل العادي
     dp.include_router(messages.router)
     
     # تسجيل المعالج الموحد للرسائل (أولوية أقل - للفحص فقط)
@@ -93,10 +97,6 @@ async def main():
     # تسجيل نظام كشف السباب الذكي
     from modules import ai_profanity_commands
     dp.include_router(ai_profanity_commands.router)
-    
-    # تسجيل أوامر السيد الأعلى الخاصة
-    from modules import supreme_master_commands
-    dp.include_router(supreme_master_commands.router)
     
     # تهيئة قاعدة البيانات
     await init_database()
