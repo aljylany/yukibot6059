@@ -3167,11 +3167,18 @@ async def handle_ai_comprehensive_response(message: Message):
         
         # فحص fallback للأوامر الإدارية غير المتعرف عليها
         admin_command_patterns = [
-            'تفعيل', 'تعطيل', 'قفل', 'فتح', 'حظر', 'إلغاء حظر',
+            'قفل', 'فتح', 'حظر', 'إلغاء حظر',
             'رفع', 'تنزيل', 'طرد', 'كتم', 'إلغاء كتم'
         ]
         
-        if any(text_lower.startswith(pattern) for pattern in admin_command_patterns):
+        # فحص خاص لأوامر التفعيل والتعطيل (ما عدا أوامر العقوبات)
+        if text_lower.startswith('تفعيل') or text_lower.startswith('تعطيل'):
+            # إذا كان الأمر يتعلق بالعقوبات أو العقود، لا نتدخل
+            if not any(keyword in text_lower for keyword in ['عقوبة', 'عقوبات', 'عقود']):
+                if any(text_lower.startswith(pattern) for pattern in ['تفعيل', 'تعطيل']):
+                    await message.reply("❌ إعداد غير صحيح")
+                    return
+        elif any(text_lower.startswith(pattern) for pattern in admin_command_patterns):
             await message.reply("❌ إعداد غير صحيح")
             return
         
