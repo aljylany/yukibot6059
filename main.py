@@ -71,9 +71,13 @@ async def main():
     dp.include_router(callbacks.router)
     dp.include_router(smart_commands.router)
     
-    # تسجيل النظام الشامل لكشف المحتوى (قبل معالج الرسائل العام)
-    from handlers import comprehensive_content_handler
-    dp.include_router(comprehensive_content_handler.router)
+    # تسجيل المعالج الموحد للرسائل (أولوية عليا - يجب أن يكون أولاً)
+    from handlers import unified_message_processor
+    dp.include_router(unified_message_processor.router)
+    
+    # تعطيل المعالجات المتضاربة مؤقتاً لضمان عمل النظام الموحد
+    # from handlers import comprehensive_content_handler
+    # dp.include_router(comprehensive_content_handler.router)
     
     dp.include_router(messages.router)
     

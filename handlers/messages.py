@@ -888,31 +888,8 @@ async def attempt_theft_on_target(message: Message, thief: dict, target: dict, t
 async def handle_general_message(message: Message, state: FSMContext):
     """معالجة الرسائل العامة - الكلمات المفتاحية فقط"""
     
-    # فحص شامل للمحتوى (يشمل النصوص والملفات وكل شيء)
-    if message.chat.type in ['group', 'supergroup']:
-        try:
-            # استخدام النظام الشامل للفحص
-            has_violations = await integrate_with_existing_handlers(message)
-            if has_violations:
-                return  # تم العثور على مخالفات وتمت معالجتها - إنهاء المعالجة
-                
-        except Exception as e:
-            logging.error(f"خطأ في النظام الشامل لكشف المحتوى: {e}")
-            
-            # النظام الاحتياطي - فحص السباب فقط
-            if message.text:
-                try:
-                    detection_result = await detector.check_message(
-                        message.text, message.from_user.id, message.chat.id
-                    )
-                    
-                    if detection_result['is_abusive']:
-                        warning_message = await detector.handle_abusive_message(message, detection_result)
-                        await message.reply(warning_message)
-                        return
-                        
-                except Exception as fallback_error:
-                    logging.error(f"خطأ في النظام الاحتياطي: {fallback_error}")
+    # تم تعطيل فحص المحتوى هنا لأن المعالج الموحد يتعامل مع كل شيء الآن
+    # النظام الموحد في unified_message_processor.py يعالج جميع الرسائل أولاً
     
     # التحقق من الأوامر الإدارية المتقدمة أولاً
     from handlers.advanced_admin_handler import handle_advanced_admin_commands

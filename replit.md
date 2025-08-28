@@ -19,7 +19,8 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 
 ### Technical Implementations
 - **Content Moderation:**
-    - **Comprehensive Content Filter:** Integrates profanity detection with explicit content filtering (images, videos, stickers, files) using Google AI (Gemini) for advanced analysis.
+    - **Unified Message Processor:** New centralized system (`handlers/unified_message_processor.py`) that ensures ALL messages (text, images, videos, stickers, files, voice, etc.) pass through the detection system without conflicts or bypasses.
+    - **Comprehensive Content Filter:** Integrates profanity detection with explicit content filtering using Google AI (Gemini) for advanced analysis.
     - **Graduated Penalties:** Implements a tiered punishment system ranging from warnings to permanent bans based on content severity.
     - **Admin Reporting System:** Provides real-time notifications, daily summaries, and detailed reports for administrators on detected violations.
     - **Testing & Monitoring:** Includes extensive test commands (`/test_filter`, `/test_profanity`, `اختبار النظام`) and detailed logging for live monitoring of filtering processes.
@@ -38,9 +39,16 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 
 ### System Design Choices
 - **Modularity:** Core functionalities are organized into distinct modules (e.g., `comprehensive_content_filter.py`, `admin_reports_system.py`, `smart_menu_handler.py`).
-- **Redundancy & Fallback:** Old moderation systems are maintained as backups to the new comprehensive system to ensure continuous operation.
+- **Unified Processing:** Implemented centralized message processing to eliminate handler conflicts and ensure comprehensive content analysis.
 - **Performance Optimization:** Focuses on faster and more accurate processing with intelligent API key consumption and automatic switching.
 - **Circular Import Resolution:** Specific attention paid to resolving common Python issues like circular imports (e.g., in `utils/decorators.py`).
+
+## Recent Changes (August 28, 2025)
+- **Fixed Message Detection System:** Created unified message processor (`handlers/unified_message_processor.py`) to resolve issues where profanity detection wasn't working consistently
+- **Eliminated Handler Conflicts:** Removed competing message handlers that were causing messages to bypass the detection system
+- **Ensured Complete Coverage:** Now ALL message types (text, images, videos, stickers, files, voice messages) are processed through the same comprehensive detection system
+- **Improved Logging:** Enhanced logging to track exactly which messages are being processed and detected
+- **System Integration:** Properly integrated the comprehensive AI detection system with the bot's message routing
 
 ## External Dependencies
 - **Telegram Bot API:** For core bot functionality and interaction.
