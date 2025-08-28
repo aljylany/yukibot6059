@@ -77,7 +77,7 @@ async def handle_lock_command(message: Message, setting: str, action: str):
 
         setting_key = LOCK_SETTINGS.get(setting)
         if not setting_key:
-            await message.reply("❌ إعداد غير صحيح")
+            # لا نرد بإعداد غير صحيح هنا، نترك الأمر يمر للمعالجات الأخرى
             return
 
         # تطبيق الإعداد
@@ -112,7 +112,7 @@ async def handle_toggle_command(message: Message, setting: str, action: str):
 
         setting_key = TOGGLE_SETTINGS.get(setting)
         if not setting_key:
-            await message.reply("❌ إعداد غير صحيح")
+            # لا نرد بإعداد غير صحيح هنا، نترك الأمر يمر للمعالجات الأخرى
             return
 
         # معالجة خاصة لإعداد التحميل

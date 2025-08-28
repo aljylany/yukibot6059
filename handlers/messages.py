@@ -3165,6 +3165,16 @@ async def handle_ai_comprehensive_response(message: Message):
         if any(cmd in text_lower for cmd in known_commands):
             return
         
+        # فحص fallback للأوامر الإدارية غير المتعرف عليها
+        admin_command_patterns = [
+            'تفعيل', 'تعطيل', 'قفل', 'فتح', 'حظر', 'إلغاء حظر',
+            'رفع', 'تنزيل', 'طرد', 'كتم', 'إلغاء كتم'
+        ]
+        
+        if any(text_lower.startswith(pattern) for pattern in admin_command_patterns):
+            await message.reply("❌ إعداد غير صحيح")
+            return
+        
         # معالجة الرسالة بنظام الذكاء الاصطناعي الشامل
         ai_response = await ai_integration.handle_message_with_ai(message)
         
