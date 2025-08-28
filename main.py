@@ -89,6 +89,10 @@ async def main():
     from handlers import memory_commands
     dp.include_router(memory_commands.router)
     
+    # تسجيل نظام كشف السباب الذكي
+    from modules import ai_profanity_commands
+    dp.include_router(ai_profanity_commands.router)
+    
     # تهيئة قاعدة البيانات
     await init_database()
     
@@ -122,6 +126,13 @@ async def main():
             logging.info("⚠️ تم تهيئة قاعدة البيانات بدون نموذج ML")
     except Exception as protection_error:
         logging.error(f"⚠️ خطأ في تهيئة نظام الحماية: {protection_error}")
+    
+    # تهيئة النظام الذكي لكشف السباب
+    try:
+        from modules.ai_profanity_detector import ai_detector
+        logging.info("🧠 تم تهيئة النظام الذكي لكشف السباب المتطور")
+    except Exception as smart_detection_error:
+        logging.error(f"❌ خطأ في تهيئة النظام الذكي: {smart_detection_error}")
     
     # تهيئة نظام الذكاء الاصطناعي الحقيقي (Real Yuki AI)
     try:

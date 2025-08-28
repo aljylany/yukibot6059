@@ -8,7 +8,7 @@ import logging
 import sqlite3
 import pandas as pd
 import numpy as np
-from aiogram.types import Message, ChatPermissions
+from aiogram.types import Message, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.exceptions import TelegramBadRequest
 # from utils.decorators import ensure_group_only  # مُعطل مؤقتاً
 from datetime import datetime, timedelta
@@ -19,6 +19,9 @@ from nltk.tokenize import word_tokenize
 import nltk
 import re
 import os
+
+# استيراد النظام الذكي الجديد
+from .ai_profanity_detector import ai_detector, ProfanityResult
 
 # قائمة الكلمات المحظورة (السباب الشديد فقط)
 BANNED_WORDS = [
@@ -432,9 +435,9 @@ def generate_text_variations(text: str) -> list:
     
     return list(set(variations))  # إزالة التكرارات
 
-async def check_message_advanced(text: str, user_id: int, chat_id: int) -> dict:
+async def check_message_ai_powered(text: str, user_id: int, chat_id: int, chat_context: str = "") -> dict:
     """
-    فحص متقدم للرسالة باستخدام قاعدة البيانات ونموذج تعلم الآلة
+    فحص ذكي للرسالة باستخدام الذكاء الاصطناعي ونظام التعلم المتطور
     """
     try:
         # فحص قاعدة البيانات أولاً
@@ -594,8 +597,13 @@ async def check_for_profanity(message: Message) -> bool:
         return False
     
     # النظام الجديد: فحص متقدم بدرجات الخطورة والذكاء الاصطناعي
-    result = await check_message_advanced(message.text, message.from_user.id, message.chat.id)
-    return result['is_abusive']
+    try:
+        chat_context = f"مجموعة {message.chat.title}" if message.chat.title else "محادثة"
+        result = await check_message_ai_powered(message.text, message.from_user.id, message.chat.id, chat_context)
+        return result['is_abusive']
+    except Exception as e:
+        logging.error(f"خطأ في النظام الذكي، العودة للنظام التقليدي: {e}")
+        return False
 
 async def mute_user_for_profanity(message: Message) -> bool:
     """
@@ -745,3 +753,13 @@ async def handle_profanity_detection(message: Message) -> bool:
     except Exception as e:
         logging.error(f"خطأ في معالج كشف السباب: {e}")
         return False
+
+# دالة للتوافق مع الكود القديم
+async def check_message_advanced(text: str, user_id: int, chat_id: int) -> dict:
+    """دالة للتوافق مع الكود القديم - تحويل إلى النظام الجديد"""
+    try:
+        chat_context = f"مجموعة {chat_id}"
+        return await check_message_ai_powered(text, user_id, chat_id, chat_context)
+    except Exception as e:
+        logging.error(f"خطأ في دالة التوافق: {e}")
+        return await check_message_advanced_fallback(text, user_id, chat_id)
