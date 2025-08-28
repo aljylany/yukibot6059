@@ -75,10 +75,7 @@ async def main():
     from handlers import unified_message_processor
     dp.include_router(unified_message_processor.router)
     
-    # تعطيل المعالجات المتضاربة مؤقتاً لضمان عمل النظام الموحد
-    # from handlers import comprehensive_content_handler
-    # dp.include_router(comprehensive_content_handler.router)
-    
+    # تسجيل معالج الرسائل العادي مع أولوية أقل
     dp.include_router(messages.router)
     
     # تسجيل معالج أحداث المجموعات

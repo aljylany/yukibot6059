@@ -43,6 +43,10 @@ class UnifiedMessageProcessor:
                 if message.chat.type not in ['group', 'supergroup']:
                     return False
                 
+                # التحقق من وجود معلومات المستخدم
+                if not message.from_user:
+                    return False
+                
                 # استثناء الأسياد من الفحص
                 if is_supreme_master(message.from_user.id) or is_master(message.from_user.id):
                     logging.info(f"🔓 تم استثناء السيد {message.from_user.id} من الفحص")
@@ -54,7 +58,51 @@ class UnifiedMessageProcessor:
                 
                 logging.info(f"🔍 فحص {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # الفحص الشامل
+                # فحص سريع للكلمات المسيئة في النص
+                if message.text:
+                    banned_words = [
+                        "شرموط", "شرموطة", "عاهرة", "عاهر", "زانية", "زاني",
+                        "منيك", "منيكة", "نيك", "نايك", "كس", "كسها", "زب", "زبر", "طيز",
+                        "ابن الشرموطة", "بنت الشرموطة", "خرا", "خراء", "يلعن", "اللعنة",
+                        "منيوك", "ايري", "انيك", "نيكك", "منيوكة", "ايرك", "ايرها",
+                        "انيكك", "انيكها", "منيوكو", "ايرو", "نيكو", "كسمك", "كسك",
+                        "عرص", "عرصة", "قحبة", "قحبه", "بغي", "بغيه", "متناك", "متناكة"
+                    ]
+                    
+                    text_lower = message.text.lower()
+                    found_violations = []
+                    
+                    for word in banned_words:
+                        if word in text_lower:
+                            found_violations.append({
+                                'violation_type': 'text_profanity',
+                                'severity': 3,
+                                'content_summary': f'كلمة مسيئة: {word}'
+                            })
+                            logging.warning(f"🚨 تم اكتشاف كلمة مسيئة: {word}")
+                    
+                    if found_violations:
+                        # حذف الرسالة فوراً
+                        try:
+                            await message.delete()
+                            logging.info("🗑️ تم حذف الرسالة المخالفة")
+                        except Exception as delete_error:
+                            logging.warning(f"⚠️ لم يتمكن من حذف الرسالة: {delete_error}")
+                        
+                        # إرسال رسالة تحذيرية
+                        warning_message = (
+                            f"🚨 **تحذير شديد**\n\n"
+                            f"👤 **المستخدم:** {user_name}\n"
+                            f"🔢 **عدد المخالفات:** {len(found_violations)}\n"
+                            f"⚡ **الإجراء:** تم حذف الرسالة\n\n"
+                            f"🛡️ **نظام الحماية المتطور**\n"
+                            f"💡 يرجى الالتزام بقوانين المجموعة واستخدام لغة مهذبة"
+                        )
+                        
+                        await message.answer(warning_message, parse_mode="Markdown")
+                        return True
+                
+                # الفحص الشامل للمحتويات الأخرى
                 check_result = await self.filter.comprehensive_content_check(message)
                 
                 if not check_result['has_violations']:
@@ -181,11 +229,12 @@ class UnifiedMessageProcessor:
             )
             
             # إرسال تنبيه فوري للمشرفين
-            await self.reports.send_instant_admin_alert(
-                message.bot, 
-                message.chat.id, 
-                report_id
-            )
+            if message.bot:
+                await self.reports.send_instant_admin_alert(
+                    message.bot, 
+                    message.chat.id, 
+                    report_id
+                )
             
             logging.info(f"📊 تم إنشاء تقرير للمشرفين: {report_id}")
             
