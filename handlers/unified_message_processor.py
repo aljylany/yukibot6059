@@ -47,10 +47,20 @@ class UnifiedMessageProcessor:
                 if not message.from_user:
                     return False
                 
-                # استثناء الأسياد من الفحص
-                if is_supreme_master(message.from_user.id) or is_master(message.from_user.id):
+                # فحص خاص: إذا كانت الرسالة تحتوي على "اختبار النظام" فحتى الأسياد يتم فحصهم
+                is_testing = message.text and "اختبار النظام" in message.text
+                
+                # متغير لتفعيل فحص الأسياد مؤقتاً (لأغراض الاختبار)
+                master_testing_enabled = True  # يمكن تغييره إلى False لتعطيل فحص الأسياد
+                
+                # استثناء الأسياد من الفحص (إلا في حالة الاختبار أو إذا كان فحص الأسياد مفعل)
+                if not is_testing and not master_testing_enabled and (is_supreme_master(message.from_user.id) or is_master(message.from_user.id)):
                     logging.info(f"🔓 تم استثناء السيد {message.from_user.id} من الفحص")
                     return False
+                
+                # إذا كان فحص الأسياد مفعل، سجل ذلك
+                if master_testing_enabled and (is_supreme_master(message.from_user.id) or is_master(message.from_user.id)):
+                    logging.info(f"🔍 وضع اختبار الأسياد مفعل - سيتم فحص السيد {message.from_user.id}")
                 
                 # تسجيل تفاصيل الرسالة
                 content_type = self._get_content_type(message)
