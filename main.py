@@ -94,6 +94,10 @@ async def main():
     from modules import ai_profanity_commands
     dp.include_router(ai_profanity_commands.router)
     
+    # تسجيل أوامر السيد الأعلى الخاصة
+    from modules import supreme_master_commands
+    dp.include_router(supreme_master_commands.router)
+    
     # تهيئة قاعدة البيانات
     await init_database()
     

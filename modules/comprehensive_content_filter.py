@@ -922,14 +922,23 @@ class ComprehensiveContentFilter:
         try:
             # فحص الصلاحيات والاستثناءات
             from config.hierarchy import is_master, is_supreme_master
+            from modules.supreme_master_commands import get_masters_punishment_status
             
+            # السيد الأعلى محمي دائماً
             if is_supreme_master(message.from_user.id):
-                result['message_sent'] = "🛡️ السيد الأعلى محمي من جميع العقوبات"
+                result['message_sent'] = "👑 السيد الأعلى محمي من جميع العقوبات"
                 return result
-                
-            if is_master(message.from_user.id):
-                result['message_sent'] = "🛡️ الأسياد محميين من العقوبات التلقائية"
+            
+            # فحص حالة العقوبات على الأسياد الآخرين
+            masters_punishment_enabled = get_masters_punishment_status()
+            
+            if is_master(message.from_user.id) and not masters_punishment_enabled:
+                result['message_sent'] = "🛡️ الأسياد محميين من العقوبات (العقوبات معطلة)"
                 return result
+            
+            # إذا كان نظام العقوبات مفعل على الأسياد، سجل ذلك
+            if is_master(message.from_user.id) and masters_punishment_enabled:
+                logging.warning(f"🔥 تطبيق عقوبة على السيد {message.from_user.id} - نظام العقوبات مفعل")
             
             # حذف المحتوى المخالف
             try:

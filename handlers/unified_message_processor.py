@@ -11,6 +11,7 @@ from aiogram.exceptions import TelegramBadRequest
 from datetime import datetime, timedelta
 
 from config.hierarchy import is_master, is_supreme_master
+from modules.supreme_master_commands import get_masters_punishment_status
 from utils.decorators import group_only
 from modules.comprehensive_content_filter import comprehensive_filter, ViolationType, SeverityLevel
 from modules.admin_reports_system import admin_reports
@@ -52,20 +53,21 @@ class UnifiedMessageProcessor:
                     logging.info(f"👑 تم استثناء السيد الأعلى {message.from_user.id} من الفحص (حماية مطلقة)")
                     return False
                 
+                # فحص حالة تفعيل العقوبات على الأسياد من النظام الجديد
+                masters_punishment_enabled = get_masters_punishment_status()
+                
                 # فحص خاص: إذا كانت الرسالة تحتوي على "اختبار النظام" فالأسياد الآخرين يتم فحصهم
                 is_testing = message.text and "اختبار النظام" in message.text
                 
-                # متغير لتفعيل فحص الأسياد الآخرين (غير السيد الأعلى)
-                other_masters_testing_enabled = True  # يمكن تغييره إلى False لتعطيل فحص الأسياد الآخرين
-                
-                # استثناء الأسياد الآخرين من الفحص (إلا في حالة الاختبار أو إذا كان فحص الأسياد مفعل)
-                if not is_testing and not other_masters_testing_enabled and is_master(message.from_user.id):
-                    logging.info(f"🔓 تم استثناء السيد {message.from_user.id} من الفحص")
+                # استثناء الأسياد الآخرين من الفحص (إلا في حالة الاختبار أو إذا كان نظام العقوبات مفعل)
+                if not is_testing and not masters_punishment_enabled and is_master(message.from_user.id):
+                    logging.info(f"🔓 تم استثناء السيد {message.from_user.id} من الفحص (العقوبات معطلة)")
                     return False
                 
-                # إذا كان فحص الأسياد الآخرين مفعل، سجل ذلك
-                if other_masters_testing_enabled and is_master(message.from_user.id):
-                    logging.info(f"🔍 وضع اختبار الأسياد مفعل - سيتم فحص السيد {message.from_user.id}")
+                # إذا كان نظام العقوبات مفعل على الأسياد، سجل ذلك
+                if (masters_punishment_enabled or is_testing) and is_master(message.from_user.id):
+                    status_msg = "نظام العقوبات مفعل" if masters_punishment_enabled else "وضع اختبار"
+                    logging.warning(f"🔥 {status_msg} - سيتم فحص السيد {message.from_user.id} كعضو عادي")
                 
                 # تسجيل تفاصيل الرسالة
                 content_type = self._get_content_type(message)
