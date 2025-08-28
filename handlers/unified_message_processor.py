@@ -199,7 +199,7 @@ class UnifiedMessageProcessor:
     async def _send_warning_message(self, message: Message, check_result: dict, punishment_result: dict):
         """إرسال رسالة تحذيرية"""
         try:
-            user_name = message.from_user.first_name or "المستخدم"
+            user_name = (message.from_user.first_name if message.from_user else None) or "المستخدم"
             violations_count = len(check_result['violations'])
             total_severity = check_result['total_severity']
             
@@ -266,6 +266,13 @@ unified_processor = UnifiedMessageProcessor()
 @group_only
 async def handle_text_messages(message: Message):
     """معالج الرسائل النصية"""
+    # تحقق من رسائل يوكي الذكي - لا تعالجها هنا
+    if message.text:
+        yuki_triggers = ['يوكي', 'yuki', 'يوكى']
+        if any(trigger in message.text.lower() for trigger in yuki_triggers):
+            # اترك رسائل يوكي للمعالج المخصص في messages.py
+            return
+    
     await unified_processor.process_any_message(message)
 
 @router.message(F.photo)
