@@ -48,6 +48,17 @@ class UnifiedMessageProcessor:
                 if not message.from_user:
                     return False
                 
+                # التحقق من حالة الكتم الفعلية للمستخدم في التيليجرام أولاً
+                from modules.profanity_filter import is_user_actually_muted
+                user_is_muted = await is_user_actually_muted(message.bot, message.chat.id, message.from_user.id)
+                
+                # إذا كان المستخدم غير مكتوم ولم يرسل سباب، لا نحذف رسائله
+                if not user_is_muted:
+                    # للمستخدمين غير المكتومين، نفحص السباب فقط
+                    logging.info(f"✅ المستخدم {message.from_user.id} غير مكتوم - سيتم فحص السباب فقط")
+                else:
+                    logging.info(f"🔇 المستخدم {message.from_user.id} مكتوم فعلياً في التيليجرام")
+                
                 # السيد الأعلى محمي دائماً من جميع أنواع الفحص
                 if is_supreme_master(message.from_user.id):
                     logging.info(f"👑 تم استثناء السيد الأعلى {message.from_user.id} من الفحص (حماية مطلقة)")
@@ -75,23 +86,52 @@ class UnifiedMessageProcessor:
                 
                 logging.info(f"🔍 فحص {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # تفويض فحص السباب للنظام الأساسي المتخصص
-                # لتجنب التضارب، سنترك النظام الأساسي يتعامل مع السباب
-                if message.text:
-                    from modules.profanity_filter import handle_profanity_detection
-                    profanity_detected = await handle_profanity_detection(message)
-                    if profanity_detected:
-                        logging.info("✅ تم التعامل مع السباب بواسطة النظام الأساسي")
+                # للمستخدمين غير المكتومين: فحص السباب فقط
+                if not user_is_muted:
+                    if message.text:
+                        from modules.profanity_filter import handle_profanity_detection
+                        profanity_detected = await handle_profanity_detection(message)
+                        if profanity_detected:
+                            logging.info("✅ تم التعامل مع السباب من مستخدم غير مكتوم")
+                            return True
+                        else:
+                            # رسالة عادية من مستخدم غير مكتوم - لا نحذفها
+                            return False
+                    else:
+                        # محتوى غير نصي من مستخدم غير مكتوم - نفحصه للمحتوى المسيء فقط
+                        check_result = await self.filter.comprehensive_content_check(message)
+                        if check_result['has_violations']:
+                            # حذف المحتوى المسيء من مستخدم غير مكتوم
+                            logging.warning(f"🚨 محتوى مسيء من مستخدم غير مكتوم - سيتم التعامل معه")
+                            # نكمل المعالجة أدناه
+                        else:
+                            return False
+                else:
+                    # المستخدم مكتوم - نطبق جميع الفحوصات
+                    if message.text:
+                        from modules.profanity_filter import handle_profanity_detection
+                        profanity_detected = await handle_profanity_detection(message)
+                        if profanity_detected:
+                            logging.info("✅ تم التعامل مع السباب من مستخدم مكتوم")
+                            return True
+                    
+                    # الفحص الشامل للمحتويات الأخرى
+                    check_result = await self.filter.comprehensive_content_check(message)
+                    
+                    if not check_result['has_violations']:
+                        # حتى لو لم يكن هناك مخالفات، المستخدم مكتوم - لا يجب أن يرسل رسائل
+                        logging.info(f"🔇 رسالة من مستخدم مكتوم - سيتم حذفها")
+                        try:
+                            await message.delete()
+                            logging.info("🗑️ تم حذف رسالة من مستخدم مكتوم")
+                        except Exception as delete_error:
+                            logging.warning(f"⚠️ لم يتمكن من حذف رسالة من مستخدم مكتوم: {delete_error}")
                         return True
                 
-                # الفحص الشامل للمحتويات الأخرى
-                check_result = await self.filter.comprehensive_content_check(message)
-                
-                if not check_result['has_violations']:
-                    logging.info(f"✅ المحتوى نظيف - لا توجد مخالفات")
+                # إذا وصلنا هنا، فهناك مخالفات تحتاج للمعالجة
+                if not hasattr(locals(), 'check_result') or not check_result.get('has_violations'):
                     return False
                 
-                # تم اكتشاف مخالفات
                 violations_count = len(check_result['violations'])
                 logging.warning(
                     f"🚨 اكتشاف {violations_count} مخالفة من {user_name} "

@@ -654,6 +654,38 @@ async def get_user_warnings(user_id: int, chat_id: int) -> int:
         logging.error(f"خطأ في جلب تحذيرات المستخدم: {e}")
         return 0
 
+async def is_user_actually_muted(bot, chat_id: int, user_id: int) -> bool:
+    """
+    التحقق من حالة المستخدم الفعلية في التيليجرام - هل هو مكتوم أم لا؟
+    Returns True إذا كان المستخدم مكتوماً فعلاً في التيليجرام
+    """
+    try:
+        user_member = await bot.get_chat_member(chat_id, user_id)
+        
+        # إذا كان المستخدم مطروداً أو غادر المجموعة، فهو ليس مكتوماً
+        if user_member.status in ['left', 'kicked']:
+            return False
+            
+        # إذا كان المستخدم مالك أو مشرف، فهو غير مكتوم
+        if user_member.status in ['creator', 'administrator']:
+            return False
+            
+        # إذا كان المستخدم عضو عادي، نتحقق من صلاحياته
+        if user_member.status == 'restricted':
+            # المستخدم مكتوم إذا لم يستطع إرسال الرسائل
+            if hasattr(user_member, 'can_send_messages'):
+                return not user_member.can_send_messages
+            # إذا لم تكن الصلاحية متوفرة، فهو مكتوم
+            return True
+        
+        # إذا كان العضو "member" عادي، فهو غير مكتوم
+        return False
+        
+    except Exception as e:
+        logging.error(f"خطأ في التحقق من حالة المستخدم {user_id} في المجموعة {chat_id}: {e}")
+        # في حالة الخطأ، نفترض أنه غير مكتوم لتجنب حذف الرسائل بدون مبرر
+        return False
+
 async def check_for_profanity(message: Message) -> bool:
     """
     فحص الرسالة للكشف عن السباب مع كشف التشفير والتمويه
@@ -912,9 +944,39 @@ async def handle_profanity_detection(message: Message) -> bool:
             if text.startswith('مسح ') or text == 'مسح بالرد' or text == 'مسح':
                 return False
         
+        # التحقق من حالة المستخدم الفعلية في التيليجرام
+        user_is_muted = await is_user_actually_muted(message.bot, message.chat.id, message.from_user.id)
+        
         # فحص وجود سباب
-        if not await check_for_profanity(message):
-            return False
+        profanity_found = await check_for_profanity(message)
+        
+        if not profanity_found:
+            # لا يوجد سباب - نتحقق من حالة المستخدم
+            if not user_is_muted:
+                # المستخدم غير مكتوم ولا يوجد سباب - رسالة عادية
+                logging.debug(f"✅ رسالة عادية من مستخدم غير مكتوم {message.from_user.id}")
+                return False
+            else:
+                # المستخدم مكتوم - يجب حذف جميع رسائله حتى لو لم تكن سباب
+                logging.info(f"🔇 المستخدم {message.from_user.id} مكتوم ويحاول إرسال رسالة")
+                try:
+                    await message.delete()
+                    logging.info("🗑️ تم حذف رسالة من مستخدم مكتوم")
+                    # إرسال تذكير للمستخدم المكتوم
+                    reminder_msg = await message.answer(
+                        f"🔇 **{message.from_user.first_name}** أنت مكتوم حالياً\n"
+                        f"⚠️ لا يمكنك إرسال الرسائل حتى ينتهي الكتم أو يتم إلغاؤه من قبل المشرفين"
+                    )
+                    # حذف الرسالة التذكيرية بعد 8 ثواني
+                    import asyncio
+                    await asyncio.sleep(8)
+                    try:
+                        await reminder_msg.delete()
+                    except:
+                        pass
+                except Exception as delete_error:
+                    logging.warning(f"لم يتمكن من حذف رسالة المستخدم المكتوم: {delete_error}")
+                return True
         
         # الحصول على عدد التحذيرات الحالية
         current_warnings = await get_user_warnings(message.from_user.id, message.chat.id)
