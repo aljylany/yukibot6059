@@ -67,7 +67,7 @@ class ComprehensiveContentFilter:
     """نظام كشف المحتوى الشامل والمتقدم"""
     
     def __init__(self):
-        self.enabled = True
+        self.enabled = False  # تعطيل النظام الشامل مؤقتاً لحل المشاكل
         self.api_keys = []
         self.current_key_index = 0
         self.model = None
@@ -336,19 +336,46 @@ class ComprehensiveContentFilter:
         try:
             text_lower = text.lower()
             
-            # فحص متقدم باستخدام Google Gemini
-            if self.model:
-                ai_result = await self._check_text_with_ai(text)
-                if ai_result.get('has_profanity', False):
-                    result['has_violation'] = True
-                    result['violation_type'] = ViolationType.TEXT_PROFANITY.value
-                    result['severity'] = ai_result.get('severity', SeverityLevel.MEDIUM.value)
-                    result['details'] = {
-                        'ai_analysis': ai_result.get('reason', 'محتوى غير مناسب'),
-                        'confidence': ai_result.get('confidence', 0),
-                        'method': 'ai_gemini'
-                    }
-                    return result
+            # قائمة الكلمات الآمنة - لا يجب اعتبارها سباب أبداً
+            safe_words = [
+                "بوت", "bot", "روبوت", "يوكي", "yuki", "آلي", "ذكي", "مساعد", "برنامج",
+                "تطبيق", "سيري", "siri", "أليكسا", "alexa", "جوجل", "google", "ماسنجر", "messenger",
+                "واتساب", "whatsapp", "تيليجرام", "telegram", "ديسكورد", "discord", 
+                "غبي", "مجنون", "سيء", "جيد", "عادي", "طبيعي", "مفيد", "رائع", "جميل", "حلو",
+                "شكرا", "شكراً", "thanks", "مرحبا", "مرحباً", "hello", "hi", "أهلا", "أهلاً",
+                "نعم", "لا", "yes", "no", "ربما", "maybe", "perhaps", "لماذا", "why", "كيف", "how",
+                "متى", "when", "أين", "where", "ماذا", "what", "من", "who", "كم", "how much"
+            ]
+            
+            # التحقق من الكلمات الآمنة أولاً
+            words_in_text = text_lower.split()
+            is_safe_text = any(safe_word in text_lower for safe_word in safe_words)
+            
+            # إذا كان النص يحتوي على كلمات آمنة فقط، لا نفحصه بالذكاء الاصطناعي
+            if is_safe_text and len(text_lower.strip()) <= 50:
+                logging.info(f"✅ تم تجاهل النص الآمن: '{text[:30]}...'")
+                return result
+            
+            # فحص متقدم باستخدام Google Gemini (فقط للنصوص المشبوهة)
+            if self.model and len(text_lower.strip()) > 5:  # نفحص النصوص الطويلة فقط
+                # تحقق إضافي - لا نفحص النصوص التي تحتوي على كلمات آمنة فقط
+                if not is_safe_text:
+                    ai_result = await self._check_text_with_ai(text)
+                    if ai_result.get('has_profanity', False):
+                        # تقليل شدة العقوبة للنصوص العادية
+                        severity = ai_result.get('severity', SeverityLevel.MEDIUM.value)
+                        if severity > SeverityLevel.MEDIUM.value:
+                            severity = SeverityLevel.MEDIUM.value  # تقليل الشدة
+                        
+                        result['has_violation'] = True
+                        result['violation_type'] = ViolationType.TEXT_PROFANITY.value
+                        result['severity'] = severity
+                        result['details'] = {
+                            'ai_analysis': ai_result.get('reason', 'محتوى غير مناسب'),
+                            'confidence': ai_result.get('confidence', 0),
+                            'method': 'ai_gemini_filtered'
+                        }
+                        return result
             
             # فحص السياق الجنسي
             sexual_matches = []
@@ -366,13 +393,16 @@ class ComprehensiveContentFilter:
                 }
                 return result
             
-            # فحص السباب التقليدي (احتياطي)
-            banned_words_list = [
+            # فحص السباب التقليدي الخطير فقط (احتياطي)
+            severe_banned_words = [
                 "شرموط", "عاهرة", "منيك", "نيك", "كس", "زب", "طيز", "خرا",
-                "منيوك", "ايري", "انيك", "عرص", "حمار", "احمق", "غبي", "قحبة", "كسمك"
+                "منيوك", "ايري", "انيك", "عرص", "قحبة", "كسمك", "قاوود", "زومل"
             ]
             
-            for banned_word in banned_words_list:
+            # إزالة الكلمات العادية من قائمة السباب
+            # كلمات مثل "حمار"، "احمق"، "غبي" لم تعد تُعتبر سباب خطير
+            
+            for banned_word in severe_banned_words:
                 if banned_word in text_lower:
                     result['has_violation'] = True
                     result['violation_type'] = ViolationType.TEXT_PROFANITY.value
