@@ -126,13 +126,14 @@ def init_abusive_db():
         )
         ''')
         
-        # جدول تحذيرات المستخدمين
+        # جدول تحذيرات المستخدمين مع انتهاء صلاحية
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_warnings (
             user_id INTEGER,
             chat_id INTEGER,
             warnings INTEGER DEFAULT 0,
             last_warning TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP DEFAULT (datetime('now', '+7 days')),
             PRIMARY KEY (user_id, chat_id)
         )
         ''')
@@ -536,18 +537,18 @@ async def update_user_warnings(user_id: int, chat_id: int, severity: int) -> int
         conn = sqlite3.connect('abusive_words.db')
         cursor = conn.cursor()
         
-        # إضافة أو تحديث التحذيرات
+        # إضافة أو تحديث التحذيرات مع انتهاء صلاحية 7 أيام
         cursor.execute('''
-        INSERT OR IGNORE INTO user_warnings (user_id, chat_id, warnings)
-        VALUES (?, ?, 0)
+        INSERT OR IGNORE INTO user_warnings (user_id, chat_id, warnings, expires_at)
+        VALUES (?, ?, 0, datetime('now', '+7 days'))
         ''', (user_id, chat_id))
         
-        # زيادة التحذيرات حسب درجة الخطورة
+        # زيادة التحذيرات حسب درجة الخطورة مع تجديد انتهاء الصلاحية
         warning_increment = severity  # كلما زادت الخطورة، زادت التحذيرات
         
         cursor.execute('''
         UPDATE user_warnings 
-        SET warnings = warnings + ?, last_warning = CURRENT_TIMESTAMP
+        SET warnings = warnings + ?, last_warning = CURRENT_TIMESTAMP, expires_at = datetime('now', '+7 days')
         WHERE user_id = ? AND chat_id = ?
         ''', (warning_increment, user_id, chat_id))
         
@@ -650,21 +651,80 @@ async def reset_user_warnings(user_id: int, chat_id: int) -> bool:
 
 async def get_user_warnings(user_id: int, chat_id: int) -> int:
     """
-    الحصول على عدد تحذيرات المستخدم الحالية
+    الحصول على عدد تحذيرات المستخدم الحالية (مع حذف المنتهية الصلاحية)
     """
     try:
         conn = sqlite3.connect('abusive_words.db')
         cursor = conn.cursor()
         
-        cursor.execute('SELECT warnings FROM user_warnings WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+        # حذف التحذيرات المنتهية الصلاحية أولاً
+        cursor.execute('DELETE FROM user_warnings WHERE user_id = ? AND chat_id = ? AND expires_at < datetime("now")', (user_id, chat_id))
+        
+        # الحصول على التحذيرات الصالحة
+        cursor.execute('SELECT warnings FROM user_warnings WHERE user_id = ? AND chat_id = ? AND expires_at > datetime("now")', (user_id, chat_id))
         result = cursor.fetchone()
         
+        conn.commit()
         conn.close()
         
-        return result[0] if result else 0
+        if result is None:
+            logging.info(f"✨ تم محو تحذيرات المستخدم {user_id} المنتهية الصلاحية - فرصة جديدة!")
+            return 0
+        
+        return result[0]
         
     except Exception as e:
         logging.error(f"خطأ في جلب تحذيرات المستخدم: {e}")
+        return 0
+
+
+async def cleanup_expired_warnings() -> int:
+    """
+    حذف جميع التحذيرات المنتهية الصلاحية في جميع المجموعات
+    إرجاع عدد المستخدمين الذين حصلوا على فرصة جديدة
+    """
+    try:
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        # حذف جميع التحذيرات المنتهية الصلاحية
+        cursor.execute('DELETE FROM user_warnings WHERE expires_at < datetime("now")')
+        deleted_count = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        if deleted_count > 0:
+            logging.info(f"🎆 تم محو تحذيرات {deleted_count} مستخدم منتهية الصلاحية - حصلوا على فرصة جديدة!")
+        
+        return deleted_count
+        
+    except Exception as e:
+        logging.error(f"خطأ في تنظيف التحذيرات المنتهية: {e}")
+        return 0
+
+
+async def get_days_until_warnings_expire(user_id: int, chat_id: int) -> int:
+    """
+    عدد الأيام المتبقية حتى انتهاء صلاحية تحذيرات المستخدم
+    """
+    try:
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT ROUND((julianday(expires_at) - julianday('now'))) as days_left 
+        FROM user_warnings 
+        WHERE user_id = ? AND chat_id = ? AND expires_at > datetime('now')
+        ''', (user_id, chat_id))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        return int(result[0]) if result else 0
+        
+    except Exception as e:
+        logging.error(f"خطأ في حساب أيام انتهاء الصلاحية: {e}")
         return 0
 
 async def is_user_actually_muted(bot, chat_id: int, user_id: int) -> bool:
