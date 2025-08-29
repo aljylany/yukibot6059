@@ -44,6 +44,19 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Circular Import Resolution:** Specific attention paid to resolving common Python issues like circular imports (e.g., in `utils/decorators.py`).
 
 ## Recent Changes (August 29, 2025)
+- **Fixed Three-Warning System Properly:** Fixed critical issue where high-severity profanity (like harsh swear words) bypassed the three-warning system and went straight to mute:
+  - **Unified Warning System:** Modified `_determine_punishment_action()` to ensure ALL violations start with warnings (1-3) regardless of severity level
+  - **True Progressive System:** First 3 violations now ALWAYS result in warnings, then punishments begin based on violation count plus severity multiplier
+  - **Severity-Based Acceleration:** After 3 warnings, severe violations add extra punishment levels (harsh profanity +2, moderate +1) for faster escalation
+  - **Educational Approach:** Users now get proper opportunity to learn and correct behavior before facing actual punishment consequences
+- **Enhanced Admin Command Responses:** Updated "إلغاء سوابق" (clear records) command responses to show detailed cleanup information:
+  - **Detailed Cleanup Reports:** Shows exact numbers of deleted warnings, violation records, and reset punishment points
+  - **Comprehensive Database Coverage:** Updated cleanup functions to return detailed results from all database tables
+  - **Enhanced Admin Visibility:** Administrators can now see exactly what data was cleaned and from which systems
+- **Improved Violations Records Display:** Updated violation record queries to pull data from all database tables:
+  - **Multi-Table Integration:** Combines data from `user_warnings`, `violation_history`, and `user_violation_points` tables
+  - **Complete User Profile:** Shows warnings count, violation points, punishment level, and ban status in unified view
+  - **Better Admin Oversight:** Administrators get complete picture of user violation history across all systems
 - **Complete Violation System Overhaul:** Fixed major issue where "إلغاء سوابق" (clear records) command only deleted warnings but not violation history, causing users to be immediately banned again:
   - **Comprehensive Database Cleanup:** Updated all cleanup functions (`clear_user_all_violations`, `clear_user_group_violations`, `cleanup_all_violations`, `cleanup_group_violations`) to delete from multiple database tables
   - **Multi-Table Reset:** Now clears data from `user_warnings`, `violation_history`, `user_violation_points`, and `detailed_admin_reports` tables

@@ -878,7 +878,7 @@ class ComprehensiveContentFilter:
             }
 
     def _determine_punishment_action(self, total_severity: int, user_id: int, chat_id: int) -> PunishmentAction:
-        """تحديد الإجراء العقابي المناسب"""
+        """تحديد الإجراء العقابي المناسب مع نظام التحذيرات الثلاثة"""
         try:
             # جلب سجل المخالفات السابقة
             conn = sqlite3.connect('comprehensive_filter.db')
@@ -901,26 +901,38 @@ class ComprehensiveContentFilter:
             else:
                 current_points, punishment_level = 0, 0
             
-            # حساب النقاط الجديدة
-            new_total_points = current_points + total_severity
+            # حساب النقاط الجديدة (نضيف 1 لكل مخالفة بغض النظر عن الشدة لنظام التحذيرات الثلاثة)
+            new_total_points = current_points + 1
             
-            # تحديد الإجراء بناءً على النقاط التراكمية
-            if new_total_points <= 2:
+            # نظام التحذيرات الثلاثة أولاً
+            if new_total_points <= 3:
                 action = PunishmentAction.WARNING
-            elif new_total_points <= 4:
-                action = PunishmentAction.MUTE_5MIN
-            elif new_total_points <= 6:
-                action = PunishmentAction.MUTE_30MIN
-            elif new_total_points <= 8:
-                action = PunishmentAction.MUTE_1HOUR
-            elif new_total_points <= 12:
-                action = PunishmentAction.MUTE_6HOUR
-            elif new_total_points <= 16:
-                action = PunishmentAction.MUTE_24HOUR
-            elif new_total_points <= 20:
-                action = PunishmentAction.MUTE_PERMANENT
             else:
-                action = PunishmentAction.BAN_PERMANENT
+                # بعد التحذيرات الثلاثة، نستخدم الشدة والعدد لتحديد العقوبة
+                # تحديد مستوى العقوبة بناءً على العدد والشدة
+                punishment_level = new_total_points - 3  # نبدأ من 1 بعد 3 تحذيرات
+                
+                # تضخيم العقوبة حسب الخطورة
+                if total_severity >= 3:  # سباب شديد
+                    punishment_level += 2
+                elif total_severity == 2:  # سباب متوسط
+                    punishment_level += 1
+                
+                # تحديد العقوبة المناسبة
+                if punishment_level <= 1:
+                    action = PunishmentAction.MUTE_5MIN
+                elif punishment_level <= 3:
+                    action = PunishmentAction.MUTE_30MIN
+                elif punishment_level <= 5:
+                    action = PunishmentAction.MUTE_1HOUR
+                elif punishment_level <= 8:
+                    action = PunishmentAction.MUTE_6HOUR
+                elif punishment_level <= 12:
+                    action = PunishmentAction.MUTE_24HOUR
+                elif punishment_level <= 16:
+                    action = PunishmentAction.MUTE_PERMANENT
+                else:
+                    action = PunishmentAction.BAN_PERMANENT
             
             # تحديث النقاط في قاعدة البيانات
             cursor.execute('''
@@ -928,7 +940,7 @@ class ComprehensiveContentFilter:
             (user_id, chat_id, total_points, punishment_level, is_permanently_banned)
             VALUES (?, ?, ?, ?, ?)
             ''', (user_id, chat_id, new_total_points, 
-                  punishment_level + 1, 
+                  punishment_level + 1 if 'punishment_level' in locals() else 0, 
                   action == PunishmentAction.BAN_PERMANENT))
             
             conn.commit()

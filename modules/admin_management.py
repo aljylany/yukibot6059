@@ -843,13 +843,52 @@ async def handle_violations_record_command(message: Message):
         report += f"📊 **إجمالي المستخدمين المخالفين:** {len(records)}\n\n"
         
         for i, record in enumerate(records[:20]):  # أول 20 مستخدم
-            days_left = await get_days_until_warnings_expire(record['user_id'], record['chat_id'])
-            expire_text = f"ينتهي خلال {days_left} أيام" if days_left > 0 else "منتهي الصلاحية"
+            # التأكد من وجود البيانات الضرورية
+            user_id = record.get('user_id', 'غير معروف')
+            chat_id = record.get('chat_id', 0)
+            warnings = record.get('warnings', 0)
+            violation_count = record.get('violation_count', 0)
+            punishment_level = record.get('punishment_level', 0)
+            is_banned = record.get('is_banned', False)
+            last_warning = record.get('last_warning', 'غير متاح')
             
-            report += f"👤 **{i+1}.** المستخدم `{record['user_id']}`\n"
-            report += f"   ⚠️ التحذيرات: {record['warnings']}\n"
-            report += f"   📅 آخر مخالفة: {record['last_warning'][:10]}\n"
-            report += f"   ⏰ {expire_text}\n\n"
+            # حساب أيام انتهاء التحذيرات إن أمكن
+            days_left = 0
+            expire_text = "غير محدد"
+            if chat_id and warnings > 0:
+                try:
+                    days_left = await get_days_until_warnings_expire(user_id, chat_id)
+                    expire_text = f"ينتهي خلال {days_left} أيام" if days_left > 0 else "منتهي الصلاحية"
+                except:
+                    expire_text = "غير محدد"
+            
+            report += f"👤 **{i+1}.** المستخدم `{user_id}`\n"
+            
+            # عرض التحذيرات إن وجدت
+            if warnings > 0:
+                report += f"   ⚠️ التحذيرات: {warnings}\n"
+            
+            # عرض المخالفات ونقاط العقوبة
+            if violation_count > 0:
+                report += f"   🔴 نقاط المخالفات: {violation_count}\n"
+                report += f"   📊 مستوى العقوبة: {punishment_level}\n"
+            
+            # عرض حالة الحظر
+            if is_banned:
+                report += f"   🚫 **محظور نهائياً**\n"
+            
+            # عرض آخر مخالفة إن وجدت
+            if last_warning and last_warning != 'غير متاح':
+                try:
+                    report += f"   📅 آخر مخالفة: {str(last_warning)[:10]}\n"
+                except:
+                    pass
+            
+            # عرض انتهاء الصلاحية إن كان متاحاً
+            if expire_text != "غير محدد":
+                report += f"   ⏰ {expire_text}\n"
+            
+            report += "\n"
         
         if len(records) > 20:
             report += f"➕ **و {len(records) - 20} مستخدم آخر...**\n\n"
@@ -973,21 +1012,36 @@ async def handle_clear_user_record_command(message: Message):
         is_master = user_id in MASTERS
         if is_master:
             # للأسياد: حذف شامل من كل المجموعات
-            deleted_count = await clear_user_all_violations(target_user_id)
+            cleanup_result = await clear_user_all_violations(target_user_id)
             scope_text = "من جميع المجموعات"
         else:
             # للمالكين: حذف من المجموعة الحالية فقط
-            deleted_count = await clear_user_group_violations(target_user_id, chat_id)
+            cleanup_result = await clear_user_group_violations(target_user_id, chat_id)
             scope_text = "من المجموعة الحالية"
         
-        if deleted_count > 0:
+        # التحقق من نوع النتيجة (للتوافق مع الدوال القديمة)
+        if isinstance(cleanup_result, dict):
+            total_deleted = cleanup_result['total_deleted']
+            deleted_warnings = cleanup_result['deleted_warnings']
+            deleted_history = cleanup_result['deleted_history']
+            reset_points = cleanup_result['reset_points']
+        else:
+            # دالة قديمة ترجع رقم واحد
+            total_deleted = cleanup_result
+            deleted_warnings = deleted_history = reset_points = 0
+        
+        if total_deleted > 0:
             user_mention = target_user.first_name if target_user else f"المستخدم {target_user_id}"
             await message.reply(
-                f"✅ **تم إلغاء السوابق بنجاح!**\n\n"
+                f"🧹 **تم إلغاء السوابق بنجاح!**\n\n"
                 f"👤 **المستخدم:** {user_mention}\n"
-                f"🗂️ **تم حذف:** {deleted_count} سجل\n"
                 f"🌍 **النطاق:** {scope_text}\n\n"
-                f"🎉 **المستخدم حصل على فرصة جديدة!**"
+                f"📊 **تفاصيل التنظيف:**\n"
+                f"• حذف {deleted_warnings} تحذير\n"
+                f"• حذف {deleted_history} سجل مخالفة\n"
+                f"• إعادة تعيين نقاط العقوبة: {'نعم' if reset_points > 0 else 'لا يوجد سجل'}\n\n"
+                f"🎉 **المستخدم حصل على فرصة جديدة نظيفة!**\n"
+                f"⚠️ **تحذير:** هذا الإجراء غير قابل للتراجع!"
             )
         else:
             await message.reply(
@@ -1003,23 +1057,78 @@ async def handle_clear_user_record_command(message: Message):
 # ==================== دوال مساعدة لقاعدة البيانات ====================
 
 async def get_all_violations_records():
-    """جلب جميع سجلات المخالفات من النظام"""
+    """جلب جميع سجلات المخالفات من جميع الجداول في النظام"""
     try:
         import sqlite3
-        conn = sqlite3.connect('abusive_words.db')
-        cursor = conn.cursor()
+        all_records = {}
         
-        cursor.execute('''
-        SELECT user_id, chat_id, warnings, last_warning 
-        FROM user_warnings 
-        WHERE warnings > 0 
-        ORDER BY warnings DESC, last_warning DESC
-        ''')
+        # جلب من جدول التحذيرات (abusive_words.db)
+        try:
+            conn1 = sqlite3.connect('abusive_words.db')
+            cursor1 = conn1.cursor()
+            
+            cursor1.execute('''
+            SELECT user_id, chat_id, warnings, last_warning 
+            FROM user_warnings 
+            WHERE warnings > 0 
+            ORDER BY warnings DESC, last_warning DESC
+            ''')
+            
+            warnings_results = cursor1.fetchall()
+            conn1.close()
+            
+            for r in warnings_results:
+                key = f"{r[0]}_{r[1]}"  # user_id_chat_id
+                all_records[key] = {
+                    'user_id': r[0], 
+                    'chat_id': r[1], 
+                    'warnings': r[2], 
+                    'last_warning': r[3],
+                    'violation_count': 0,
+                    'punishment_level': 0,
+                    'is_banned': False
+                }
+        except Exception as e:
+            logging.debug(f"خطأ في جلب التحذيرات: {e}")
         
-        results = cursor.fetchall()
-        conn.close()
+        # جلب من جدول نقاط العقوبة (comprehensive_filter.db)
+        try:
+            conn2 = sqlite3.connect('comprehensive_filter.db')
+            cursor2 = conn2.cursor()
+            
+            cursor2.execute('''
+            SELECT user_id, chat_id, total_points, punishment_level, is_permanently_banned 
+            FROM user_violation_points 
+            WHERE total_points > 0 
+            ORDER BY total_points DESC
+            ''')
+            
+            points_results = cursor2.fetchall()
+            
+            for r in points_results:
+                key = f"{r[0]}_{r[1]}"  # user_id_chat_id
+                if key in all_records:
+                    all_records[key].update({
+                        'violation_count': r[2],
+                        'punishment_level': r[3],
+                        'is_banned': bool(r[4])
+                    })
+                else:
+                    all_records[key] = {
+                        'user_id': r[0], 
+                        'chat_id': r[1], 
+                        'warnings': 0,
+                        'last_warning': None,
+                        'violation_count': r[2],
+                        'punishment_level': r[3],
+                        'is_banned': bool(r[4])
+                    }
+            
+            conn2.close()
+        except Exception as e:
+            logging.debug(f"خطأ في جلب نقاط العقوبة: {e}")
         
-        return [{'user_id': r[0], 'chat_id': r[1], 'warnings': r[2], 'last_warning': r[3]} for r in results]
+        return list(all_records.values())
     
     except Exception as e:
         logging.error(f"خطأ في جلب جميع السجلات: {e}")
@@ -1027,23 +1136,76 @@ async def get_all_violations_records():
 
 
 async def get_group_violations_records(chat_id: int):
-    """جلب سجلات مخالفات المجموعة المحددة"""
+    """جلب سجلات مخالفات المجموعة المحددة من جميع الجداول"""
     try:
         import sqlite3
-        conn = sqlite3.connect('abusive_words.db')
-        cursor = conn.cursor()
+        all_records = {}
         
-        cursor.execute('''
-        SELECT user_id, chat_id, warnings, last_warning 
-        FROM user_warnings 
-        WHERE chat_id = ? AND warnings > 0 
-        ORDER BY warnings DESC, last_warning DESC
-        ''', (chat_id,))
+        # جلب من جدول التحذيرات (abusive_words.db)
+        try:
+            conn1 = sqlite3.connect('abusive_words.db')
+            cursor1 = conn1.cursor()
+            
+            cursor1.execute('''
+            SELECT user_id, chat_id, warnings, last_warning 
+            FROM user_warnings 
+            WHERE chat_id = ? AND warnings > 0 
+            ORDER BY warnings DESC, last_warning DESC
+            ''', (chat_id,))
+            
+            warnings_results = cursor1.fetchall()
+            conn1.close()
+            
+            for r in warnings_results:
+                all_records[r[0]] = {  # user_id as key
+                    'user_id': r[0], 
+                    'chat_id': r[1], 
+                    'warnings': r[2], 
+                    'last_warning': r[3],
+                    'violation_count': 0,
+                    'punishment_level': 0,
+                    'is_banned': False
+                }
+        except Exception as e:
+            logging.debug(f"خطأ في جلب التحذيرات للمجموعة: {e}")
         
-        results = cursor.fetchall()
-        conn.close()
+        # جلب من جدول نقاط العقوبة (comprehensive_filter.db)
+        try:
+            conn2 = sqlite3.connect('comprehensive_filter.db')
+            cursor2 = conn2.cursor()
+            
+            cursor2.execute('''
+            SELECT user_id, chat_id, total_points, punishment_level, is_permanently_banned 
+            FROM user_violation_points 
+            WHERE chat_id = ? AND total_points > 0 
+            ORDER BY total_points DESC
+            ''', (chat_id,))
+            
+            points_results = cursor2.fetchall()
+            
+            for r in points_results:
+                if r[0] in all_records:  # user_id
+                    all_records[r[0]].update({
+                        'violation_count': r[2],
+                        'punishment_level': r[3],
+                        'is_banned': bool(r[4])
+                    })
+                else:
+                    all_records[r[0]] = {
+                        'user_id': r[0], 
+                        'chat_id': r[1], 
+                        'warnings': 0,
+                        'last_warning': None,
+                        'violation_count': r[2],
+                        'punishment_level': r[3],
+                        'is_banned': bool(r[4])
+                    }
+            
+            conn2.close()
+        except Exception as e:
+            logging.debug(f"خطأ في جلب نقاط العقوبة للمجموعة: {e}")
         
-        return [{'user_id': r[0], 'chat_id': r[1], 'warnings': r[2], 'last_warning': r[3]} for r in results]
+        return list(all_records.values())
     
     except Exception as e:
         logging.error(f"خطأ في جلب سجلات المجموعة: {e}")
@@ -1231,7 +1393,12 @@ async def clear_user_all_violations(user_id: int) -> int:
         logging.info(f"   - حذف {deleted_history} سجل مخالفة")
         logging.info(f"   - إعادة تعيين نقاط العقوبة: {'نعم' if reset_points > 0 else 'لا يوجد سجل'}")
         
-        return total_deleted
+        return {
+            'total_deleted': total_deleted,
+            'deleted_warnings': deleted_warnings,
+            'deleted_history': deleted_history,
+            'reset_points': reset_points
+        }
     
     except Exception as e:
         logging.error(f"خطأ في التنظيف الشامل لمخالفات المستخدم: {e}")
@@ -1296,7 +1463,12 @@ async def clear_user_group_violations(user_id: int, chat_id: int) -> int:
         logging.info(f"   - حذف {deleted_history} سجل مخالفة")
         logging.info(f"   - إعادة تعيين نقاط العقوبة: {'نعم' if reset_points > 0 else 'لا يوجد سجل'}")
         
-        return total_deleted
+        return {
+            'total_deleted': total_deleted,
+            'deleted_warnings': deleted_warnings,
+            'deleted_history': deleted_history,
+            'reset_points': reset_points
+        }
     
     except Exception as e:
         logging.error(f"خطأ في التنظيف الشامل لمخالفات المستخدم من المجموعة: {e}")
