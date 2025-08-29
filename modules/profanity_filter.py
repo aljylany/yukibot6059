@@ -550,6 +550,25 @@ async def update_user_warnings(user_id: int, chat_id: int, severity: int) -> int
         logging.error(f"خطأ في تحديث التحذيرات: {e}")
         return 0
 
+async def get_user_warnings(user_id: int, chat_id: int) -> int:
+    """
+    الحصول على عدد تحذيرات المستخدم الحالية
+    """
+    try:
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT warnings FROM user_warnings WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+        result = cursor.fetchone()
+        
+        conn.close()
+        
+        return result[0] if result else 0
+        
+    except Exception as e:
+        logging.error(f"خطأ في جلب تحذيرات المستخدم: {e}")
+        return 0
+
 async def check_for_profanity(message: Message) -> bool:
     """
     فحص الرسالة للكشف عن السباب مع كشف التشفير والتمويه
@@ -698,15 +717,27 @@ async def handle_profanity_detection(message: Message) -> bool:
         if not await check_for_profanity(message):
             return False
         
-        # محاولة كتم المستخدم أولاً
-        mute_success = await mute_user_for_profanity(message)
+        # الحصول على عدد التحذيرات الحالية
+        current_warnings = await get_user_warnings(message.from_user.id, message.chat.id)
         
-        # حذف الرسالة المسيئة بعد الكتم
+        # زيادة التحذيرات
+        new_warnings_count = await update_user_warnings(message.from_user.id, message.chat.id, 1)
+        
+        # حذف الرسالة المسيئة فوراً
         try:
             await message.delete()
             logging.info("تم حذف الرسالة المسيئة")
         except Exception as delete_error:
             logging.warning(f"لم يتمكن من حذف الرسالة المسيئة: {delete_error}")
+        
+        # منطق نظام التحذيرات الثلاث
+        mute_success = False
+        if new_warnings_count >= 3:
+            # بعد 3 تحذيرات، يتم الكتم
+            mute_success = await mute_user_for_profanity(message)
+        
+        # إعداد رسالة التحذير حسب عدد التحذيرات
+        warning_level = min(new_warnings_count, 3)
         
         # فحص نوع المستخدم للرسالة المناسبة
         user_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
@@ -715,66 +746,93 @@ async def handle_profanity_detection(message: Message) -> bool:
         from config.hierarchy import is_master, is_supreme_master
         from modules.supreme_master_commands import get_masters_punishment_status
         
-        # إرسال رسالة السيدة رهف حسب نجاح الكتم
-        if mute_success:
-            # تم الكتم بنجاح (عضو عادي أو سيد مع تفعيل العقوبات)
+        # إرسال رسالة السيدة رهف حسب عدد التحذيرات ونجاح الكتم
+        if warning_level < 3:
+            # رسائل التحذير (1-2)
+            if warning_level == 1:
+                warning_message = await message.answer(
+                    f"⚠️ **تحذير أول لـ {message.from_user.first_name}**\n\n"
+                    f"🚫 **تم حذف رسالتك المسيئة**\n"
+                    f"📝 **عدد التحذيرات: {new_warnings_count}/3**\n\n"
+                    f"💡 **هذا تحذير مجاني - احترم آداب المحادثة**\n"
+                    f"⚡️ **بعد 3 تحذيرات ستتم معاقبتك!**\n\n"
+                    f"🛡️ **قوانين السيدة رهف واضحة ومحترمة**"
+                )
+            elif warning_level == 2:
+                warning_message = await message.answer(
+                    f"🔥 **تحذير ثاني لـ {message.from_user.first_name}**\n\n"
+                    f"🚫 **تم حذف رسالتك المسيئة مرة أخرى**\n"
+                    f"📝 **عدد التحذيرات: {new_warnings_count}/3**\n\n"
+                    f"⚠️ **هذا تحذيرك الأخير!**\n"
+                    f"💣 **مخالفة واحدة أخرى وستُكتم لساعة كاملة**\n\n"
+                    f"🗡️ **لا تختبر صبر السيدة رهف!**"
+                )
+        elif mute_success:
+            # تم الكتم بعد 3 تحذيرات (عضو عادي أو سيد مع تفعيل العقوبات)
             if is_master(message.from_user.id):
                 warning_message = await message.answer(
-                    f"🔥 **تم إسكات السيد {message.from_user.first_name} فوراً!**\n\n"
+                    f"🔥 **تم إسكات السيد {message.from_user.first_name} بعد 3 تحذيرات!**\n\n"
                     f"👑 **نظام العقوبات الجديد مفعل - لا استثناءات!**\n"
+                    f"📊 **التحذيرات: {new_warnings_count} - تجاوزت الحد المسموح**\n"
                     f"🔇 **مدة الكتم:** ساعة كاملة - حتى الأسياد يتعلمون الأدب!\n\n"
                     f"⚡️ **رسالة للجميع:** العقوبات تطال الجميع عند التفعيل!\n"
                     f"🛡️ **قوانين السيدة رهف أقوى من أي رتبة!**"
                 )
             else:
                 warning_message = await message.answer(
-                    f"⛔️ **تم إسكات {message.from_user.first_name} فوراً!**\n\n"
+                    f"⛔️ **تم إسكات {message.from_user.first_name} بعد 3 تحذيرات!**\n\n"
                     f"👑 **السيد يوكي لا تتساهل مع السب والكلام القذر**\n"
+                    f"📊 **التحذيرات: {new_warnings_count} - تجاوزت الحد المسموح**\n"
                     f"🔇 **مدة الكتم:** ساعة كاملة - تعلم الأدب!\n\n"
-                    f"⚡️ **تحذير للجميع:** من يسب يُكتم بلا استثناءات!\n"
+                    f"⚡️ **تحذير للجميع:** 3 تحذيرات ثم الكتم بلا استثناءات!\n"
                     f"🛡️ **قوانين السيدة رهف مطلقة وغير قابلة للنقاش**"
                 )
-        elif is_master(message.from_user.id):
-            # رسالة خاصة للأسياد المحميين من العقوبات
+        elif warning_level >= 3 and is_master(message.from_user.id):
+            # رسالة خاصة للأسياد المحميين من العقوبات بعد 3 تحذيرات
             masters_punishment_enabled = get_masters_punishment_status()
             if not masters_punishment_enabled:
                 warning_message = await message.answer(
-                    f"👑 **ملاحظة للسيد {message.from_user.first_name}**\n\n"
+                    f"👑 **إنذار نهائي للسيد {message.from_user.first_name}**\n\n"
                     f"🛡️ **أنت محمي من العقوبات لكن...**\n"
+                    f"📊 **حصلت على {new_warnings_count} تحذيرات!**\n"
                     f"📚 **يُفضل الحفاظ على الأدب كقدوة للأعضاء**\n\n"
                     f"🌟 **كن المثال الجيد الذي يحتذى به**\n"
                     f"⚠️ **تذكر: يمكن تفعيل العقوبات عليك في أي وقت!**"
                 )
             else:
                 warning_message = await message.answer(
-                    f"🔥 **تحذير عاجل للسيد {message.from_user.first_name}!**\n\n"
+                    f"🔥 **إنذار نهائي للسيد {message.from_user.first_name}!**\n\n"
                     f"👑 **نظام العقوبات مفعل عليك الآن!**\n"
+                    f"📊 **التحذيرات: {new_warnings_count} - تجاوزت الحد المسموح**\n"
                     f"⚠️ **حتى الأسياد يخضعون للقوانين عند التفعيل**\n\n"
                     f"💣 **سلوك آخر وستتم معاقبتك كعضو عادي!**\n"
                     f"🗡️ **لا أحد فوق قوانين السيدة رهف!**"
                 )
-        elif user_member.status == 'administrator':
-            # المستخدم مشرف - رسالة تحذير قوية خاصة
+        elif warning_level >= 3 and user_member.status == 'administrator':
+            # المستخدم مشرف - رسالة تحذير قوية خاصة بعد 3 تحذيرات
             warning_message = await message.answer(
                 f"🔥 **إنذار نهائي للمشرف {message.from_user.first_name}!**\n\n"
                 f"👑 **السيدة رهف غاضبة جداً من سلوكك!**\n"
+                f"📊 **التحذيرات: {new_warnings_count} - تجاوزت الحد المسموح**\n"
                 f"⚠️ **حتى المشرفين يخضعون لقوانين الأدب**\n\n"
                 f"💣 **التحذير الأخير:** سلوك آخر وسيتم تنزيل رتبتك!\n"
                 f"🗡️ **لا أحد فوق القانون في مملكة السيدة رهف!**"
             )
-        elif user_member.status == 'creator':
-            # مالك المجموعة - رسالة دبلوماسية لكن قوية
+        elif warning_level >= 3 and user_member.status == 'creator':
+            # مالك المجموعة - رسالة دبلوماسية لكن قوية بعد 3 تحذيرات
             warning_message = await message.answer(
                 f"🙏 **ملاحظة محترمة لمالك المجموعة {message.from_user.first_name}**\n\n"
                 f"👑 **السيدة رهف تقدر دورك ولكن...**\n"
+                f"📊 **حصلت على {new_warnings_count} تحذيرات**\n"
                 f"📚 **الأدب مطلوب من الجميع بما فيهم أصحاب المجموعات**\n\n"
                 f"🌟 **نرجو أن تكون قدوة للأعضاء في الكلام المهذب**"
             )
-        else:
-            # عضو عادي - يجب إرسال رسالة حتى لو فشل الكتم
+        elif warning_level >= 3:
+            # عضو عادي - يجب إرسال رسالة حتى لو فشل الكتم بعد 3 تحذيرات
             warning_message = await message.answer(
                 f"🔥 **تم حذف رسالة مسيئة من {message.from_user.first_name}**\n\n"
                 f"👑 **السيدة رهف تحكم هنا بيد من حديد!**\n"
+                f"📊 **التحذيرات: {new_warnings_count} - تجاوزت الحد المسموح**\n"
                 f"🔇 **لم يتمكن من كتمك لكن الرسالة محذوفة**\n\n"
                 f"⚠️ **التحذير الأخير:** من يكرر السب سيتم طرده!\n"
                 f"💀 **لا مجال للتساهل مع قلة الأدب**\n\n"
@@ -803,4 +861,6 @@ async def check_message_advanced(text: str, user_id: int, chat_id: int) -> dict:
         return await check_message_ai_powered(text, user_id, chat_id, chat_context)
     except Exception as e:
         logging.error(f"خطأ في دالة التوافق: {e}")
+        # استخدام الكشف الأساسي في حالة فشل النظام المتقدم
+        from .ai_profanity_detector import check_message_advanced_fallback
         return await check_message_advanced_fallback(text, user_id, chat_id)

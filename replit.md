@@ -43,7 +43,17 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Performance Optimization:** Focuses on faster and more accurate processing with intelligent API key consumption and automatic switching.
 - **Circular Import Resolution:** Specific attention paid to resolving common Python issues like circular imports (e.g., in `utils/decorators.py`).
 
-## Recent Changes (August 28, 2025)
+## Recent Changes (August 29, 2025)
+- **Three-Warning System Implementation:** Modified the profanity detection system to provide three progressive warnings before taking actual punishment actions:
+  - **First Warning (1/3):** Simple warning with gentle reminder about community standards
+  - **Second Warning (2/3):** Stronger warning indicating final chance before punishment
+  - **Third Strike:** After 3 warnings, the user receives the actual punishment (mute for 1 hour)
+- **Enhanced Warning Messages:** Updated all warning messages to display current warning count (e.g., "التحذيرات: 2/3") for better user awareness
+- **Improved User Experience:** Users now have multiple chances to correct their behavior before facing consequences, making the system more educational rather than purely punitive
+- **Smart Warning Tracking:** Added `get_user_warnings()` function to track and retrieve current warning counts from the database
+- **Graduated Response System:** Different message tones for each warning level - from educational to final warning to punishment notification
+
+## Previous Changes (August 28, 2025)
 - **Fixed Message Detection System:** Created unified message processor (`handlers/unified_message_processor.py`) to resolve issues where profanity detection wasn't working consistently
 - **Eliminated Handler Conflicts:** Removed competing message handlers that were causing messages to bypass the detection system
 - **Ensured Complete Coverage:** Now ALL message types (text, images, videos, stickers, files, voice messages) are processed through the same comprehensive detection system
