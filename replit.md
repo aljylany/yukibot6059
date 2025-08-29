@@ -52,6 +52,12 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Improved User Experience:** Users now have multiple chances to correct their behavior before facing consequences, making the system more educational rather than purely punitive
 - **Smart Warning Tracking:** Added `get_user_warnings()` function to track and retrieve current warning counts from the database
 - **Graduated Response System:** Different message tones for each warning level - from educational to final warning to punishment notification
+- **Advanced Graduated Punishment System:** Implemented sophisticated punishment escalation based on violation count and severity:
+  - **Warning Phase (1-3 violations):** Educational warnings only
+  - **Graduated Muting (4+ violations):** Progressive mute durations: 1 min → 2 min → 3 min → 4 min → 5 min → 10 min → 30 min → 1 hour → 2 hours → 3 hours → 4 hours → 1 day → 2 days → 3 days → 1 week → 1 month
+  - **Permanent Ban (17+ violations):** Automatic permanent removal from group
+  - **Severity-Based Acceleration:** Higher severity violations (harsh profanity) accelerate punishment progression
+  - **Dynamic Duration Calculation:** `calculate_punishment_duration()` function determines appropriate punishment based on user history and violation severity
 
 ## Previous Changes (August 28, 2025)
 - **Fixed Message Detection System:** Created unified message processor (`handlers/unified_message_processor.py`) to resolve issues where profanity detection wasn't working consistently

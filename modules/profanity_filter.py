@@ -550,6 +550,66 @@ async def update_user_warnings(user_id: int, chat_id: int, severity: int) -> int
         logging.error(f"خطأ في تحديث التحذيرات: {e}")
         return 0
 
+async def calculate_punishment_duration(user_warnings: int, severity: int) -> tuple:
+    """
+    حساب مدة ونوع العقوبة حسب عدد التحذيرات ودرجة خطورة السب
+    Returns: (duration_seconds, punishment_type, description)
+    """
+    # نظام العقوبات المتدرج:
+    # التحذيرات 1-3: تحذيرات فقط
+    # التحذيرات 4+: عقوبات فعلية متدرجة
+    
+    if user_warnings <= 3:
+        return (0, "warning", "تحذير")
+    
+    # حساب مستوى العقوبة بناءً على التحذيرات والخطورة
+    punishment_level = user_warnings - 3  # نبدأ من 1 بعد 3 تحذيرات
+    
+    # تضخيم العقوبة حسب الخطورة
+    if severity >= 3:  # سباب شديد
+        punishment_level += 2
+    elif severity == 2:  # سباب متوسط
+        punishment_level += 1
+    
+    # نظام العقوبات المتدرج
+    if punishment_level == 1:
+        return (60, "mute", "دقيقة واحدة")
+    elif punishment_level == 2:
+        return (120, "mute", "دقيقتان")
+    elif punishment_level == 3:
+        return (180, "mute", "3 دقائق")
+    elif punishment_level == 4:
+        return (240, "mute", "4 دقائق")
+    elif punishment_level == 5:
+        return (300, "mute", "5 دقائق")
+    elif punishment_level == 6:
+        return (600, "mute", "10 دقائق")
+    elif punishment_level == 7:
+        return (1800, "mute", "30 دقيقة")
+    elif punishment_level == 8:
+        return (3600, "mute", "ساعة واحدة")
+    elif punishment_level == 9:
+        return (7200, "mute", "ساعتان")
+    elif punishment_level == 10:
+        return (10800, "mute", "3 ساعات")
+    elif punishment_level == 11:
+        return (14400, "mute", "4 ساعات")
+    elif punishment_level == 12:
+        return (86400, "mute", "يوم كامل")
+    elif punishment_level == 13:
+        return (172800, "mute", "يومان")
+    elif punishment_level == 14:
+        return (259200, "mute", "3 أيام")
+    elif punishment_level == 15:
+        return (604800, "mute", "أسبوع")
+    elif punishment_level == 16:
+        return (2592000, "mute", "شهر كامل")
+    elif punishment_level >= 17:
+        return (0, "ban", "طرد نهائي")
+    
+    # احتياطي
+    return (3600, "mute", "ساعة واحدة")
+
 async def get_user_warnings(user_id: int, chat_id: int) -> int:
     """
     الحصول على عدد تحذيرات المستخدم الحالية
@@ -621,6 +681,120 @@ async def check_for_profanity(message: Message) -> bool:
         return result['is_abusive']
     except Exception as e:
         logging.error(f"خطأ في النظام الذكي، العودة للنظام التقليدي: {e}")
+        return False
+
+async def mute_user_with_duration(message: Message, duration_seconds: int, description: str) -> bool:
+    """
+    كتم المستخدم لمدة محددة
+    """
+    try:
+        # التحقق من صلاحيات البوت
+        bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+        if bot_member.status not in ['administrator', 'creator']:
+            logging.warning("البوت ليس مشرف - لا يمكن كتم المستخدمين")
+            return False
+        
+        if not hasattr(bot_member, 'can_restrict_members') or not bot_member.can_restrict_members:
+            logging.warning("البوت لا يملك صلاحية كتم المستخدمين")
+            return False
+        
+        # فحص إذا كان المستخدم من الأسياد
+        from config.hierarchy import is_master, is_supreme_master
+        from modules.supreme_master_commands import get_masters_punishment_status
+        
+        if is_supreme_master(message.from_user.id):
+            logging.info("المستخدم هو السيد الأعلى - محمي مطلقاً من جميع العقوبات")
+            return False
+        elif is_master(message.from_user.id):
+            masters_punishment_enabled = get_masters_punishment_status()
+            if not masters_punishment_enabled:
+                logging.info("المستخدم من الأسياد - محمي من العقوبات التلقائية (العقوبات معطلة)")
+                return False
+        
+        # التحقق من أن المستخدم ليس مالك المجموعة
+        user_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
+        if user_member.status == 'creator':
+            logging.info(f"المستخدم {message.from_user.id} هو مالك المجموعة - لا يمكن كتمه")
+            return False
+        
+        # إعداد صلاحيات الكتم
+        mute_until = datetime.now() + timedelta(seconds=duration_seconds)
+        permissions = ChatPermissions(
+            can_send_messages=False,
+            can_send_media_messages=False,
+            can_send_polls=False,
+            can_send_other_messages=False,
+            can_add_web_page_previews=False,
+            can_change_info=False,
+            can_invite_users=False,
+            can_pin_messages=False
+        )
+        
+        await message.bot.restrict_chat_member(
+            chat_id=message.chat.id,
+            user_id=message.from_user.id,
+            permissions=permissions,
+            until_date=mute_until
+        )
+        
+        logging.info(f"تم كتم المستخدم {message.from_user.id} لمدة {description} بسبب السباب")
+        return True
+        
+    except TelegramBadRequest as e:
+        logging.error(f"خطأ في كتم المستخدم: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"خطأ غير متوقع في كتم المستخدم: {e}")
+        return False
+
+async def ban_user_permanently(message: Message) -> bool:
+    """
+    طرد المستخدم نهائياً
+    """
+    try:
+        # التحقق من صلاحيات البوت
+        bot_member = await message.bot.get_chat_member(message.chat.id, message.bot.id)
+        if bot_member.status not in ['administrator', 'creator']:
+            logging.warning("البوت ليس مشرف - لا يمكن طرد المستخدمين")
+            return False
+        
+        if not hasattr(bot_member, 'can_restrict_members') or not bot_member.can_restrict_members:
+            logging.warning("البوت لا يملك صلاحية طرد المستخدمين")
+            return False
+        
+        # فحص إذا كان المستخدم من الأسياد
+        from config.hierarchy import is_master, is_supreme_master
+        from modules.supreme_master_commands import get_masters_punishment_status
+        
+        if is_supreme_master(message.from_user.id):
+            logging.info("المستخدم هو السيد الأعلى - محمي مطلقاً من جميع العقوبات")
+            return False
+        elif is_master(message.from_user.id):
+            masters_punishment_enabled = get_masters_punishment_status()
+            if not masters_punishment_enabled:
+                logging.info("المستخدم من الأسياد - محمي من العقوبات التلقائية (العقوبات معطلة)")
+                return False
+        
+        # التحقق من أن المستخدم ليس مالك المجموعة
+        user_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
+        if user_member.status == 'creator':
+            logging.info(f"المستخدم {message.from_user.id} هو مالك المجموعة - لا يمكن طرده")
+            return False
+        
+        # طرد المستخدم
+        await message.bot.ban_chat_member(
+            chat_id=message.chat.id,
+            user_id=message.from_user.id
+        )
+        
+        logging.info(f"تم طرد المستخدم {message.from_user.id} نهائياً بسبب تكرار السباب")
+        return True
+        
+    except TelegramBadRequest as e:
+        logging.error(f"خطأ في طرد المستخدم: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"خطأ غير متوقع في طرد المستخدم: {e}")
         return False
 
 async def mute_user_for_profanity(message: Message) -> bool:
@@ -730,11 +904,24 @@ async def handle_profanity_detection(message: Message) -> bool:
         except Exception as delete_error:
             logging.warning(f"لم يتمكن من حذف الرسالة المسيئة: {delete_error}")
         
-        # منطق نظام التحذيرات الثلاث
-        mute_success = False
-        if new_warnings_count >= 3:
-            # بعد 3 تحذيرات، يتم الكتم
-            mute_success = await mute_user_for_profanity(message)
+        # حساب درجة خطورة السب (افتراضية 1، يمكن تطويرها لاحقاً)
+        severity = 1
+        
+        # حساب نوع ومدة العقوبة
+        duration_seconds, punishment_type, description = await calculate_punishment_duration(new_warnings_count, severity)
+        
+        # تطبيق العقوبة المناسبة
+        punishment_success = False
+        if punishment_type == "mute" and duration_seconds > 0:
+            punishment_success = await mute_user_with_duration(message, duration_seconds, description)
+        elif punishment_type == "ban":
+            punishment_success = await ban_user_permanently(message)
+        
+        # تحديد مستوى الرسالة
+        if new_warnings_count <= 3:
+            warning_level = new_warnings_count
+        else:
+            warning_level = 4  # عقوبة فعلية
         
         # إعداد رسالة التحذير حسب عدد التحذيرات
         warning_level = min(new_warnings_count, 3)
@@ -767,27 +954,47 @@ async def handle_profanity_detection(message: Message) -> bool:
                     f"💣 **مخالفة واحدة أخرى وستُكتم لساعة كاملة**\n\n"
                     f"🗡️ **لا تختبر صبر السيدة رهف!**"
                 )
-        elif mute_success:
-            # تم الكتم بعد 3 تحذيرات (عضو عادي أو سيد مع تفعيل العقوبات)
-            if is_master(message.from_user.id):
-                warning_message = await message.answer(
-                    f"🔥 **تم إسكات السيد {message.from_user.first_name} بعد 3 تحذيرات!**\n\n"
-                    f"👑 **نظام العقوبات الجديد مفعل - لا استثناءات!**\n"
-                    f"📊 **التحذيرات: {new_warnings_count} - تجاوزت الحد المسموح**\n"
-                    f"🔇 **مدة الكتم:** ساعة كاملة - حتى الأسياد يتعلمون الأدب!\n\n"
-                    f"⚡️ **رسالة للجميع:** العقوبات تطال الجميع عند التفعيل!\n"
-                    f"🛡️ **قوانين السيدة رهف أقوى من أي رتبة!**"
-                )
-            else:
-                warning_message = await message.answer(
-                    f"⛔️ **تم إسكات {message.from_user.first_name} بعد 3 تحذيرات!**\n\n"
-                    f"👑 **السيد يوكي لا تتساهل مع السب والكلام القذر**\n"
-                    f"📊 **التحذيرات: {new_warnings_count} - تجاوزت الحد المسموح**\n"
-                    f"🔇 **مدة الكتم:** ساعة كاملة - تعلم الأدب!\n\n"
-                    f"⚡️ **تحذير للجميع:** 3 تحذيرات ثم الكتم بلا استثناءات!\n"
-                    f"🛡️ **قوانين السيدة رهف مطلقة وغير قابلة للنقاش**"
-                )
-        elif warning_level >= 3 and is_master(message.from_user.id):
+        elif warning_level == 4 and punishment_success:
+            # تم تطبيق عقوبة فعلية (كتم أو طرد)
+            if punishment_type == "ban":
+                if is_master(message.from_user.id):
+                    warning_message = await message.answer(
+                        f"💀 **تم طرد السيد {message.from_user.first_name} نهائياً!**\n\n"
+                        f"👑 **نظام العقوبات الجديد لا يرحم - حتى الأسياد!**\n"
+                        f"📊 **التحذيرات: {new_warnings_count} - تجاوز جميع الحدود**\n"
+                        f"🚫 **العقوبة: طرد نهائي من المجموعة**\n\n"
+                        f"⚡️ **رسالة للجميع:** لا أحد فوق القانون!\n"
+                        f"🛡️ **السيدة رهف لا تتسامح مع المتمردين**"
+                    )
+                else:
+                    warning_message = await message.answer(
+                        f"💀 **تم طرد {message.from_user.first_name} نهائياً!**\n\n"
+                        f"👑 **السيد يوكي نفد صبره تماماً**\n"
+                        f"📊 **التحذيرات: {new_warnings_count} - تجاوز جميع الحدود**\n"
+                        f"🚫 **العقوبة: طرد نهائي من المجموعة**\n\n"
+                        f"⚡️ **تحذير للجميع:** هذا مصير كل من يتمرد!\n"
+                        f"🛡️ **قوانين السيدة رهف مطلقة ونهائية**"
+                    )
+            else:  # punishment_type == "mute"
+                if is_master(message.from_user.id):
+                    warning_message = await message.answer(
+                        f"🔥 **تم إسكات السيد {message.from_user.first_name}!**\n\n"
+                        f"👑 **نظام العقوبات المتدرج مفعل - لا استثناءات!**\n"
+                        f"📊 **التحذيرات: {new_warnings_count}**\n"
+                        f"🔇 **مدة الكتم: {description}**\n\n"
+                        f"⚡️ **رسالة للجميع:** العقوبات تطال الجميع عند التفعيل!\n"
+                        f"🛡️ **قوانين السيدة رهف أقوى من أي رتبة!**"
+                    )
+                else:
+                    warning_message = await message.answer(
+                        f"⛔️ **تم إسكات {message.from_user.first_name}!**\n\n"
+                        f"👑 **السيد يوكي يطبق نظام العقوبات المتدرج**\n"
+                        f"📊 **التحذيرات: {new_warnings_count}**\n"
+                        f"🔇 **مدة الكتم: {description}**\n\n"
+                        f"⚡️ **تحذير للجميع:** العقوبات تزيد مع التكرار!\n"
+                        f"🛡️ **قوانين السيدة رهف مطلقة وغير قابلة للنقاش**"
+                    )
+        elif warning_level == 4 and not punishment_success and is_master(message.from_user.id):
             # رسالة خاصة للأسياد المحميين من العقوبات بعد 3 تحذيرات
             masters_punishment_enabled = get_masters_punishment_status()
             if not masters_punishment_enabled:
@@ -808,7 +1015,7 @@ async def handle_profanity_detection(message: Message) -> bool:
                     f"💣 **سلوك آخر وستتم معاقبتك كعضو عادي!**\n"
                     f"🗡️ **لا أحد فوق قوانين السيدة رهف!**"
                 )
-        elif warning_level >= 3 and user_member.status == 'administrator':
+        elif warning_level == 4 and not punishment_success and user_member.status == 'administrator':
             # المستخدم مشرف - رسالة تحذير قوية خاصة بعد 3 تحذيرات
             warning_message = await message.answer(
                 f"🔥 **إنذار نهائي للمشرف {message.from_user.first_name}!**\n\n"
@@ -818,7 +1025,7 @@ async def handle_profanity_detection(message: Message) -> bool:
                 f"💣 **التحذير الأخير:** سلوك آخر وسيتم تنزيل رتبتك!\n"
                 f"🗡️ **لا أحد فوق القانون في مملكة السيدة رهف!**"
             )
-        elif warning_level >= 3 and user_member.status == 'creator':
+        elif warning_level == 4 and not punishment_success and user_member.status == 'creator':
             # مالك المجموعة - رسالة دبلوماسية لكن قوية بعد 3 تحذيرات
             warning_message = await message.answer(
                 f"🙏 **ملاحظة محترمة لمالك المجموعة {message.from_user.first_name}**\n\n"
@@ -827,7 +1034,7 @@ async def handle_profanity_detection(message: Message) -> bool:
                 f"📚 **الأدب مطلوب من الجميع بما فيهم أصحاب المجموعات**\n\n"
                 f"🌟 **نرجو أن تكون قدوة للأعضاء في الكلام المهذب**"
             )
-        elif warning_level >= 3:
+        elif warning_level == 4 and not punishment_success:
             # عضو عادي - يجب إرسال رسالة حتى لو فشل الكتم بعد 3 تحذيرات
             warning_message = await message.answer(
                 f"🔥 **تم حذف رسالة مسيئة من {message.from_user.first_name}**\n\n"
