@@ -610,6 +610,31 @@ async def calculate_punishment_duration(user_warnings: int, severity: int) -> tu
     # احتياطي
     return (3600, "mute", "ساعة واحدة")
 
+async def reset_user_warnings(user_id: int, chat_id: int) -> bool:
+    """
+    إعادة تعيين تحذيرات المستخدم (مثلاً عند إلغاء الكتم من قبل مشرف)
+    Returns True إذا تم الحذف بنجاح
+    """
+    try:
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        # حذف جميع التحذيرات والعقوبات للمستخدم
+        cursor.execute('''
+            DELETE FROM user_warnings 
+            WHERE user_id = ? AND chat_id = ?
+        ''', (user_id, chat_id))
+        
+        conn.commit()
+        conn.close()
+        
+        logging.info(f"تم إعادة تعيين تحذيرات المستخدم {user_id} في المجموعة {chat_id}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"خطأ في إعادة تعيين التحذيرات: {e}")
+        return False
+
 async def get_user_warnings(user_id: int, chat_id: int) -> int:
     """
     الحصول على عدد تحذيرات المستخدم الحالية

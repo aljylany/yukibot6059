@@ -44,6 +44,12 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Circular Import Resolution:** Specific attention paid to resolving common Python issues like circular imports (e.g., in `utils/decorators.py`).
 
 ## Recent Changes (August 29, 2025)
+- **Merciful Reset System Implementation:** Added automatic warning reset when admins manually unmute users:
+  - **Admin Unmute Detection:** When a moderator uses the unmute command (`الغاء كتم`), the system automatically detects this action
+  - **Complete Warning Reset:** All user violations and warnings are completely cleared from the database (`reset_user_warnings()` function)
+  - **Fresh Start Principle:** Users get a completely fresh start with new three-warning cycle after being unmuted by an admin
+  - **Educational Priority:** System prioritizes rehabilitation over punishment by giving users multiple opportunities to improve
+  - **Admin Feedback:** Unmute messages now include confirmation that warnings have been reset for transparency
 - **Three-Warning System Implementation:** Modified the profanity detection system to provide three progressive warnings before taking actual punishment actions:
   - **First Warning (1/3):** Simple warning with gentle reminder about community standards
   - **Second Warning (2/3):** Stronger warning indicating final chance before punishment
@@ -58,6 +64,7 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
   - **Permanent Ban (17+ violations):** Automatic permanent removal from group
   - **Severity-Based Acceleration:** Higher severity violations (harsh profanity) accelerate punishment progression
   - **Dynamic Duration Calculation:** `calculate_punishment_duration()` function determines appropriate punishment based on user history and violation severity
+  - **Merciful Reset Feature:** When admins manually unmute a user, the system gives them a fresh start by resetting their violation history completely
 
 ## Previous Changes (August 28, 2025)
 - **Fixed Message Detection System:** Created unified message processor (`handlers/unified_message_processor.py`) to resolve issues where profanity detection wasn't working consistently

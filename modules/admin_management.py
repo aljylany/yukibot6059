@@ -586,7 +586,16 @@ async def handle_unmute_user(message: Message):
                 (target_user.id, message.chat.id)
             )
             
-            await message.reply(f"✅ تم إلغاء كتم {format_user_mention(target_user)}\n\n🔊 يمكنه الآن إرسال الرسائل مرة أخرى")
+            # إعادة ضبط تحذيرات المستخدم (فرصة جديدة)
+            try:
+                from modules.profanity_filter import reset_user_warnings
+                reset_success = await reset_user_warnings(target_user.id, message.chat.id)
+                if reset_success:
+                    logging.info(f"تم إعادة ضبط تحذيرات المستخدم {target_user.id} بعد إلغاء الكتم")
+            except Exception as reset_error:
+                logging.warning(f"خطأ في إعادة ضبط التحذيرات: {reset_error}")
+            
+            await message.reply(f"✅ تم إلغاء كتم {format_user_mention(target_user)}\n\n🔊 يمكنه الآن إرسال الرسائل مرة أخرى\n💫 تم إعادة ضبط التحذيرات - فرصة جديدة!")
             
         except TelegramBadRequest as e:
             if "User not found" in str(e):
