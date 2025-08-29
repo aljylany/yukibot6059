@@ -23,39 +23,47 @@ import os
 # استيراد النظام الذكي الجديد
 from .ai_profanity_detector import ai_detector, ProfanityResult
 
-# قائمة الكلمات المحظورة (السباب الشديد فقط)
-BANNED_WORDS = [
-    # سباب جنسي بذيء وكلمات فاحشة فقط
+# كلمات السباب الخطيرة (درجة خطورة عالية)
+SEVERE_PROFANITY = [
+    # سباب جنسي بذيء وكلمات فاحشة خطيرة
     "شرموط", "شرموطة", "عاهرة", "عاهر", "زانية", "زاني",
     "منيك", "منيكة", "نيك", "نايك", "كس", "كسها", "زب", "زبر", "طيز",
     "ابن الشرموطة", "بنت الشرموطة",
     "خرا", "خراء", "يلعن", "اللعنة",
     
-    # كلمات إضافية مطلوبة
+    # كلمات إضافية خطيرة
     "منيوك", "ايري", "انيك", "نيكك", "منيوكة", "ايرك", "ايرها",
     "انيكك", "انيكها", "منيوكو", "ايرو", "نيكو", "كسمك", "كسك",
     "كسها", "كسهم", "كسكم", "كسكن", "زبك", "زبها", "زبهم", "زبكم",
     
-    # كلمات سباب شائعة إضافية
+    # سباب خطير
     "عرص", "عرصة", "عرصه", "عرصين", "عارص", "عارصة", "عارصه",
-    "حمار", "حمارة", "حمارين", "احمق", "احمقه", "احمقين", "غبي", "غبيه", "غبيين",
     "قحبة", "قحبه", "قحاب", "بغي", "بغيه", "متناك", "متناكة", "متناكين",
     
-    # سباب يمني بذيء فقط
+    # سباب يمني بذيء خطير
     "قاوود", "قواد", "زومل", "زومله",
     "ملعون", "ملعونه",
     
-    # تركيبات يمنية بذيئة
+    # تركيبات يمنية بذيئة خطيرة
     "يا قاوود", "يا قواد", "اخنث", "يا مخنوث",
-    "ابن القاوود", "بنت القواد", "ابن الكلب", "بنت الكلب" ,
+    "ابن القاوود", "بنت القواد", "ابن الكلب", "بنت الكلب",
     
-    # كلمات بذيئة إضافية
+    # كلمات بذيئة إضافية خطيرة
     "انيكك", "يلعن ابوك", "يلعن ابوكي", "كول خرا", "اكل خرا",
     
     # كلمات جنسية صريحة
     "جنس", "جماع", "مجامعه", "نكاح", "مناكه", "سكس", "ممارسه",
     "معاشره", "لواط", "لوطي", "لوطيه", "شاذ انت", "شاذه انتي", "مثلي انت", "انتي مثليه"
 ]
+
+# كلمات مؤذية بسيطة (درجة خطورة متوسطة - تحذير فقط)
+MILD_PROFANITY = [
+    "حمار", "حمارة", "حمارين", "احمق", "احمقه", "احمقين",
+    "غبي", "غبيه", "غبيين", "جحش", "بهيمة", "غشيم"
+]
+
+# دمج جميع الكلمات المحظورة للتوافق مع الكود القديم
+BANNED_WORDS = SEVERE_PROFANITY + MILD_PROFANITY
 
 # صيغ مختلفة للكلمات البذيئة
 BANNED_VARIATIONS = [
@@ -686,38 +694,50 @@ async def is_user_actually_muted(bot, chat_id: int, user_id: int) -> bool:
         # في حالة الخطأ، نفترض أنه غير مكتوم لتجنب حذف الرسائل بدون مبرر
         return False
 
-async def check_for_profanity(message: Message) -> bool:
+async def check_for_profanity(message: Message) -> dict:
     """
-    فحص الرسالة للكشف عن السباب مع كشف التشفير والتمويه
-    Returns True إذا وُجد سباب
+    فحص الرسالة للكشف عن السباب مع تحديد درجة الخطورة
+    Returns dict مع is_profane, severity, detected_word
     """
     if not message.text:
-        return False
+        return {'is_profane': False, 'severity': 0, 'detected_word': None}
     
     # الحصول على تنويعات النص للفحص
     text_variations = generate_text_variations(message.text.lower().strip())
     
-    # فحص كل تنويعة مع كل كلمة محظورة باستخدام الأنماط المحسنة
+    # فحص السباب الخطير أولاً
     import re
     for text_variant in text_variations:
-        for banned_word in ALL_BANNED_WORDS:
+        # فحص السباب الخطير
+        for banned_word in SEVERE_PROFANITY:
             # استخدام النمط المحسن للكلمات العربية
             arabic_pattern = create_arabic_pattern(banned_word.lower())
             if re.search(arabic_pattern, text_variant):
-                logging.info(f"تم كشف سباب بالنمط المحسن: '{banned_word}' في النص المنظف: '{text_variant}' (النص الأصلي: '{message.text[:50]}...')")
-                return True
+                logging.warning(f"⚠️ مخالفة خطيرة: '{banned_word}' في النص: '{message.text[:30]}...'")
+                return {'is_profane': True, 'severity': 3, 'detected_word': banned_word}
             
             # النمط القديم كاحتياط
             simple_pattern = r'\b' + re.escape(banned_word.lower()) + r'\b'
             if re.search(simple_pattern, text_variant):
-                logging.info(f"تم كشف سباب: '{banned_word}' في النص المنظف: '{text_variant}' (النص الأصلي: '{message.text[:50]}...')")
-                return True
+                logging.warning(f"⚠️ مخالفة خطيرة: '{banned_word}' في النص: '{message.text[:30]}...'")
+                return {'is_profane': True, 'severity': 3, 'detected_word': banned_word}
+        
+        # فحص السباب البسيط (كلمات مثل "غبي")
+        for mild_word in MILD_PROFANITY:
+            arabic_pattern = create_arabic_pattern(mild_word.lower())
+            if re.search(arabic_pattern, text_variant):
+                logging.info(f"📝 كلمة غير لائقة: '{mild_word}' في النص: '{message.text[:30]}...'")
+                return {'is_profane': True, 'severity': 1, 'detected_word': mild_word}
+            
+            simple_pattern = r'\b' + re.escape(mild_word.lower()) + r'\b'
+            if re.search(simple_pattern, text_variant):
+                logging.info(f"📝 كلمة غير لائقة: '{mild_word}' في النص: '{message.text[:30]}...'")
+                return {'is_profane': True, 'severity': 1, 'detected_word': mild_word}
     
-    # فحص إضافي للكلمات المقسمة بمسافات أو رموز
+    # فحص إضافي للكلمات المشفرة (السباب الخطير فقط)
     original_text = message.text.lower()
-    for banned_word in ALL_BANNED_WORDS:
+    for banned_word in SEVERE_PROFANITY:
         # تحويل الكلمة المحظورة إلى نمط regex للبحث مع رموز التمويه
-        import re
         word_pattern = r'\b'
         for char in banned_word.lower():
             word_pattern += re.escape(char) + r"[\*\_\-\.\s\+\=\|\\\/\,\!\@\#\$\%\^\&\(\)\[\]\{\}\<\>\?\~\`\"\'0-9]*"
@@ -725,20 +745,11 @@ async def check_for_profanity(message: Message) -> bool:
         
         # البحث عن النمط في النص الأصلي
         if re.search(word_pattern, original_text):
-            logging.info(f"تم كشف سباب مُشفر: '{banned_word}' في النص: '{message.text[:50]}...'")
-            return True
+            logging.warning(f"⚠️ سباب مُشفر خطير: '{banned_word}' في النص: '{message.text[:30]}...'")
+            return {'is_profane': True, 'severity': 3, 'detected_word': banned_word}
     
-    # استخدام الفحص المتقدم الجديد حتى لو لم يُفعل النظام الشامل
-    # سنجعل فحص السباب يعمل في جميع المجموعات
-    
-    # النظام الجديد: فحص متقدم بدرجات الخطورة والذكاء الاصطناعي
-    try:
-        chat_context = f"مجموعة {message.chat.title}" if message.chat.title else "محادثة"
-        result = await check_message_ai_powered(message.text, message.from_user.id, message.chat.id, chat_context)
-        return result['is_abusive']
-    except Exception as e:
-        logging.error(f"خطأ في النظام الذكي، العودة للنظام التقليدي: {e}")
-        return False
+    # لا توجد مخالفات
+    return {'is_profane': False, 'severity': 0, 'detected_word': None}
 
 async def mute_user_with_duration(message: Message, duration_seconds: int, description: str) -> bool:
     """
@@ -947,10 +958,10 @@ async def handle_profanity_detection(message: Message) -> bool:
         # التحقق من حالة المستخدم الفعلية في التيليجرام
         user_is_muted = await is_user_actually_muted(message.bot, message.chat.id, message.from_user.id)
         
-        # فحص وجود سباب
-        profanity_found = await check_for_profanity(message)
+        # فحص وجود سباب مع تحديد درجة الخطورة
+        profanity_result = await check_for_profanity(message)
         
-        if not profanity_found:
+        if not profanity_result['is_profane']:
             # لا يوجد سباب - نتحقق من حالة المستخدم
             if not user_is_muted:
                 # المستخدم غير مكتوم ولا يوجد سباب - رسالة عادية
@@ -978,21 +989,46 @@ async def handle_profanity_detection(message: Message) -> bool:
                     logging.warning(f"لم يتمكن من حذف رسالة المستخدم المكتوم: {delete_error}")
                 return True
         
-        # الحصول على عدد التحذيرات الحالية
+        # الحصول على درجة الخطورة والكلمة المكتشفة
+        severity = profanity_result['severity']
+        detected_word = profanity_result['detected_word']
+        
+        # التعامل المتدرج حسب درجة الخطورة
+        if severity == 1:
+            # كلمات بسيطة مثل "غبي" - تحذير فقط بدون عقوبة
+            try:
+                await message.delete()
+                logging.info(f"📝 تم حذف كلمة غير لائقة بسيطة: {detected_word}")
+            except Exception as delete_error:
+                logging.warning(f"لم يتمكن من حذف الرسالة: {delete_error}")
+            
+            # رسالة تنبيه بسيطة
+            simple_warning = await message.answer(
+                f"⚠️ **{message.from_user.first_name}** تجنب استخدام كلمات غير لائقة\n"
+                f"💡 **الكلمة:** {detected_word}\n"
+                f"🤝 **تذكر أن نحافظ على أدب الحوار**"
+            )
+            # حذف الرسالة التحذيرية بعد 10 ثوان
+            import asyncio
+            await asyncio.sleep(10)
+            try:
+                await simple_warning.delete()
+            except:
+                pass
+            return True
+        
+        # للسباب الخطير (severity >= 2) - نظام التحذيرات والعقوبات العادي
         current_warnings = await get_user_warnings(message.from_user.id, message.chat.id)
         
-        # زيادة التحذيرات
-        new_warnings_count = await update_user_warnings(message.from_user.id, message.chat.id, 1)
+        # زيادة التحذيرات حسب درجة الخطورة
+        new_warnings_count = await update_user_warnings(message.from_user.id, message.chat.id, severity)
         
         # حذف الرسالة المسيئة فوراً
         try:
             await message.delete()
-            logging.info("تم حذف الرسالة المسيئة")
+            logging.warning(f"🗑️ تم حذف سباب خطير: {detected_word}")
         except Exception as delete_error:
             logging.warning(f"لم يتمكن من حذف الرسالة المسيئة: {delete_error}")
-        
-        # حساب درجة خطورة السب (افتراضية 1، يمكن تطويرها لاحقاً)
-        severity = 1
         
         # حساب نوع ومدة العقوبة
         duration_seconds, punishment_type, description = await calculate_punishment_duration(new_warnings_count, severity)
