@@ -1671,6 +1671,23 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_clear_command(message, text)
         return
     
+    # فحص أوامر إدارة قاعدة بيانات المخالفات الجديدة
+    if text in ['سجل السوابق', 'سجل السبابين'] or text.startswith('سجل السوابق '):
+        logging.info(f"تم اكتشاف أمر سجل السوابق: '{text}'")
+        from modules.admin_management import handle_violations_record_command
+        await handle_violations_record_command(message)
+        return
+    elif text == 'تنظيف' or text.startswith('تنظيف '):
+        logging.info(f"تم اكتشاف أمر تنظيف: '{text}'")
+        from modules.admin_management import handle_violations_cleanup_command
+        await handle_violations_cleanup_command(message)
+        return
+    elif text.startswith('إلغاء سوابق ') or text == 'إلغاء سوابق':
+        logging.info(f"تم اكتشاف أمر إلغاء سوابق: '{text}'")
+        from modules.admin_management import handle_clear_user_record_command
+        await handle_clear_user_record_command(message)
+        return
+    
     # معالجة أرقام لعبة خمن الرقم
     if (message.text and message.chat.type in ['group', 'supergroup'] and 
         message.text.strip().isdigit()):

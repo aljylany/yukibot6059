@@ -133,10 +133,20 @@ def init_abusive_db():
             chat_id INTEGER,
             warnings INTEGER DEFAULT 0,
             last_warning TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP DEFAULT (datetime('now', '+7 days')),
+            expires_at TIMESTAMP,
             PRIMARY KEY (user_id, chat_id)
         )
         ''')
+        
+        # التحقق من وجود العمود expires_at وإضافته إذا لم يكن موجود
+        try:
+            cursor.execute("SELECT expires_at FROM user_warnings LIMIT 1")
+        except sqlite3.OperationalError:
+            # العمود غير موجود، أضافه
+            cursor.execute("ALTER TABLE user_warnings ADD COLUMN expires_at TIMESTAMP")
+            # تحديث السجلات الموجودة
+            cursor.execute("UPDATE user_warnings SET expires_at = datetime('now', '+7 days')")
+            logging.info("✅ تم إضافة عمود انتهاء الصلاحية وتحديث السجلات")
         
         # جدول إعدادات الحماية للمجموعات
         cursor.execute('''

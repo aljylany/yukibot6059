@@ -14,6 +14,7 @@ from database.operations import execute_query, get_user
 from utils.decorators import admin_required, group_only
 from utils.helpers import format_number, format_user_mention
 from config.settings import ADMINS
+from config.hierarchy import has_permission, AdminLevel, MASTERS
 
 # رتب الإدارة
 ADMIN_RANKS = {
@@ -790,3 +791,355 @@ async def handle_restrict_user_auto(message: Message, target_user):
         
     except Exception as e:
         logging.error(f"خطأ في التقييد التلقائي: {e}")
+
+
+# ==================== أوامر إدارة قاعدة بيانات المخالفات ====================
+
+async def handle_violations_record_command(message: Message):
+    """معالج أمر سجل السوابق/السبابين"""
+    try:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        
+        # التحقق من الصلاحيات
+        if user_id not in MASTERS and not has_permission(user_id, AdminLevel.GROUP_OWNER, chat_id):
+            await message.reply(
+                "❌ **ليس لديك صلاحية لهذا الأمر!**\n\n"
+                "🔐 **هذا الأمر متاح للأسياد والمالكين فقط**"
+            )
+            return
+
+        # تحديد النطاق حسب الرتبة
+        is_master = user_id in MASTERS
+        
+        if is_master:
+            # للأسياد: عرض خيارات النطاق
+            text_parts = message.text.split()
+            scope = "group" if len(text_parts) > 2 and text_parts[2] == "المجموعة" else "global"
+            
+            if scope == "global":
+                # عرض جميع المخالفات في النظام
+                records = await get_all_violations_records()
+                title = "📋 **سجل السوابق الشامل**"
+            else:
+                # عرض مخالفات المجموعة فقط
+                records = await get_group_violations_records(chat_id)
+                title = f"📋 **سجل سوابق المجموعة**"
+        else:
+            # للمالكين: نطاق المجموعة فقط
+            records = await get_group_violations_records(chat_id)
+            title = f"📋 **سجل سوابق المجموعة**"
+        
+        if not records:
+            await message.reply(
+                f"{title}\n\n"
+                "✅ **لا توجد سجلات مخالفات!**\n"
+                "🎉 **المجموعة نظيفة**"
+            )
+            return
+        
+        # تنسيق التقرير
+        report = f"{title}\n\n"
+        report += f"📊 **إجمالي المستخدمين المخالفين:** {len(records)}\n\n"
+        
+        for i, record in enumerate(records[:20]):  # أول 20 مستخدم
+            days_left = await get_days_until_warnings_expire(record['user_id'], record['chat_id'])
+            expire_text = f"ينتهي خلال {days_left} أيام" if days_left > 0 else "منتهي الصلاحية"
+            
+            report += f"👤 **{i+1}.** المستخدم `{record['user_id']}`\n"
+            report += f"   ⚠️ التحذيرات: {record['warnings']}\n"
+            report += f"   📅 آخر مخالفة: {record['last_warning'][:10]}\n"
+            report += f"   ⏰ {expire_text}\n\n"
+        
+        if len(records) > 20:
+            report += f"➕ **و {len(records) - 20} مستخدم آخر...**\n\n"
+        
+        # إضافة تعليمات للأسياد
+        if is_master:
+            report += "🔧 **أوامر متقدمة:**\n"
+            report += "• `سجل السوابق المجموعة` - نطاق المجموعة\n"
+            report += "• `سجل السوابق` - النظام الكامل\n"
+            report += "• `تنظيف` - حذف كامل\n"
+            report += "• `تنظيف المجموعة` - حذف المجموعة\n"
+        
+        await message.reply(report)
+        
+    except Exception as e:
+        logging.error(f"خطأ في أمر سجل السوابق: {e}")
+        await message.reply("❌ حدث خطأ في جلب سجل السوابق")
+
+
+async def handle_violations_cleanup_command(message: Message):
+    """معالج أمر تنظيف قاعدة البيانات"""
+    try:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        
+        # التحقق من الصلاحيات
+        if user_id not in MASTERS and not has_permission(user_id, AdminLevel.GROUP_OWNER, chat_id):
+            await message.reply(
+                "❌ **ليس لديك صلاحية لهذا الأمر!**\n\n"
+                "🔐 **هذا الأمر متاح للأسياد والمالكين فقط**"
+            )
+            return
+        
+        is_master = user_id in MASTERS
+        text_parts = message.text.split()
+        
+        if is_master:
+            # للأسياد: خيار النطاق
+            scope = "group" if len(text_parts) > 1 and text_parts[1] == "المجموعة" else "global"
+            
+            if scope == "global":
+                # تنظيف كامل
+                deleted_count = await cleanup_all_violations()
+                await message.reply(
+                    f"🧹 **تم التنظيف الشامل!**\n\n"
+                    f"✅ **تم حذف {deleted_count} سجل مخالفة**\n"
+                    f"🎉 **النظام أصبح نظيفاً بالكامل**\n\n"
+                    f"⚠️ **تحذير:** هذا الإجراء غير قابل للتراجع!"
+                )
+            else:
+                # تنظيف المجموعة
+                deleted_count = await cleanup_group_violations(chat_id)
+                await message.reply(
+                    f"🧹 **تم تنظيف المجموعة!**\n\n"
+                    f"✅ **تم حذف {deleted_count} سجل مخالفة**\n"
+                    f"🎉 **المجموعة أصبحت نظيفة**\n\n"
+                    f"⚠️ **تحذير:** هذا الإجراء غير قابل للتراجع!"
+                )
+        else:
+            # للمالكين: نطاق المجموعة فقط
+            deleted_count = await cleanup_group_violations(chat_id)
+            await message.reply(
+                f"🧹 **تم تنظيف المجموعة!**\n\n"
+                f"✅ **تم حذف {deleted_count} سجل مخالفة**\n"
+                f"🎉 **المجموعة أصبحت نظيفة**\n\n"
+                f"⚠️ **تحذير:** هذا الإجراء غير قابل للتراجع!"
+            )
+    
+    except Exception as e:
+        logging.error(f"خطأ في أمر التنظيف: {e}")
+        await message.reply("❌ حدث خطأ في عملية التنظيف")
+
+
+async def handle_clear_user_record_command(message: Message):
+    """معالج أمر إلغاء سوابق مستخدم محدد"""
+    try:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        
+        # التحقق من الصلاحيات
+        if user_id not in MASTERS and not has_permission(user_id, AdminLevel.GROUP_OWNER, chat_id):
+            await message.reply(
+                "❌ **ليس لديك صلاحية لهذا الأمر!**\n\n"
+                "🔐 **هذا الأمر متاح للأسياد والمالكين فقط**"
+            )
+            return
+        
+        target_user = None
+        target_user_id = None
+        
+        # البحث عن المستخدم المطلوب
+        if message.reply_to_message:
+            # بالرد على رسالة
+            target_user = message.reply_to_message.from_user
+            target_user_id = target_user.id
+        else:
+            # بالمعرف
+            text_parts = message.text.split()
+            if len(text_parts) >= 3:
+                username = text_parts[2].replace("@", "")
+                try:
+                    # محاولة تحويل إلى رقم
+                    target_user_id = int(username)
+                except:
+                    # البحث بالمعرف
+                    user_data = await get_user_by_username(username)
+                    if user_data:
+                        target_user_id = user_data['user_id']
+        
+        if not target_user_id:
+            await message.reply(
+                "❌ **يرجى تحديد المستخدم!**\n\n"
+                "📝 **الطرق المتاحة:**\n"
+                "• الرد على رسالة المستخدم\n"
+                "• `إلغاء سوابق @username`\n"
+                "• `إلغاء سوابق 123456789`"
+            )
+            return
+        
+        # التحقق من وجود سوابق
+        is_master = user_id in MASTERS
+        if is_master:
+            # للأسياد: حذف شامل من كل المجموعات
+            deleted_count = await clear_user_all_violations(target_user_id)
+            scope_text = "من جميع المجموعات"
+        else:
+            # للمالكين: حذف من المجموعة الحالية فقط
+            deleted_count = await clear_user_group_violations(target_user_id, chat_id)
+            scope_text = "من المجموعة الحالية"
+        
+        if deleted_count > 0:
+            user_mention = target_user.first_name if target_user else f"المستخدم {target_user_id}"
+            await message.reply(
+                f"✅ **تم إلغاء السوابق بنجاح!**\n\n"
+                f"👤 **المستخدم:** {user_mention}\n"
+                f"🗂️ **تم حذف:** {deleted_count} سجل\n"
+                f"🌍 **النطاق:** {scope_text}\n\n"
+                f"🎉 **المستخدم حصل على فرصة جديدة!**"
+            )
+        else:
+            await message.reply(
+                f"ℹ️ **لا توجد سوابق للمستخدم!**\n\n"
+                f"✅ **المستخدم نظيف بالفعل**"
+            )
+    
+    except Exception as e:
+        logging.error(f"خطأ في أمر إلغاء السوابق: {e}")
+        await message.reply("❌ حدث خطأ في إلغاء السوابق")
+
+
+# ==================== دوال مساعدة لقاعدة البيانات ====================
+
+async def get_all_violations_records():
+    """جلب جميع سجلات المخالفات من النظام"""
+    try:
+        import sqlite3
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT user_id, chat_id, warnings, last_warning 
+        FROM user_warnings 
+        WHERE warnings > 0 
+        ORDER BY warnings DESC, last_warning DESC
+        ''')
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        return [{'user_id': r[0], 'chat_id': r[1], 'warnings': r[2], 'last_warning': r[3]} for r in results]
+    
+    except Exception as e:
+        logging.error(f"خطأ في جلب جميع السجلات: {e}")
+        return []
+
+
+async def get_group_violations_records(chat_id: int):
+    """جلب سجلات مخالفات المجموعة المحددة"""
+    try:
+        import sqlite3
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT user_id, chat_id, warnings, last_warning 
+        FROM user_warnings 
+        WHERE chat_id = ? AND warnings > 0 
+        ORDER BY warnings DESC, last_warning DESC
+        ''', (chat_id,))
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        return [{'user_id': r[0], 'chat_id': r[1], 'warnings': r[2], 'last_warning': r[3]} for r in results]
+    
+    except Exception as e:
+        logging.error(f"خطأ في جلب سجلات المجموعة: {e}")
+        return []
+
+
+async def cleanup_all_violations() -> int:
+    """حذف جميع سجلات المخالفات من النظام"""
+    try:
+        import sqlite3
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM user_warnings')
+        deleted_count = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        logging.info(f"🧹 تم حذف {deleted_count} سجل مخالفة من النظام الكامل")
+        return deleted_count
+    
+    except Exception as e:
+        logging.error(f"خطأ في التنظيف الشامل: {e}")
+        return 0
+
+
+async def cleanup_group_violations(chat_id: int) -> int:
+    """حذف سجلات مخالفات المجموعة المحددة"""
+    try:
+        import sqlite3
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM user_warnings WHERE chat_id = ?', (chat_id,))
+        deleted_count = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        logging.info(f"🧹 تم حذف {deleted_count} سجل مخالفة من المجموعة {chat_id}")
+        return deleted_count
+    
+    except Exception as e:
+        logging.error(f"خطأ في تنظيف المجموعة: {e}")
+        return 0
+
+
+async def clear_user_all_violations(user_id: int) -> int:
+    """حذف جميع مخالفات المستخدم من كل المجموعات"""
+    try:
+        import sqlite3
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM user_warnings WHERE user_id = ?', (user_id,))
+        deleted_count = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        logging.info(f"✅ تم حذف {deleted_count} سجل مخالفة للمستخدم {user_id} من كل المجموعات")
+        return deleted_count
+    
+    except Exception as e:
+        logging.error(f"خطأ في حذف مخالفات المستخدم: {e}")
+        return 0
+
+
+async def clear_user_group_violations(user_id: int, chat_id: int) -> int:
+    """حذف مخالفات المستخدم من المجموعة المحددة فقط"""
+    try:
+        import sqlite3
+        conn = sqlite3.connect('abusive_words.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM user_warnings WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+        deleted_count = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        logging.info(f"✅ تم حذف {deleted_count} سجل مخالفة للمستخدم {user_id} من المجموعة {chat_id}")
+        return deleted_count
+    
+    except Exception as e:
+        logging.error(f"خطأ في حذف مخالفات المستخدم من المجموعة: {e}")
+        return 0
+
+
+# استيراد دالة من profanity_filter.py
+async def get_days_until_warnings_expire(user_id: int, chat_id: int) -> int:
+    """عدد الأيام المتبقية حتى انتهاء صلاحية التحذيرات"""
+    try:
+        from .profanity_filter import get_days_until_warnings_expire as get_days_expire
+        return await get_days_expire(user_id, chat_id)
+    except Exception as e:
+        logging.error(f"خطأ في حساب أيام الانتهاء: {e}")
+        return 0
