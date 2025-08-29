@@ -56,10 +56,15 @@ SEVERE_PROFANITY = [
     "معاشره", "لواط", "لوطي", "لوطيه", "شاذ انت", "شاذه انتي", "مثلي انت", "انتي مثليه"
 ]
 
-# كلمات مؤذية بسيطة (درجة خطورة متوسطة - تحذير فقط)
+# كلمات مؤذية متوسطة (لا نعتبرها سباب حقيقي)
 MILD_PROFANITY = [
     "حمار", "حمارة", "حمارين", "احمق", "احمقه", "احمقين",
-    "غبي", "غبيه", "غبيين", "جحش", "بهيمة", "غشيم"
+    "جحش", "بهيمة", "غشيم"
+]
+
+# كلمات عادية لا تُعتبر سباب (مُعطلة من الفحص)
+NORMAL_WORDS = [
+    "غبي", "غبيه", "غبيين", "سيء", "سيئه", "سيئين", "مجنون", "مجنونه"
 ]
 
 # دمج جميع الكلمات المحظورة للتوافق مع الكود القديم
@@ -995,32 +1000,69 @@ async def handle_profanity_detection(message: Message) -> bool:
         
         # التعامل المتدرج حسب درجة الخطورة
         if severity == 1:
-            # كلمات بسيطة مثل "غبي" - تحذير فقط بدون عقوبة
+            # كلمات متوسطة - نظام التحذيرات الثلاث
+            current_warnings = await get_user_warnings(message.from_user.id, message.chat.id)
+            new_warnings_count = await update_user_warnings(message.from_user.id, message.chat.id, 1)  # تحذير واحد للكلمات المتوسطة
+            
+            # حذف الرسالة
             try:
                 await message.delete()
-                logging.info(f"📝 تم حذف كلمة غير لائقة بسيطة: {detected_word}")
+                logging.info(f"📝 تم حذف كلمة غير لائقة متوسطة: {detected_word}")
             except Exception as delete_error:
                 logging.warning(f"لم يتمكن من حذف الرسالة: {delete_error}")
             
-            # رسالة تنبيه بسيطة
-            simple_warning = await message.answer(
-                f"⚠️ **{message.from_user.first_name}** تجنب استخدام كلمات غير لائقة\n"
-                f"💡 **الكلمة:** {detected_word}\n"
-                f"🤝 **تذكر أن نحافظ على أدب الحوار**"
-            )
-            # حذف الرسالة التحذيرية بعد 10 ثوان
-            import asyncio
-            await asyncio.sleep(10)
-            try:
-                await simple_warning.delete()
-            except:
-                pass
+            # تطبيق نظام التحذيرات
+            if new_warnings_count <= 3:
+                # تحذير فقط
+                if new_warnings_count == 1:
+                    warning_msg = await message.answer(
+                        f"⚠️ **تحذير أول لـ {message.from_user.first_name}**\n\n"
+                        f"📝 **عدد التحذيرات: {new_warnings_count}/3**\n"
+                        f"💡 **الكلمة:** {detected_word}\n"
+                        f"🤝 **تجنب الكلمات غير اللائقة**"
+                    )
+                elif new_warnings_count == 2:
+                    warning_msg = await message.answer(
+                        f"🔥 **تحذير ثاني لـ {message.from_user.first_name}**\n\n"
+                        f"📝 **عدد التحذيرات: {new_warnings_count}/3**\n"
+                        f"💡 **الكلمة:** {detected_word}\n"
+                        f"⚠️ **تحذير أخير قبل العقوبة!**"
+                    )
+                elif new_warnings_count == 3:
+                    warning_msg = await message.answer(
+                        f"💥 **تحذير أخير لـ {message.from_user.first_name}**\n\n"
+                        f"📝 **عدد التحذيرات: {new_warnings_count}/3**\n"
+                        f"💡 **الكلمة:** {detected_word}\n"
+                        f"🚨 **المخالفة القادمة = عقوبة فورية!**"
+                    )
+                
+                # حذف رسالة التحذير بعد 10 ثوان
+                import asyncio
+                await asyncio.sleep(10)
+                try:
+                    await warning_msg.delete()
+                except:
+                    pass
+            else:
+                # عقوبة فعلية
+                duration_seconds, punishment_type, description = await calculate_punishment_duration(new_warnings_count, severity)
+                
+                if punishment_type == "mute" and duration_seconds > 0:
+                    punishment_success = await mute_user_with_duration(message, duration_seconds, description)
+                    if punishment_success:
+                        punishment_msg = await message.answer(
+                            f"⛔️ **تم كتم {message.from_user.first_name}!**\n\n"
+                            f"📊 **التحذيرات: {new_warnings_count}**\n"
+                            f"🔇 **مدة الكتم: {description}**\n"
+                            f"💡 **السبب:** {detected_word}\n\n"
+                            f"🛡️ **نظام التحذيرات الثلاث مُطبق!**"
+                        )
             return True
         
         # للسباب الخطير (severity >= 2) - نظام التحذيرات والعقوبات العادي
         current_warnings = await get_user_warnings(message.from_user.id, message.chat.id)
         
-        # زيادة التحذيرات حسب درجة الخطورة
+        # زيادة التحذيرات حسب درجة الخطورة (تحذيرواحد للسباب الخطير)
         new_warnings_count = await update_user_warnings(message.from_user.id, message.chat.id, severity)
         
         # حذف الرسالة المسيئة فوراً
@@ -1030,24 +1072,21 @@ async def handle_profanity_detection(message: Message) -> bool:
         except Exception as delete_error:
             logging.warning(f"لم يتمكن من حذف الرسالة المسيئة: {delete_error}")
         
-        # حساب نوع ومدة العقوبة
-        duration_seconds, punishment_type, description = await calculate_punishment_duration(new_warnings_count, severity)
-        
-        # تطبيق العقوبة المناسبة
-        punishment_success = False
-        if punishment_type == "mute" and duration_seconds > 0:
-            punishment_success = await mute_user_with_duration(message, duration_seconds, description)
-        elif punishment_type == "ban":
-            punishment_success = await ban_user_permanently(message)
-        
-        # تحديد مستوى الرسالة
+        # تحديد نوع الرد
         if new_warnings_count <= 3:
+            # تحذيرات فقط
             warning_level = new_warnings_count
+            punishment_success = False
         else:
-            warning_level = 4  # عقوبة فعلية
-        
-        # إعداد رسالة التحذير حسب عدد التحذيرات
-        warning_level = min(new_warnings_count, 3)
+            # عقوبة فعلية
+            warning_level = 4
+            duration_seconds, punishment_type, description = await calculate_punishment_duration(new_warnings_count, severity)
+            
+            punishment_success = False
+            if punishment_type == "mute" and duration_seconds > 0:
+                punishment_success = await mute_user_with_duration(message, duration_seconds, description)
+            elif punishment_type == "ban":
+                punishment_success = await ban_user_permanently(message)
         
         # فحص نوع المستخدم للرسالة المناسبة
         user_member = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
@@ -1057,7 +1096,7 @@ async def handle_profanity_detection(message: Message) -> bool:
         from modules.supreme_master_commands import get_masters_punishment_status
         
         # إرسال رسالة السيدة رهف حسب عدد التحذيرات ونجاح الكتم
-        if warning_level < 3:
+        if warning_level <= 3:
             # رسائل التحذير (1-2)
             if warning_level == 1:
                 warning_message = await message.answer(
@@ -1074,8 +1113,17 @@ async def handle_profanity_detection(message: Message) -> bool:
                     f"🚫 **تم حذف رسالتك المسيئة مرة أخرى**\n"
                     f"📝 **عدد التحذيرات: {new_warnings_count}/3**\n\n"
                     f"⚠️ **هذا تحذيرك الأخير!**\n"
-                    f"💣 **مخالفة واحدة أخرى وستُكتم لساعة كاملة**\n\n"
+                    f"💣 **مخالفة واحدة أخرى وستُعاقب!**\n\n"
                     f"🗡️ **لا تختبر صبر السيدة رهف!**"
+                )
+            elif warning_level == 3:
+                warning_message = await message.answer(
+                    f"💥 **تحذير أخير لـ {message.from_user.first_name}**\n\n"
+                    f"🚫 **تم حذف رسالتك المسيئة للمرة الثالثة!**\n"
+                    f"📝 **عدد التحذيرات: {new_warnings_count}/3**\n\n"
+                    f"🚨 **انتهى عهد التحذيرات المجانية!**\n"
+                    f"💣 **المخالفة القادمة = عقوبة فورية!**\n\n"
+                    f"🔥 **أصبحت على حافة الهاوية!**"
                 )
         elif warning_level == 4 and punishment_success:
             # تم تطبيق عقوبة فعلية (كتم أو طرد)
@@ -1169,10 +1217,10 @@ async def handle_profanity_detection(message: Message) -> bool:
                 f"📝 **ملاحظة:** تأكد من أن البوت لديه صلاحيات كافية لفرض العقوبات"
             )
         
-        # حذف رسالة التحذير بعد 30 ثانية
+        # حذف رسالة التحذير بعد 20 ثانية
         try:
             import asyncio
-            await asyncio.sleep(30)
+            await asyncio.sleep(20)
             await warning_message.delete()
         except:
             pass  # لا نفشل إذا لم نتمكن من حذف رسالة التحذير
