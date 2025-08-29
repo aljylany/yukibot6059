@@ -16,7 +16,7 @@ from modules.comprehensive_ai_system import comprehensive_ai
 # استيراد الأنظمة الموجودة
 from modules.yuki_ai import YukiAI
 from modules.special_responses import get_response
-from modules.profanity_handler_new import handle_new_profanity_system
+from modules.profanity_filter import handle_profanity_detection
 
 class SmartMessageProcessor:
     """معالج الرسائل الذكي الذي يدمج جميع الأنظمة"""
@@ -25,7 +25,7 @@ class SmartMessageProcessor:
         self.comprehensive_ai = comprehensive_ai
         self.basic_ai = YukiAI()
         self.special_responses = get_response
-        self.profanity_handler = handle_new_profanity_system
+        self.profanity_handler = handle_profanity_detection
         
         # إعدادات المعالج
         self.processing_settings = {

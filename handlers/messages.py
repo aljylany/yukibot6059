@@ -1630,8 +1630,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # === النظام الاحتياطي للحماية من الألفاظ المسيئة ===
     # يعمل كنظام احتياطي إذا فشل النظام الشامل
-    from modules.profanity_handler_new import handle_new_profanity_system
-    if await handle_new_profanity_system(message):
+    from modules.profanity_filter import handle_profanity_detection
+    if await handle_profanity_detection(message):
         return
     
     # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)
