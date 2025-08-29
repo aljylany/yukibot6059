@@ -35,7 +35,6 @@ from aiogram.exceptions import TelegramBadRequest
 
 class ViolationType(Enum):
     """أنواع المخالفات"""
-    TEXT_PROFANITY = "text_profanity"          # سباب نصي
     SEXUAL_CONTENT = "sexual_content"          # محتوى جنسي
     ADULT_IMAGE = "adult_image"                # صور إباحية
     VIOLENT_CONTENT = "violent_content"        # محتوى عنيف
@@ -368,7 +367,7 @@ class ComprehensiveContentFilter:
                             severity = SeverityLevel.MEDIUM.value  # تقليل الشدة
                         
                         result['has_violation'] = True
-                        result['violation_type'] = ViolationType.TEXT_PROFANITY.value
+                        result['violation_type'] = ViolationType.SEXUAL_CONTENT.value
                         result['severity'] = severity
                         result['details'] = {
                             'ai_analysis': ai_result.get('reason', 'محتوى غير مناسب'),
@@ -393,25 +392,6 @@ class ComprehensiveContentFilter:
                 }
                 return result
             
-            # فحص السباب التقليدي الخطير فقط (احتياطي)
-            severe_banned_words = [
-                "شرموط", "عاهرة", "منيك", "نيك", "كس", "زب", "طيز", "خرا",
-                "منيوك", "ايري", "انيك", "عرص", "قحبة", "كسمك", "قاوود", "زومل"
-            ]
-            
-            # إزالة الكلمات العادية من قائمة السباب
-            # كلمات مثل "حمار"، "احمق"، "غبي" لم تعد تُعتبر سباب خطير
-            
-            for banned_word in severe_banned_words:
-                if banned_word in text_lower:
-                    result['has_violation'] = True
-                    result['violation_type'] = ViolationType.TEXT_PROFANITY.value
-                    result['severity'] = SeverityLevel.HIGH.value
-                    result['details'] = {
-                        'matched_word': banned_word,
-                        'method': 'database_fallback'
-                    }
-                    return result
             
             return result
             
@@ -1186,7 +1166,6 @@ class ComprehensiveContentFilter:
     def _get_violation_description(self, violation_type: str) -> str:
         """الحصول على وصف المخالفة"""
         descriptions = {
-            ViolationType.TEXT_PROFANITY.value: "ألفاظ مسيئة وسباب",
             ViolationType.SEXUAL_CONTENT.value: "محتوى جنسي غير مناسب",
             ViolationType.ADULT_IMAGE.value: "صور إباحية أو فاضحة",
             ViolationType.VIOLENT_CONTENT.value: "محتوى عنيف",

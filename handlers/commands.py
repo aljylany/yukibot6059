@@ -19,13 +19,6 @@ from modules.content_filter import content_filter
 from config.hierarchy import has_permission, AdminLevel
 # استيراد أوامر النظام الشامل للمشرفين
 from modules.comprehensive_admin_commands import comprehensive_admin
-# استيراد أوامر اختبار نظام كشف المحتوى
-from modules.content_filter_test_command import (
-    test_content_filter_command,
-    test_profanity_command, 
-    monitor_filter_command,
-    reset_user_violations_command
-)
 
 router = Router()
 
@@ -1690,80 +1683,4 @@ async def comprehensive_help_command(message: Message):
         logging.error(f"خطأ في مساعدة النظام الشامل: {e}")
         await message.reply("❌ حدث خطأ في عرض المساعدة")
 
-
-# ===== أوامر اختبار نظام كشف المحتوى =====
-
-@router.message(Command("test_filter"))
-@group_only
-async def test_filter_handler(message: Message, state: FSMContext):
-    """معالج أمر اختبار نظام كشف المحتوى"""
-    await test_content_filter_command(message, state)
-
-@router.message(Command("test_profanity"))
-@group_only
-async def test_profanity_handler(message: Message, state: FSMContext):
-    """معالج أمر اختبار كشف السباب"""
-    await test_profanity_command(message, state)
-
-@router.message(Command("monitor_filter"))
-@group_only
-async def monitor_filter_handler(message: Message, state: FSMContext):
-    """معالج أمر مراقبة نظام التصفية"""
-    await monitor_filter_command(message, state)
-
-@router.message(Command("reset_violations"))
-@group_only
-async def reset_violations_handler(message: Message, state: FSMContext):
-    """معالج أمر إعادة تعيين مخالفات المستخدم"""
-    await reset_user_violations_command(message, state)
-
-# ===== الأوامر العربية لاختبار نظام كشف المحتوى =====
-
-@router.message(F.text.in_({
-    "اختبار النظام", "اختبار_النظام", "اختبار نظام الحماية", "اختبار_نظام_الحماية",
-    "فحص النظام", "فحص_النظام", "حالة نظام الحماية", "حالة_نظام_الحماية",
-    "اختبار الفلتر", "اختبار_الفلتر", "تجربة النظام", "تجربة_النظام"
-}))
-@group_only
-async def arabic_test_filter_command(message: Message, state: FSMContext):
-    """أمر اختبار النظام باللغة العربية"""
-    await test_content_filter_command(message, state)
-
-@router.message(F.text.regexp(r"^(اختبار السباب|اختبار_السباب|فحص السباب|فحص_السباب|تجربة السباب|تجربة_السباب)\s+(.+)"))
-@group_only
-async def arabic_test_profanity_command(message: Message, state: FSMContext):
-    """أمر اختبار السباب باللغة العربية"""
-    # استخراج النص من الأمر
-    import re
-    if message.text:
-        match = re.search(r"^(اختبار السباب|اختبار_السباب|فحص السباب|فحص_السباب|تجربة السباب|تجربة_السباب)\s+(.+)", message.text)
-        if match:
-            test_text = match.group(2)
-            # تعديل النص ليناسب النظام الإنجليزي
-            message.text = f"/test_profanity {test_text}"
-            await test_profanity_command(message, state)
-
-@router.message(F.text.in_({
-    "مراقبة النظام", "مراقبة_النظام", "تفعيل المراقبة", "تفعيل_المراقبة",
-    "مراقبة مكثفة", "مراقبة_مكثفة", "مراقبة الفلتر", "مراقبة_الفلتر",
-    "تشغيل المراقبة", "تشغيل_المراقبة"
-}))
-@group_only
-async def arabic_monitor_filter_command(message: Message, state: FSMContext):
-    """أمر مراقبة النظام باللغة العربية"""
-    await monitor_filter_command(message, state)
-
-@router.message(F.text.regexp(r"^(مسح المخالفات|مسح_المخالفات|حذف المخالفات|حذف_المخالفات|إعادة تعيين|اعادة_تعيين)\s+(\d+)"))
-@group_only
-async def arabic_reset_violations_command(message: Message, state: FSMContext):
-    """أمر إعادة تعيين المخالفات باللغة العربية"""
-    # استخراج معرف المستخدم من الأمر
-    import re
-    if message.text:
-        match = re.search(r"^(مسح المخالفات|مسح_المخالفات|حذف المخالفات|حذف_المخالفات|إعادة تعيين|اعادة_تعيين)\s+(\d+)", message.text)
-        if match:
-            user_id = match.group(2)
-            # تعديل النص ليناسب النظام الإنجليزي
-            message.text = f"/reset_violations {user_id}"
-            await reset_user_violations_command(message, state)
 

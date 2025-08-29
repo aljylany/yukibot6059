@@ -94,9 +94,6 @@ async def main():
     from handlers import memory_commands
     dp.include_router(memory_commands.router)
     
-    # تسجيل نظام كشف السباب الذكي
-    from modules import ai_profanity_commands
-    dp.include_router(ai_profanity_commands.router)
     
     # تهيئة قاعدة البيانات
     await init_database()
@@ -120,24 +117,7 @@ async def main():
     from modules.media_download import load_download_settings
     await load_download_settings()
     
-    # تهيئة نظام الحماية المتطور من الألفاظ المسيئة
-    try:
-        from modules.profanity_filter import init_abusive_db, init_ml_model
-        init_abusive_db()
-        init_success = init_ml_model()
-        if init_success:
-            logging.info("✅ تم تهيئة نظام الحماية بنجاح")
-        else:
-            logging.info("⚠️ تم تهيئة قاعدة البيانات بدون نموذج ML")
-    except Exception as protection_error:
-        logging.error(f"⚠️ خطأ في تهيئة نظام الحماية: {protection_error}")
     
-    # تهيئة النظام الذكي لكشف السباب
-    try:
-        from modules.ai_profanity_detector import ai_detector
-        logging.info("🧠 تم تهيئة النظام الذكي لكشف السباب المتطور")
-    except Exception as smart_detection_error:
-        logging.error(f"❌ خطأ في تهيئة النظام الذكي: {smart_detection_error}")
     
     # تهيئة نظام الذكاء الاصطناعي الحقيقي (Real Yuki AI)
     try:

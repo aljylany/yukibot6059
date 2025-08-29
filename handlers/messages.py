@@ -27,9 +27,6 @@ from modules.response_tester import handle_response_tester_commands
 from modules.master_commands import handle_master_commands
 from modules.group_hierarchy import handle_hierarchy_commands
 from modules.utility_commands import handle_utility_commands
-from modules.abusive_detector import detector, show_detection_menu
-from modules.abusive_detector import add_word_command, remove_word_command, list_words_command
-from modules.abusive_detector import user_warnings_command, reset_warnings_command, initialize_detector
 from modules.protection_commands import handle_protection_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
@@ -1628,11 +1625,6 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await comprehensive_handler.process_message_content(message):
         return
     
-    # === النظام الاحتياطي للحماية من الألفاظ المسيئة ===
-    # يعمل كنظام احتياطي إذا فشل النظام الشامل
-    from modules.profanity_filter import handle_profanity_detection
-    if await handle_profanity_detection(message):
-        return
     
     # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)
     from modules.permission_handler import handle_permission_check
@@ -2033,19 +2025,6 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif any(word in words for word in ['سرقة', 'سرق']) or text == 'امان':
         await theft.show_security_menu(message)
     
-    # === أوامر نظام كشف الألفاظ المسيئة ===
-    elif text.startswith('اضافة كلمة محظورة') or text.startswith('إضافة كلمة محظورة'):
-        await add_word_command(message)
-    elif text.startswith('حذف كلمة محظورة'):
-        await remove_word_command(message)
-    elif text == 'قائمة الكلمات المحظورة':
-        await list_words_command(message)
-    elif text == 'تحذيرات المستخدم':
-        await user_warnings_command(message)
-    elif text == 'اعادة تعيين التحذيرات' or text == 'إعادة تعيين التحذيرات':
-        await reset_warnings_command(message)
-    elif text in ['كشف الالفاظ', 'كشف الألفاظ', 'نظام الكشف', 'نظام كشف الألفاظ']:
-        await show_detection_menu(message)
     
     # === أوامر الاستثمار ===
     elif text == 'استثمار فلوسي':

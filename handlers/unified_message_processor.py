@@ -48,16 +48,6 @@ class UnifiedMessageProcessor:
                 if not message.from_user:
                     return False
                 
-                # التحقق من حالة الكتم الفعلية للمستخدم في التيليجرام أولاً
-                from modules.profanity_filter import is_user_actually_muted
-                user_is_muted = await is_user_actually_muted(message.bot, message.chat.id, message.from_user.id)
-                
-                # إذا كان المستخدم غير مكتوم ولم يرسل سباب، لا نحذف رسائله
-                if not user_is_muted:
-                    # للمستخدمين غير المكتومين، نفحص السباب فقط
-                    logging.info(f"✅ المستخدم {message.from_user.id} غير مكتوم - سيتم فحص السباب فقط")
-                else:
-                    logging.info(f"🔇 المستخدم {message.from_user.id} مكتوم فعلياً في التيليجرام")
                 
                 # السيد الأعلى محمي دائماً من جميع أنواع الفحص
                 if is_supreme_master(message.from_user.id):

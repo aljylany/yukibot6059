@@ -16,7 +16,6 @@ from modules.comprehensive_ai_system import comprehensive_ai
 # استيراد الأنظمة الموجودة
 from modules.yuki_ai import YukiAI
 from modules.special_responses import get_response
-from modules.profanity_filter import handle_profanity_detection
 
 class SmartMessageProcessor:
     """معالج الرسائل الذكي الذي يدمج جميع الأنظمة"""
@@ -25,7 +24,6 @@ class SmartMessageProcessor:
         self.comprehensive_ai = comprehensive_ai
         self.basic_ai = YukiAI()
         self.special_responses = get_response
-        self.profanity_handler = handle_profanity_detection
         
         # إعدادات المعالج
         self.processing_settings = {
@@ -58,10 +56,6 @@ class SmartMessageProcessor:
     async def process_message(self, message: Message) -> Optional[str]:
         """معالجة الرسالة الرئيسية"""
         try:
-            # فحص الحماية من الكلام البذيء
-            if await self._check_profanity(message):
-                return None  # تم التعامل مع الرسالة البذيئة
-            
             # تحليل نية الرسالة
             intent = await self._analyze_message_intent(message)
             
@@ -84,18 +78,6 @@ class SmartMessageProcessor:
             logging.error(f"خطأ في معالجة الرسالة: {e}")
             return None
     
-    async def _check_profanity(self, message: Message) -> bool:
-        """فحص والتعامل مع الكلام البذيء"""
-        try:
-            is_profane = await self.profanity_handler.check_message(message)
-            if is_profane:
-                # تم التعامل مع الرسالة داخل معالج الكلام البذيء
-                logging.info(f"تم اكتشاف والتعامل مع رسالة بذيئة من {message.from_user.id}")
-                return True
-            return False
-        except Exception as e:
-            logging.error(f"خطأ في فحص الكلام البذيء: {e}")
-            return False
     
     async def _analyze_message_intent(self, message: Message) -> Dict[str, Any]:
         """تحليل نية الرسالة بذكاء"""
@@ -240,7 +222,6 @@ class SmartMessageProcessor:
             'current_ai_provider': ai_status['current_provider'],
             'basic_ai_available': True,
             'special_responses_loaded': True,
-            'profanity_protection': True,
             'processing_settings': self.processing_settings
         }
     
