@@ -1051,86 +1051,255 @@ async def get_group_violations_records(chat_id: int):
 
 
 async def cleanup_all_violations() -> int:
-    """حذف جميع سجلات المخالفات من النظام"""
+    """حذف جميع سجلات المخالفات من النظام - تنظيف شامل كامل"""
     try:
         import sqlite3
-        conn = sqlite3.connect('abusive_words.db')
-        cursor = conn.cursor()
+        total_deleted = 0
         
-        cursor.execute('DELETE FROM user_warnings')
-        deleted_count = cursor.rowcount
+        # حذف من جدول التحذيرات (abusive_words.db)
+        conn1 = sqlite3.connect('abusive_words.db')
+        cursor1 = conn1.cursor()
         
-        conn.commit()
-        conn.close()
+        cursor1.execute('DELETE FROM user_warnings')
+        deleted_warnings = cursor1.rowcount
+        total_deleted += deleted_warnings
         
-        logging.info(f"🧹 تم حذف {deleted_count} سجل مخالفة من النظام الكامل")
-        return deleted_count
+        conn1.commit()
+        conn1.close()
+        
+        # حذف من جداول النظام الشامل (comprehensive_filter.db)
+        conn2 = sqlite3.connect('comprehensive_filter.db')
+        cursor2 = conn2.cursor()
+        
+        # حذف كامل تاريخ المخالفات
+        cursor2.execute('DELETE FROM violation_history')
+        deleted_history = cursor2.rowcount
+        total_deleted += deleted_history
+        
+        # إعادة تعيين جميع نقاط العقوبة والحظر النهائي
+        cursor2.execute('''
+        UPDATE user_violation_points 
+        SET total_points = 0, punishment_level = 0, is_permanently_banned = FALSE
+        ''')
+        reset_points = cursor2.rowcount
+        total_deleted += reset_points
+        
+        conn2.commit()
+        conn2.close()
+        
+        # حذف من جداول التقارير (إن وجدت)
+        try:
+            conn3 = sqlite3.connect('admin_reports.db')
+            cursor3 = conn3.cursor()
+            cursor3.execute('DELETE FROM detailed_admin_reports')
+            deleted_reports = cursor3.rowcount
+            total_deleted += deleted_reports
+            conn3.commit()
+            conn3.close()
+        except:
+            pass  # قاعدة البيانات قد لا تكون موجودة
+        
+        logging.info(f"🧹 تنظيف شامل كامل للنظام:")
+        logging.info(f"   - حذف {deleted_warnings} تحذير")
+        logging.info(f"   - حذف {deleted_history} سجل مخالفة")
+        logging.info(f"   - إعادة تعيين {reset_points} نقطة عقوبة")
+        
+        return total_deleted
     
     except Exception as e:
-        logging.error(f"خطأ في التنظيف الشامل: {e}")
+        logging.error(f"خطأ في التنظيف الشامل الكامل: {e}")
         return 0
 
 
 async def cleanup_group_violations(chat_id: int) -> int:
-    """حذف سجلات مخالفات المجموعة المحددة"""
+    """حذف سجلات مخالفات المجموعة المحددة - تنظيف شامل"""
     try:
         import sqlite3
-        conn = sqlite3.connect('abusive_words.db')
-        cursor = conn.cursor()
+        total_deleted = 0
         
-        cursor.execute('DELETE FROM user_warnings WHERE chat_id = ?', (chat_id,))
-        deleted_count = cursor.rowcount
+        # حذف من جدول التحذيرات (abusive_words.db)
+        conn1 = sqlite3.connect('abusive_words.db')
+        cursor1 = conn1.cursor()
         
-        conn.commit()
-        conn.close()
+        cursor1.execute('DELETE FROM user_warnings WHERE chat_id = ?', (chat_id,))
+        deleted_warnings = cursor1.rowcount
+        total_deleted += deleted_warnings
         
-        logging.info(f"🧹 تم حذف {deleted_count} سجل مخالفة من المجموعة {chat_id}")
-        return deleted_count
+        conn1.commit()
+        conn1.close()
+        
+        # حذف من جداول النظام الشامل (comprehensive_filter.db)
+        conn2 = sqlite3.connect('comprehensive_filter.db')
+        cursor2 = conn2.cursor()
+        
+        # حذف تاريخ المخالفات للمجموعة
+        cursor2.execute('DELETE FROM violation_history WHERE chat_id = ?', (chat_id,))
+        deleted_history = cursor2.rowcount
+        total_deleted += deleted_history
+        
+        # إعادة تعيين نقاط العقوبة والحظر النهائي للمجموعة
+        cursor2.execute('''
+        UPDATE user_violation_points 
+        SET total_points = 0, punishment_level = 0, is_permanently_banned = FALSE
+        WHERE chat_id = ?
+        ''', (chat_id,))
+        reset_points = cursor2.rowcount
+        total_deleted += reset_points
+        
+        conn2.commit()
+        conn2.close()
+        
+        # حذف من جداول التقارير للمجموعة (إن وجدت)
+        try:
+            conn3 = sqlite3.connect('admin_reports.db')
+            cursor3 = conn3.cursor()
+            cursor3.execute('DELETE FROM detailed_admin_reports WHERE chat_id = ?', (chat_id,))
+            deleted_reports = cursor3.rowcount
+            total_deleted += deleted_reports
+            conn3.commit()
+            conn3.close()
+        except:
+            pass  # قاعدة البيانات قد لا تكون موجودة
+        
+        logging.info(f"🧹 تنظيف شامل للمجموعة {chat_id}:")
+        logging.info(f"   - حذف {deleted_warnings} تحذير")
+        logging.info(f"   - حذف {deleted_history} سجل مخالفة")
+        logging.info(f"   - إعادة تعيين {reset_points} نقطة عقوبة")
+        
+        return total_deleted
     
     except Exception as e:
-        logging.error(f"خطأ في تنظيف المجموعة: {e}")
+        logging.error(f"خطأ في التنظيف الشامل للمجموعة: {e}")
         return 0
 
 
 async def clear_user_all_violations(user_id: int) -> int:
-    """حذف جميع مخالفات المستخدم من كل المجموعات"""
+    """حذف جميع مخالفات المستخدم من كل المجموعات - تنظيف شامل"""
     try:
         import sqlite3
-        conn = sqlite3.connect('abusive_words.db')
-        cursor = conn.cursor()
+        total_deleted = 0
         
-        cursor.execute('DELETE FROM user_warnings WHERE user_id = ?', (user_id,))
-        deleted_count = cursor.rowcount
+        # حذف من جدول التحذيرات (abusive_words.db)
+        conn1 = sqlite3.connect('abusive_words.db')
+        cursor1 = conn1.cursor()
         
-        conn.commit()
-        conn.close()
+        cursor1.execute('DELETE FROM user_warnings WHERE user_id = ?', (user_id,))
+        deleted_warnings = cursor1.rowcount
+        total_deleted += deleted_warnings
         
-        logging.info(f"✅ تم حذف {deleted_count} سجل مخالفة للمستخدم {user_id} من كل المجموعات")
-        return deleted_count
+        conn1.commit()
+        conn1.close()
+        
+        # حذف من جداول النظام الشامل (comprehensive_filter.db)
+        conn2 = sqlite3.connect('comprehensive_filter.db')
+        cursor2 = conn2.cursor()
+        
+        # حذف تاريخ المخالفات
+        cursor2.execute('DELETE FROM violation_history WHERE user_id = ?', (user_id,))
+        deleted_history = cursor2.rowcount
+        total_deleted += deleted_history
+        
+        # إعادة تعيين نقاط العقوبة والحظر النهائي
+        cursor2.execute('''
+        UPDATE user_violation_points 
+        SET total_points = 0, punishment_level = 0, is_permanently_banned = FALSE
+        WHERE user_id = ?
+        ''', (user_id,))
+        reset_points = cursor2.rowcount
+        
+        # إذا لم يكن للمستخدم سجل، فلا نحسبه في العدد
+        if reset_points > 0:
+            total_deleted += reset_points
+        
+        conn2.commit()
+        conn2.close()
+        
+        # حذف من جداول التقارير (إن وجدت)
+        try:
+            conn3 = sqlite3.connect('admin_reports.db')
+            cursor3 = conn3.cursor()
+            cursor3.execute('DELETE FROM detailed_admin_reports WHERE user_id = ?', (user_id,))
+            deleted_reports = cursor3.rowcount
+            total_deleted += deleted_reports
+            conn3.commit()
+            conn3.close()
+        except:
+            pass  # قاعدة البيانات قد لا تكون موجودة
+        
+        logging.info(f"✅ تنظيف شامل للمستخدم {user_id}:")
+        logging.info(f"   - حذف {deleted_warnings} تحذير")
+        logging.info(f"   - حذف {deleted_history} سجل مخالفة")
+        logging.info(f"   - إعادة تعيين نقاط العقوبة: {'نعم' if reset_points > 0 else 'لا يوجد سجل'}")
+        
+        return total_deleted
     
     except Exception as e:
-        logging.error(f"خطأ في حذف مخالفات المستخدم: {e}")
+        logging.error(f"خطأ في التنظيف الشامل لمخالفات المستخدم: {e}")
         return 0
 
 
 async def clear_user_group_violations(user_id: int, chat_id: int) -> int:
-    """حذف مخالفات المستخدم من المجموعة المحددة فقط"""
+    """حذف مخالفات المستخدم من المجموعة المحددة فقط - تنظيف شامل"""
     try:
         import sqlite3
-        conn = sqlite3.connect('abusive_words.db')
-        cursor = conn.cursor()
+        total_deleted = 0
         
-        cursor.execute('DELETE FROM user_warnings WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
-        deleted_count = cursor.rowcount
+        # حذف من جدول التحذيرات (abusive_words.db)
+        conn1 = sqlite3.connect('abusive_words.db')
+        cursor1 = conn1.cursor()
         
-        conn.commit()
-        conn.close()
+        cursor1.execute('DELETE FROM user_warnings WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+        deleted_warnings = cursor1.rowcount
+        total_deleted += deleted_warnings
         
-        logging.info(f"✅ تم حذف {deleted_count} سجل مخالفة للمستخدم {user_id} من المجموعة {chat_id}")
-        return deleted_count
+        conn1.commit()
+        conn1.close()
+        
+        # حذف من جداول النظام الشامل (comprehensive_filter.db)
+        conn2 = sqlite3.connect('comprehensive_filter.db')
+        cursor2 = conn2.cursor()
+        
+        # حذف تاريخ المخالفات للمجموعة المحددة
+        cursor2.execute('DELETE FROM violation_history WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+        deleted_history = cursor2.rowcount
+        total_deleted += deleted_history
+        
+        # إعادة تعيين نقاط العقوبة والحظر النهائي للمجموعة المحددة
+        cursor2.execute('''
+        UPDATE user_violation_points 
+        SET total_points = 0, punishment_level = 0, is_permanently_banned = FALSE
+        WHERE user_id = ? AND chat_id = ?
+        ''', (user_id, chat_id))
+        reset_points = cursor2.rowcount
+        
+        # إذا لم يكن للمستخدم سجل، فلا نحسبه في العدد
+        if reset_points > 0:
+            total_deleted += reset_points
+        
+        conn2.commit()
+        conn2.close()
+        
+        # حذف من جداول التقارير للمجموعة المحددة (إن وجدت)
+        try:
+            conn3 = sqlite3.connect('admin_reports.db')
+            cursor3 = conn3.cursor()
+            cursor3.execute('DELETE FROM detailed_admin_reports WHERE user_id = ? AND chat_id = ?', (user_id, chat_id))
+            deleted_reports = cursor3.rowcount
+            total_deleted += deleted_reports
+            conn3.commit()
+            conn3.close()
+        except:
+            pass  # قاعدة البيانات قد لا تكون موجودة
+        
+        logging.info(f"✅ تنظيف شامل للمستخدم {user_id} من المجموعة {chat_id}:")
+        logging.info(f"   - حذف {deleted_warnings} تحذير")
+        logging.info(f"   - حذف {deleted_history} سجل مخالفة")
+        logging.info(f"   - إعادة تعيين نقاط العقوبة: {'نعم' if reset_points > 0 else 'لا يوجد سجل'}")
+        
+        return total_deleted
     
     except Exception as e:
-        logging.error(f"خطأ في حذف مخالفات المستخدم من المجموعة: {e}")
+        logging.error(f"خطأ في التنظيف الشامل لمخالفات المستخدم من المجموعة: {e}")
         return 0
 
 

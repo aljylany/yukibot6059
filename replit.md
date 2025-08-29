@@ -44,6 +44,12 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Circular Import Resolution:** Specific attention paid to resolving common Python issues like circular imports (e.g., in `utils/decorators.py`).
 
 ## Recent Changes (August 29, 2025)
+- **Complete Violation System Overhaul:** Fixed major issue where "إلغاء سوابق" (clear records) command only deleted warnings but not violation history, causing users to be immediately banned again:
+  - **Comprehensive Database Cleanup:** Updated all cleanup functions (`clear_user_all_violations`, `clear_user_group_violations`, `cleanup_all_violations`, `cleanup_group_violations`) to delete from multiple database tables
+  - **Multi-Table Reset:** Now clears data from `user_warnings`, `violation_history`, `user_violation_points`, and `detailed_admin_reports` tables
+  - **True Fresh Start:** Users now get a genuine fresh start with complete violation history reset, returning to the 3-warning system as intended
+  - **Enhanced Logging:** Added detailed logging to show exactly what data is being cleared from each database table
+  - **Punishment Level Reset:** Violation points, punishment levels, and permanent ban status are now properly reset to zero/false
 - **Merciful Reset System Implementation:** Added automatic warning reset when admins manually unmute users:
   - **Admin Unmute Detection:** When a moderator uses the unmute command (`الغاء كتم`), the system automatically detects this action
   - **Complete Warning Reset:** All user violations and warnings are completely cleared from the database (`reset_user_warnings()` function)
