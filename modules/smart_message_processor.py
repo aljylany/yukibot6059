@@ -63,7 +63,9 @@ class SmartMessageProcessor:
             processing_type = await self._determine_processing_type(message, intent)
             
             # معالجة الرسالة حسب النوع
-            if processing_type == 'ai_comprehensive':
+            if processing_type == 'memory_response':
+                return await self._process_memory_query(message)
+            elif processing_type == 'ai_comprehensive':
                 return await self._process_with_comprehensive_ai(message, intent)
             elif processing_type == 'ai_basic':
                 return await self._process_with_basic_ai(message)
@@ -111,7 +113,11 @@ class SmartMessageProcessor:
                 intent['keywords'].extend(matches)
         
         # تحديد النوع الأساسي
-        if any(kw in message_text for kw in ['كيف', 'ماذا', 'متى', 'أين', 'لماذا', 'من', '؟']):
+        # أسئلة الذاكرة المحلية - ردود سريعة بدون AI
+        if 'ماذا تعرف عن' in message_text:
+            intent['type'] = 'memory_query'
+            intent['needs_ai'] = False
+        elif any(kw in message_text for kw in ['كيف', 'ماذا', 'متى', 'أين', 'لماذا', 'من', '؟']):
             intent['type'] = 'question'
             intent['needs_ai'] = True
         elif any(kw in message_text for kw in ['مرحبا', 'هلا', 'السلام', 'أهلا']):
@@ -130,12 +136,45 @@ class SmartMessageProcessor:
         
         return intent
     
+    async def _process_memory_query(self, message: Message) -> str:
+        """معالجة أسئلة الذاكرة المحلية - رد سريع بدون AI"""
+        try:
+            message_text = message.text.lower()
+            
+            # البحث عن اسم الشخص المطلوب
+            if 'عن عبيد' in message_text:
+                # البحث في قاعدة البيانات
+                try:
+                    from modules.shared_memory_pg import shared_memory_pg
+                    conn = await shared_memory_pg.get_db_connection()
+                    if conn:
+                        results = await conn.fetch(
+                            "SELECT content FROM shared_conversations WHERE topic ILIKE '%عبيد%' ORDER BY timestamp DESC LIMIT 1"
+                        )
+                        await conn.close()
+                        
+                        if results:
+                            return f"📋 **معلومات عن عبيد:**\n\n{results[0]['content']}\n\n✨ هذا ما أتذكره عن عبيد!"
+                        else:
+                            return "🤔 لا أجد معلومات محفوظة عن عبيد في ذاكرتي حالياً"
+                except:
+                    return "🤔 لا أجد معلومات محفوظة عن عبيد في ذاكرتي حالياً"
+            
+            return "🤔 لا أفهم عن من تسأل تحديداً"
+        except Exception as e:
+            logging.error(f"خطأ في معالج الذاكرة: {e}")
+            return "❌ حدث خطأ في البحث في الذاكرة"
+    
     async def _determine_processing_type(self, message: Message, intent: Dict[str, Any]) -> str:
         """تحديد نوع المعالجة المطلوبة"""
         
         # رد مضمون للأولوية العالية
         if intent['priority'] == 'high':
             return 'ai_comprehensive'
+        
+        # أسئلة الذاكرة المحلية - رد سريع
+        if intent['type'] == 'memory_query':
+            return 'memory_response'
         
         # رد على الأسئلة والمساعدة
         if intent['type'] in ['question', 'help_request']:
