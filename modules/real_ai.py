@@ -416,7 +416,9 @@ class RealYukiAI:
                         'geo': 6629947448,
                         'براندون': 6524680126,
                         'brandon': 6524680126,
-                        'يوكي براندون': 6524680126
+                        'يوكي براندون': 6524680126,
+                        'عبيد': 6524680126,  # عبيد هو اسم براندون الآخر
+                        'عبيدة': 6524680126
                     }
                     
                     target_user_id = None
@@ -426,10 +428,13 @@ class RealYukiAI:
                             break
                     
                     if any(phrase in user_message.lower() for phrase in memory_triggers) or target_user_id:
+                        # استخدام chat_id الصحيح للمحادثة الحالية
+                        search_chat_id = chat_id if chat_id else -1002549788763
+                        
                         if target_user_id:
                             # البحث عن محادثات مستخدم محدد
                             shared_context = await shared_group_memory_pg.get_shared_context_about_user(
-                                -1002549788763,
+                                search_chat_id,
                                 target_user_id,
                                 user_id,
                                 limit=10
@@ -437,7 +442,7 @@ class RealYukiAI:
                         else:
                             # البحث العام في الذاكرة المشتركة
                             shared_context = await shared_group_memory_pg.get_shared_context_about_user(
-                                -1002549788763,
+                                search_chat_id,
                                 user_id,
                                 user_id,
                                 limit=5
@@ -568,8 +573,9 @@ class RealYukiAI:
                         
                         # حفظ في الذاكرة المشتركة أيضاً
                         from modules.shared_memory_pg import shared_group_memory_pg
+                        save_chat_id = chat_id if chat_id else -1002549788763  # استخدام chat_id الصحيح
                         await shared_group_memory_pg.save_shared_conversation(
-                            -1002549788763,  # chat_id المجموعة الرئيسية
+                            save_chat_id,
                             user_id,
                             arabic_name,
                             user_message,
