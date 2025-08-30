@@ -83,24 +83,17 @@ class ObaidSmartSystem:
         """فحص إذا كانت الرسالة من عبيد"""
         return user_id == self.OBAID_USER_ID
     
-    async def track_obaid_message(self, message: Message):
-        """تتبع رسائل عبيد لمعرفة الردود عليها لاحقاً"""
-        # تتبع رسائل عبيد المباشرة
-        if self.is_obaid_message(message.from_user.id):
+    async def track_bot_message(self, message: Message):
+        """تتبع رسائل البوت لمعرفة الردود عليها لاحقاً"""
+        # تتبع جميع رسائل البوت (يوكي)
+        if message.from_user.id == 7942168520:  # معرف البوت يوكي
+            logging.info(f"🤖 تم تتبع رسالة يوكي: {message.message_id}")
             self.obaid_messages[message.message_id] = {
                 'text': message.text,
                 'chat_id': message.chat.id,
                 'timestamp': datetime.now(),
-                'user_name': message.from_user.first_name or "عبيد"
-            }
-        # تتبع رسائل يوكي التي تحتوي على معلومات عن عبيد
-        elif message.text and any(phrase in message.text for phrase in ['معلومات عن عبيد', 'عبيد يقول', 'عبيد يسأل', 'عبيد يرد']):
-            self.obaid_messages[message.message_id] = {
-                'text': message.text,
-                'chat_id': message.chat.id,
-                'timestamp': datetime.now(),
-                'user_name': "عبيد (عبر يوكي)",
-                'is_proxy': True  # رسالة بالوكالة
+                'user_name': "يوكي",
+                'is_bot': True
             }
             
             # حذف الرسائل القديمة (أكثر من ساعة)
@@ -113,20 +106,23 @@ class ObaidSmartSystem:
             for old_msg in old_messages:
                 del self.obaid_messages[old_msg]
     
-    async def handle_reply_to_obaid(self, message: Message) -> Optional[str]:
-        """معالجة الردود على رسائل عبيد وإرجاع رد ذكي"""
-        # فحص إذا كانت الرسالة رد على رسالة عبيد
+    async def handle_reply_to_bot(self, message: Message) -> Optional[str]:
+        """معالجة الردود على رسائل يوكي وإرجاع رد ذكي"""
+        # فحص إذا كانت الرسالة رد على رسالة
         if not message.reply_to_message:
             return None
             
         replied_message_id = message.reply_to_message.message_id
+        logging.info(f"🔍 فحص رد على رسالة: {replied_message_id}")
         
-        # فحص إذا كانت الرسالة المردود عليها من عبيد
+        # فحص إذا كانت الرسالة المردود عليها من البوت
         if replied_message_id not in self.obaid_messages:
+            logging.info(f"❌ الرسالة {replied_message_id} غير موجودة في القائمة")
+            logging.info(f"📋 الرسائل المتتبعة: {list(self.obaid_messages.keys())}")
             return None
         
-        # فحص إذا كان الرد من عبيد نفسه (تجاهل)
-        if self.is_obaid_message(message.from_user.id):
+        # فحص إذا كان الرد من البوت نفسه (تجاهل)
+        if message.from_user.id == 7942168520:  # معرف البوت
             return None
             
         # تتبع الرد
@@ -142,15 +138,15 @@ class ObaidSmartSystem:
         
         # إنتاج رد شخصي
         base_response = random.choice(responses)
-        personal_response = f"@{replier_name} {base_response}"
+        personal_response = f"{replier_name} {base_response}"
         
         # إضافة سياق إضافي أحياناً
         if random.random() < 0.3:  # 30% احتمال
             extras = [
-                "\nعبيد قال: بس أنا عبيد براندون! 👦",
-                "\nعبيد يقول: أحب ألعب جولف! تيجي نلعب؟ ⛳",
-                "\nعبيد قال: أنا ولد طيب ومؤدب! 😇",
-                "\nعبيد يشكر: يوكي علمني أكون ذكي! 🤖"
+                "\n😊 يوكي سعيد بالتفاعل معك!",
+                "\n🤖 أحب أتكلم مع الأصدقاء!",
+                "\n✨ شكراً للرد الجميل!",
+                "\n💫 يوكي مبسوط من الحديث معك!"
             ]
             personal_response += random.choice(extras)
         

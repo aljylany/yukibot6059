@@ -158,12 +158,12 @@ async def handle_sheikh_call(message: Message):
 async def handle_text_messages(message: Message, state: FSMContext):
     """معالج الرسائل النصية العامة حسب الحالة"""
     try:
-        # نظام عبيد الذكي - تتبع رسائل عبيد
-        await obaid_smart.track_obaid_message(message)
+        # نظام يوكي الذكي - تتبع رسائل البوت
+        await obaid_smart.track_bot_message(message)
         
-        # فحص الردود على رسائل عبيد (قبل معالجة الحالات)
+        # فحص الردود على رسائل البوت (قبل معالجة الحالات)
         if message.reply_to_message:
-            obaid_reply = await obaid_smart.handle_reply_to_obaid(message)
+            obaid_reply = await obaid_smart.handle_reply_to_bot(message)
             if obaid_reply:
                 # عبيد يرد على الرد
                 await message.reply(obaid_reply)
@@ -2943,11 +2943,11 @@ async def handle_ai_comprehensive_response(message: Message):
             return
         
         # نظام عبيد الذكي - تتبع رسائل عبيد
-        await obaid_smart.track_obaid_message(message)
+        await obaid_smart.track_bot_message(message)
         
         # فحص الردود على رسائل عبيد
         if message.reply_to_message:
-            obaid_reply = await obaid_smart.handle_reply_to_obaid(message)
+            obaid_reply = await obaid_smart.handle_reply_to_bot(message)
             if obaid_reply:
                 # عبيد يرد على الرد
                 await message.reply(obaid_reply)
