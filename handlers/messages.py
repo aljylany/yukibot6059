@@ -36,8 +36,7 @@ from modules.utility_commands import WhisperStates
 from modules.ai_integration_handler import ai_integration
 # استيراد معالج القوائم الذكية
 from modules.smart_menu_handler import smart_menu_handler
-# استيراد نظام عبيد الذكي
-from modules.obaid_smart_system import obaid_smart
+# تم حذف نظام عبيد الذكي غير الضروري
 
 router = Router()
 
@@ -158,23 +157,7 @@ async def handle_sheikh_call(message: Message):
 async def handle_text_messages(message: Message, state: FSMContext):
     """معالج الرسائل النصية العامة حسب الحالة"""
     try:
-        # نظام يوكي الذكي - تتبع رسائل البوت
-        await obaid_smart.track_bot_message(message)
-        
-        # فحص الردود على رسائل البوت (قبل معالجة الحالات)
-        if message.reply_to_message:
-            obaid_reply = await obaid_smart.handle_reply_to_bot(message)
-            if obaid_reply:
-                # عبيد يرد على الرد
-                await message.reply(obaid_reply)
-                return
-        
-        # فحص ذكر اسم عبيد في الرسالة (قبل معالجة الحالات)
-        obaid_mention_response = await obaid_smart.should_obaid_respond_to_mention(message)
-        if obaid_mention_response:
-            # عبيد يرد على الذكر
-            await message.reply(obaid_mention_response)
-            return
+        # تم إزالة النظام غير الضروري - يوكي الذكي الأساسي يكفي
         
         current_state = await state.get_state()
         
@@ -2943,22 +2926,12 @@ async def handle_ai_comprehensive_response(message: Message):
             return
         
         # نظام عبيد الذكي - تتبع رسائل عبيد
-        await obaid_smart.track_bot_message(message)
+        # تم حذف النظام غير الضروري
         
         # فحص الردود على رسائل عبيد
         if message.reply_to_message:
-            obaid_reply = await obaid_smart.handle_reply_to_bot(message)
-            if obaid_reply:
-                # عبيد يرد على الرد
-                await message.reply(obaid_reply)
-                return
-        
-        # فحص ذكر اسم عبيد في الرسالة
-        obaid_mention_response = await obaid_smart.should_obaid_respond_to_mention(message)
-        if obaid_mention_response:
-            # عبيد يرد على الذكر
-            await message.reply(obaid_mention_response)
-            return
+            # تم حذف النظام غير الضروري
+            pass
             
         # تجاهل الرسائل التي تحتوي على أوامر معروفة تم التعامل معها
         text_lower = message.text.lower().strip()
@@ -2999,10 +2972,7 @@ async def handle_ai_comprehensive_response(message: Message):
             return
         
         # فحص التفاعل العشوائي لعبيد
-        random_obaid_response = await obaid_smart.random_obaid_interaction(message.chat.id)
-        if random_obaid_response:
-            await message.reply(random_obaid_response)
-            return
+        # تم حذف النظام غير الضروري
         
         # معالجة الرسالة بنظام الذكاء الاصطناعي الشامل
         ai_response = await ai_integration.handle_message_with_ai(message)
