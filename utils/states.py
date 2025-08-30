@@ -272,3 +272,15 @@ class SmartCommandStates(StatesGroup):
     waiting_story_choice = State()
     waiting_battle_answer = State()
     waiting_challenge_answer = State()
+
+
+class ReportStates(StatesGroup):
+    """حالات نظام التقرير الملكي"""
+    waiting_title = State()
+    waiting_description = State()
+    waiting_steps = State()
+    waiting_expected_result = State()
+    waiting_actual_result = State()
+    waiting_screenshot = State()
+    waiting_admin_comment = State()
+    waiting_status_update = State()

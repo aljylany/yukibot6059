@@ -1,0 +1,779 @@
+"""
+🔥 نظام التقرير الملكي - Bug Report System 
+نظام متطور لإدارة تقارير الأخطاء والاقتراحات مع نظام مكافآت مبتكر
+"""
+
+import logging
+import asyncio
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List
+from aiogram import Bot
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.fsm.context import FSMContext
+from database.operations import get_or_create_user, update_user_balance, add_transaction, execute_query
+from utils.states import ReportStates
+from utils.helpers import format_number
+from config.settings import ADMIN_IDS
+import json
+
+# إعدادات نظام التقارير
+REPORT_SETTINGS = {
+    "rewards": {
+        "critical": {"gold": 50, "money": 5000},          # خطأ قاتل
+        "major": {"gold": 25, "money": 2500},             # خطأ مهم  
+        "minor": {"gold": 10, "money": 1000},             # خطأ بسيط
+        "suggestion": {"gold": 5, "money": 500},          # اقتراح
+        "duplicate": {"gold": 2, "money": 100}            # تقرير مكرر
+    },
+    "status_emojis": {
+        "pending": "⏳",
+        "in_progress": "🔧", 
+        "testing": "🧪",
+        "fixed": "✅",
+        "rejected": "❌",
+        "duplicate": "🔄"
+    },
+    "priority_emojis": {
+        "critical": "🔥",
+        "major": "⚠️", 
+        "minor": "📝",
+        "suggestion": "💡"
+    }
+}
+
+class BugReportSystem:
+    def __init__(self):
+        self.reports = {}
+        
+    async def init_database(self):
+        """تهيئة قاعدة البيانات لنظام التقارير"""
+        try:
+            # جدول تقارير الأخطاء
+            await execute_query('''
+                CREATE TABLE IF NOT EXISTS bug_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_id TEXT UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    priority TEXT DEFAULT 'minor',
+                    status TEXT DEFAULT 'pending',
+                    steps_to_reproduce TEXT,
+                    expected_result TEXT,
+                    actual_result TEXT,
+                    system_info TEXT,
+                    screenshots TEXT,
+                    assigned_to INTEGER,
+                    reward_given REAL DEFAULT 0,
+                    gold_reward REAL DEFAULT 0,
+                    is_rewarded BOOLEAN DEFAULT FALSE,
+                    votes_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fixed_at TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
+            # جدول تصويت المجتمع على التقارير
+            await execute_query('''
+                CREATE TABLE IF NOT EXISTS report_votes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_id TEXT NOT NULL,
+                    voter_id INTEGER NOT NULL,
+                    vote_type TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (report_id) REFERENCES bug_reports (report_id),
+                    UNIQUE(report_id, voter_id)
+                )
+            ''')
+            
+            # جدول إحصائيات المبلغين
+            await execute_query('''
+                CREATE TABLE IF NOT EXISTS reporter_stats (
+                    user_id INTEGER PRIMARY KEY,
+                    total_reports INTEGER DEFAULT 0,
+                    critical_reports INTEGER DEFAULT 0,
+                    major_reports INTEGER DEFAULT 0,
+                    minor_reports INTEGER DEFAULT 0,
+                    suggestions INTEGER DEFAULT 0,
+                    fixed_reports INTEGER DEFAULT 0,
+                    total_rewards REAL DEFAULT 0,
+                    total_gold_earned REAL DEFAULT 0,
+                    reporter_rank TEXT DEFAULT 'مبلغ مبتدئ',
+                    achievement_badges TEXT DEFAULT '[]',
+                    last_report_date TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
+            # إضافة عمود النقاط الذهبية للمستخدمين إذا لم يكن موجود
+            try:
+                await execute_query('ALTER TABLE users ADD COLUMN gold_points REAL DEFAULT 0')
+                logging.info("✅ تم إضافة عمود النقاط الذهبية")
+            except Exception as e:
+                if "duplicate column name" not in str(e).lower():
+                    logging.error(f"خطأ في إضافة عمود النقاط الذهبية: {e}")
+            
+            # إضافة الفهارس لتحسين الأداء
+            await execute_query('CREATE INDEX IF NOT EXISTS idx_reports_status ON bug_reports(status)')
+            await execute_query('CREATE INDEX IF NOT EXISTS idx_reports_priority ON bug_reports(priority)')
+            await execute_query('CREATE INDEX IF NOT EXISTS idx_reports_user ON bug_reports(user_id)')
+            await execute_query('CREATE INDEX IF NOT EXISTS idx_votes_report ON report_votes(report_id)')
+            
+            logging.info("✅ تم تهيئة قاعدة بيانات نظام التقرير الملكي بنجاح")
+            
+        except Exception as e:
+            logging.error(f"❌ خطأ في تهيئة قاعدة البيانات لنظام التقارير: {e}")
+
+    def get_report_keyboard(self, level: str = "basic") -> InlineKeyboardMarkup:
+        """إنشاء لوحة مفاتيح تفاعلية للتقارير"""
+        if level == "basic":
+            keyboard = [
+                [
+                    InlineKeyboardButton(text="🔥 خطأ قاتل", callback_data="report:critical"),
+                    InlineKeyboardButton(text="⚠️ خطأ مهم", callback_data="report:major")
+                ],
+                [
+                    InlineKeyboardButton(text="📝 خطأ بسيط", callback_data="report:minor"),
+                    InlineKeyboardButton(text="💡 اقتراح", callback_data="report:suggestion")
+                ],
+                [
+                    InlineKeyboardButton(text="📊 إحصائياتي", callback_data="report:stats"),
+                    InlineKeyboardButton(text="📋 تقاريري", callback_data="report:my_reports")
+                ]
+            ]
+        elif level == "advanced":
+            keyboard = [
+                [
+                    InlineKeyboardButton(text="🔥 خطأ قاتل مفصل", callback_data="report:critical_detailed"),
+                    InlineKeyboardButton(text="⚠️ خطأ مهم مفصل", callback_data="report:major_detailed")
+                ],
+                [
+                    InlineKeyboardButton(text="🧪 تقرير فني", callback_data="report:technical"),
+                    InlineKeyboardButton(text="🔍 اقتراح متقدم", callback_data="report:advanced_suggestion")
+                ]
+            ]
+        
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    async def show_report_menu(self, message: Message):
+        """عرض القائمة الرئيسية لنظام التقارير"""
+        try:
+            # التأكد من وجود المستخدم
+            user = await get_or_create_user(
+                message.from_user.id,
+                message.from_user.username or "",
+                message.from_user.first_name or "مبلغ"
+            )
+            
+            if not user:
+                await message.reply("❌ حدث خطأ في النظام")
+                return
+            
+            # الحصول على إحصائيات المستخدم
+            stats = await self.get_user_stats(message.from_user.id)
+            
+            welcome_text = f"""
+🏰 **نظام التقرير الملكي** 👑
+
+مرحباً أيها المبلغ النبيل! نحن نقدر مساعدتك في تطوير البوت وجعله أفضل.
+
+📊 **إحصائياتك:**
+• تقارير مرسلة: {stats['total_reports']}
+• تقارير تم إصلاحها: {stats['fixed_reports']}
+• إجمالي المكافآت: {format_number(stats['total_rewards'])}$
+• النقاط الذهبية: {stats['total_gold_earned']} ⭐
+
+🏆 **رتبتك الحالية:** {stats['reporter_rank']}
+
+💰 **نظام المكافآت:**
+• 🔥 خطأ قاتل: 5000$ + 50⭐
+• ⚠️ خطأ مهم: 2500$ + 25⭐  
+• 📝 خطأ بسيط: 1000$ + 10⭐
+• 💡 اقتراح: 500$ + 5⭐
+
+اختر نوع التقرير الذي تريد إرساله:
+            """
+            
+            await message.reply(
+                welcome_text.strip(),
+                reply_markup=self.get_report_keyboard("basic")
+            )
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض قائمة التقارير: {e}")
+            await message.reply("❌ حدث خطأ في عرض القائمة")
+
+    async def get_user_stats(self, user_id: int) -> Dict[str, Any]:
+        """الحصول على إحصائيات المستخدم"""
+        try:
+            stats = await execute_query("""
+                SELECT * FROM reporter_stats WHERE user_id = ?
+            """, (user_id,), fetch_one=True)
+            
+            if not stats:
+                # إنشاء سجل إحصائيات جديد
+                await execute_query("""
+                    INSERT OR IGNORE INTO reporter_stats (user_id) VALUES (?)
+                """, (user_id,))
+                
+                return {
+                    'total_reports': 0,
+                    'fixed_reports': 0,
+                    'total_rewards': 0,
+                    'total_gold_earned': 0,
+                    'reporter_rank': 'مبلغ مبتدئ'
+                }
+            
+            return {
+                'total_reports': stats.get('total_reports', 0) if stats else 0,
+                'fixed_reports': stats.get('fixed_reports', 0) if stats else 0,
+                'total_rewards': stats.get('total_rewards', 0) if stats else 0,
+                'total_gold_earned': stats.get('total_gold_earned', 0) if stats else 0,
+                'reporter_rank': stats.get('reporter_rank', 'مبلغ مبتدئ') if stats else 'مبلغ مبتدئ'
+            }
+            
+        except Exception as e:
+            logging.error(f"خطأ في الحصول على إحصائيات المستخدم {user_id}: {e}")
+            return {
+                'total_reports': 0,
+                'fixed_reports': 0,
+                'total_rewards': 0,
+                'total_gold_earned': 0,
+                'reporter_rank': 'مبلغ مبتدئ'
+            }
+
+    async def start_bug_report(self, callback: CallbackQuery, state: FSMContext, report_type: str):
+        """بدء عملية كتابة تقرير الخطأ"""
+        try:
+            await state.set_state(ReportStates.waiting_title)
+            await state.update_data(report_type=report_type)
+            
+            type_names = {
+                "critical": "🔥 خطأ قاتل",
+                "major": "⚠️ خطأ مهم", 
+                "minor": "📝 خطأ بسيط",
+                "suggestion": "💡 اقتراح"
+            }
+            
+            instructions = f"""
+📝 **إنشاء {type_names.get(report_type, 'تقرير')}**
+
+اكتب عنوان مختصر وواضح لـ{type_names.get(report_type, 'التقرير')}:
+
+💡 **أمثلة جيدة:**
+• "البوت لا يستجيب لأمر الرصيد"
+• "خطأ في حساب الفوائد البنكية"  
+• "اقتراح إضافة نظام تقييم اللاعبين"
+
+❌ **تجنب:**
+• عناوين غير واضحة مثل "مشكلة" أو "خطأ"
+• عناوين طويلة جداً
+
+اكتب العنوان الآن أو اكتب 'إلغاء' للتراجع:
+            """
+            
+            cancel_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="❌ إلغاء", callback_data="report:cancel")
+            ]])
+            
+            await callback.message.edit_text(
+                instructions.strip(),
+                reply_markup=cancel_keyboard
+            )
+            
+        except Exception as e:
+            logging.error(f"خطأ في بدء تقرير الخطأ: {e}")
+            await callback.answer("❌ حدث خطأ في النظام")
+
+    async def process_report_title(self, message: Message, state: FSMContext):
+        """معالجة عنوان التقرير"""
+        try:
+            if message.text and message.text.strip().lower() == "إلغاء":
+                await state.clear()
+                await message.reply("❌ تم إلغاء التقرير")
+                return
+                
+            title = message.text.strip() if message.text else ""
+            if len(title) < 5:
+                await message.reply("❌ العنوان قصير جداً! يجب أن يكون 5 أحرف على الأقل")
+                return
+                
+            if len(title) > 100:
+                await message.reply("❌ العنوان طويل جداً! يجب أن يكون أقل من 100 حرف")
+                return
+            
+            await state.update_data(title=title)
+            await state.set_state(ReportStates.waiting_description)
+            
+            data = await state.get_data()
+            report_type = data.get('report_type', 'minor')
+            
+            description_prompt = f"""
+✅ **تم حفظ العنوان:** {title}
+
+📋 **الآن اكتب وصف مفصل للمشكلة:**
+
+💡 **يفضل أن تتضمن:**
+• خطوات حدوث المشكلة بالتفصيل
+• ما كنت تتوقعه أن يحدث
+• ما حدث فعلاً
+• متى لاحظت هذه المشكلة
+
+📱 **مثال:**
+1. كتبت أمر "رصيد" في المجموعة
+2. توقعت أن يعرض البوت رصيدي
+3. لكن البوت لم يرد على الإطلاق
+4. يحدث هذا منذ اليوم
+
+اكتب الوصف الآن:
+            """
+            
+            await message.reply(description_prompt.strip())
+            
+        except Exception as e:
+            logging.error(f"خطأ في معالجة عنوان التقرير: {e}")
+            await message.reply("❌ حدث خطأ في النظام")
+
+    async def process_report_description(self, message: Message, state: FSMContext):
+        """معالجة وصف التقرير وحفظه"""
+        try:
+            description = message.text.strip() if message.text else ""
+            if len(description) < 10:
+                await message.reply("❌ الوصف قصير جداً! اكتب تفاصيل أكثر")
+                return
+            
+            data = await state.get_data()
+            report_id = f"RPT{datetime.now().strftime('%Y%m%d%H%M%S')}{message.from_user.id % 1000}"
+            
+            # حفظ التقرير في قاعدة البيانات
+            await execute_query("""
+                INSERT INTO bug_reports (
+                    report_id, user_id, chat_id, title, description, 
+                    category, priority, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                report_id, 
+                message.from_user.id, 
+                message.chat.id,
+                data.get('title', ''),
+                description,
+                data.get('report_type', 'minor'),
+                data.get('report_type', 'minor'),
+                'pending',
+                datetime.now().isoformat()
+            ))
+            
+            # تحديث إحصائيات المستخدم
+            await self.update_user_stats(message.from_user.id, data.get('report_type', 'minor'))
+            
+            # إرسال إشعار للمديرين
+            if message.bot:
+                await self.notify_admins(message.bot, report_id, data.get('title', ''), message.from_user)
+            
+            priority_emoji = REPORT_SETTINGS["priority_emojis"].get(data.get('report_type', 'minor'), '📝')
+            reward_info = REPORT_SETTINGS['rewards'][data.get('report_type', 'minor')]
+            
+            success_msg = f"""
+✅ **تم إرسال تقريرك بنجاح!**
+
+🆔 **رقم التقرير:** `{report_id}`
+{priority_emoji} **النوع:** {data.get('report_type', 'minor')}
+📋 **العنوان:** {data.get('title', '')}
+
+🎯 **ما يحدث الآن:**
+1. سيتم مراجعة تقريرك من قِبل فريق التطوير
+2. ستحصل على إشعار عند تحديث حالة التقرير  
+3. عند الإصلاح ستحصل على مكافأتك تلقائياً
+
+💰 **المكافأة المتوقعة:**
+• المال: {reward_info['money']}$
+• النقاط الذهبية: {reward_info['gold']}⭐
+
+📱 استخدم أمر `تقرير {report_id}` لمتابعة حالة التقرير في أي وقت.
+
+شكراً لمساعدتك في تطوير البوت! 🙏
+            """
+            
+            await message.reply(success_msg.strip())
+            await state.clear()
+            
+        except Exception as e:
+            logging.error(f"خطأ في حفظ التقرير: {e}")
+            await message.reply("❌ حدث خطأ أثناء حفظ التقرير")
+
+    async def update_user_stats(self, user_id: int, report_type: str):
+        """تحديث إحصائيات المستخدم"""
+        try:
+            # التأكد من وجود سجل الإحصائيات
+            await execute_query("""
+                INSERT OR IGNORE INTO reporter_stats (user_id) VALUES (?)
+            """, (user_id,))
+            
+            # تحديث الإحصائيات
+            await execute_query(f"""
+                UPDATE reporter_stats SET 
+                    total_reports = total_reports + 1,
+                    {report_type}_reports = {report_type}_reports + 1,
+                    last_report_date = ?,
+                    updated_at = ?
+                WHERE user_id = ?
+            """, (
+                datetime.now().isoformat(),
+                datetime.now().isoformat(), 
+                user_id
+            ))
+            
+            # تحديث الرتبة بناءً على عدد التقارير
+            await self.update_user_rank(user_id)
+            
+        except Exception as e:
+            logging.error(f"خطأ في تحديث إحصائيات المستخدم {user_id}: {e}")
+
+    async def update_user_rank(self, user_id: int):
+        """تحديث رتبة المستخدم كمبلغ"""
+        try:
+            stats = await execute_query("""
+                SELECT total_reports, fixed_reports FROM reporter_stats WHERE user_id = ?
+            """, (user_id,), fetch_one=True)
+            
+            if not stats:
+                return
+                
+            total_reports = stats.get('total_reports', 0) if stats else 0
+            fixed_reports = stats.get('fixed_reports', 0) if stats else 0
+            
+            # تحديد الرتبة الجديدة
+            if fixed_reports >= 50:
+                rank = "🏆 أسطورة التقارير"
+            elif fixed_reports >= 25:
+                rank = "👑 سيد المبلغين"  
+            elif fixed_reports >= 15:
+                rank = "⭐ خبير التقارير"
+            elif fixed_reports >= 10:
+                rank = "🔍 محقق متقدم"
+            elif total_reports >= 20:
+                rank = "🎯 مبلغ محترف"
+            elif total_reports >= 10:
+                rank = "📋 مبلغ متمرس"
+            elif total_reports >= 5:
+                rank = "📝 مبلغ نشط"
+            else:
+                rank = "🌟 مبلغ مبتدئ"
+            
+            await execute_query("""
+                UPDATE reporter_stats SET reporter_rank = ? WHERE user_id = ?
+            """, (rank, user_id))
+            
+        except Exception as e:
+            logging.error(f"خطأ في تحديث رتبة المستخدم {user_id}: {e}")
+
+    async def notify_admins(self, bot: Bot, report_id: str, title: str, user):
+        """إشعار المديرين بالتقرير الجديد"""
+        try:
+            username = user.username if hasattr(user, 'username') else "لا يوجد"
+            first_name = user.first_name if hasattr(user, 'first_name') else "غير معروف"
+            user_id = user.id if hasattr(user, 'id') else 0
+            
+            notification_text = f"""
+🚨 **تقرير جديد في نظام التقرير الملكي!**
+
+🆔 **رقم التقرير:** `{report_id}`
+👤 **المبلغ:** {first_name} (@{username})
+📋 **العنوان:** {title}
+
+استخدم أمر `/admin_report {report_id}` لمراجعة التقرير
+            """
+            
+            for admin_id in ADMIN_IDS:
+                try:
+                    await bot.send_message(admin_id, notification_text)
+                except Exception as send_error:
+                    logging.warning(f"لم يتم إرسال إشعار للمدير {admin_id}: {send_error}")
+                    
+        except Exception as e:
+            logging.error(f"خطأ في إرسال إشعارات المديرين: {e}")
+
+    async def show_user_reports(self, message: Message):
+        """عرض تقارير المستخدم"""
+        try:
+            reports = await execute_query("""
+                SELECT report_id, title, priority, status, created_at, reward_given
+                FROM bug_reports 
+                WHERE user_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 10
+            """, (message.from_user.id,), fetch_all=True)
+            
+            if not reports or not isinstance(reports, list):
+                await message.reply("📝 لم تقم بإرسال أي تقارير بعد!\n\nاستخدم أمر 'تقرير' لإنشاء تقرير جديد")
+                return
+            
+            reports_text = "📋 **تقاريرك الأخيرة:**\n\n"
+            
+            for report in reports:
+                if not isinstance(report, dict):
+                    continue
+                    
+                status_emoji = REPORT_SETTINGS["status_emojis"].get(report.get('status', ''), '❓')
+                priority_emoji = REPORT_SETTINGS["priority_emojis"].get(report.get('priority', ''), '📝')
+                
+                title = report.get('title', '')
+                report_id = report.get('report_id', '')
+                reward = report.get('reward_given', 0)
+                created_date = report.get('created_at', '')[:10] if report.get('created_at') else ''
+                
+                reports_text += f"{status_emoji} `{report_id}`\n"
+                reports_text += f"{priority_emoji} **{title[:50]}{'...' if len(title) > 50 else ''}**\n"
+                reports_text += f"💰 مكافأة: {format_number(reward)}$\n"
+                reports_text += f"📅 تاريخ الإرسال: {created_date}\n\n"
+            
+            reports_text += "💡 اكتب `تقرير RPT123456789` لمشاهدة تفاصيل أي تقرير"
+            
+            await message.reply(reports_text)
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض تقارير المستخدم: {e}")
+            await message.reply("❌ حدث خطأ في جلب تقاريرك")
+
+    async def show_detailed_stats(self, message: Message):
+        """عرض الإحصائيات المفصلة للمستخدم"""
+        try:
+            stats = await self.get_user_stats(message.from_user.id)
+            
+            # حساب معدل الإصلاح
+            fix_rate = 0
+            if stats['total_reports'] > 0:
+                fix_rate = (stats['fixed_reports'] / stats['total_reports']) * 100
+            
+            stats_text = f"""
+📊 **إحصائياتك المفصلة في نظام التقرير الملكي**
+
+🏆 **رتبتك:** {stats['reporter_rank']}
+
+📈 **التقارير:**
+• إجمالي التقارير: {stats['total_reports']}
+• تقارير تم إصلاحها: {stats['fixed_reports']}
+• معدل الإصلاح: {fix_rate:.1f}%
+
+💰 **المكافآت:**
+• إجمالي الأموال: {format_number(stats['total_rewards'])}$
+• النقاط الذهبية: {stats['total_gold_earned']}⭐
+
+🎯 **الهدف التالي:** {await self.get_next_goal(message.from_user.id)}
+            """
+            
+            await message.reply(stats_text.strip())
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض الإحصائيات المفصلة: {e}")
+            await message.reply("❌ حدث خطأ في جلب الإحصائيات")
+
+    async def get_next_goal(self, user_id: int) -> str:
+        """تحديد الهدف التالي للمستخدم"""
+        try:
+            stats = await self.get_user_stats(user_id)
+            total = stats['total_reports']
+            fixed = stats['fixed_reports']
+            
+            if total < 5:
+                return f"أرسل {5 - total} تقارير إضافية للحصول على رتبة 'مبلغ نشط'"
+            elif total < 10:
+                return f"أرسل {10 - total} تقارير إضافية للحصول على رتبة 'مبلغ متمرس'"
+            elif fixed < 10:
+                return f"احتاج إلى {10 - fixed} تقارير إضافية يتم إصلاحها للحصول على رتبة 'محقق متقدم'"
+            elif fixed < 15:
+                return f"احتاج إلى {15 - fixed} تقارير إضافية يتم إصلاحها للحصول على رتبة 'خبير التقارير'"
+            else:
+                return "أنت بالفعل في المستوى العالي! استمر في التميز 🌟"
+                
+        except Exception:
+            return "استمر في إرسال التقارير المفيدة!"
+
+    async def show_report_details(self, message: Message, report_id: str):
+        """عرض تفاصيل تقرير معين"""
+        try:
+            report = await execute_query("""
+                SELECT * FROM bug_reports WHERE report_id = ?
+            """, (report_id,), fetch_one=True)
+            
+            if not report or not isinstance(report, dict):
+                await message.reply(f"❌ لم يتم العثور على تقرير بالرقم: `{report_id}`")
+                return
+            
+            # التحقق من الصلاحية (المبلغ أو المدير)
+            if report.get('user_id') != message.from_user.id and message.from_user.id not in ADMIN_IDS:
+                await message.reply("❌ يمكنك فقط مشاهدة تقاريرك الخاصة")
+                return
+            
+            status_emoji = REPORT_SETTINGS["status_emojis"].get(report.get('status', ''), '❓')
+            priority_emoji = REPORT_SETTINGS["priority_emojis"].get(report.get('priority', ''), '📝')
+            
+            details_text = f"""
+{status_emoji} **تقرير رقم:** `{report.get('report_id', '')}`
+
+{priority_emoji} **الأولوية:** {report.get('priority', '')}
+📋 **العنوان:** {report.get('title', '')}
+
+📝 **الوصف:**
+{report.get('description', '')}
+
+📊 **معلومات التقرير:**
+• الحالة: {report.get('status', '')}
+• تاريخ الإرسال: {str(report.get('created_at', ''))[:19]}
+• آخر تحديث: {str(report.get('updated_at', ''))[:19]}
+"""
+            
+            if report.get('fixed_at'):
+                details_text += f"• تاريخ الإصلاح: {str(report.get('fixed_at', ''))[:19]}\n"
+            
+            if report.get('reward_given', 0) > 0:
+                details_text += f"\n💰 **المكافأة المستلمة:** {format_number(report.get('reward_given', 0))}$"
+            
+            await message.reply(details_text.strip())
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض تفاصيل التقرير: {e}")
+            await message.reply("❌ حدث خطأ في جلب تفاصيل التقرير")
+
+    async def update_report_status(self, message: Message, report_id: str, new_status: str):
+        """تحديث حالة التقرير"""
+        try:
+            valid_statuses = ["pending", "in_progress", "testing", "fixed", "rejected", "duplicate"]
+            
+            if new_status not in valid_statuses:
+                await message.reply(f"❌ حالة غير صحيحة! الحالات المتاحة: {', '.join(valid_statuses)}")
+                return
+            
+            # الحصول على بيانات التقرير الحالي
+            report = await execute_query("""
+                SELECT * FROM bug_reports WHERE report_id = ?
+            """, (report_id,), fetch_one=True)
+            
+            if not report or not isinstance(report, dict):
+                await message.reply(f"❌ لم يتم العثور على تقرير: `{report_id}`")
+                return
+            
+            if new_status == "fixed":
+                # إضافة تاريخ الإصلاح وإرسال المكافأة
+                await execute_query("""
+                    UPDATE bug_reports 
+                    SET status = ?, updated_at = ?, fixed_at = ?
+                    WHERE report_id = ?
+                """, (new_status, datetime.now().isoformat(), datetime.now().isoformat(), report_id))
+                
+                # منح المكافأة
+                await self.give_reward(report.get('user_id', 0), report.get('priority', 'minor'), report_id)
+                
+                # تحديث إحصائيات المستخدم
+                await execute_query("""
+                    UPDATE reporter_stats 
+                    SET fixed_reports = fixed_reports + 1 
+                    WHERE user_id = ?
+                """, (report.get('user_id', 0),))
+                
+            else:
+                await execute_query("""
+                    UPDATE bug_reports 
+                    SET status = ?, updated_at = ?
+                    WHERE report_id = ?
+                """, (new_status, datetime.now().isoformat(), report_id))
+            
+            status_names = {
+                "pending": "في الانتظار",
+                "in_progress": "قيد العمل", 
+                "testing": "قيد الاختبار",
+                "fixed": "تم الإصلاح",
+                "rejected": "مرفوض",
+                "duplicate": "مكرر"
+            }
+            
+            await message.reply(f"✅ تم تحديث حالة التقرير `{report_id}` إلى: **{status_names.get(new_status, new_status)}**")
+            
+            # إشعار المبلغ
+            if message.bot:
+                await self.notify_user_status_change(message.bot, report.get('user_id', 0), report_id, new_status)
+            
+        except Exception as e:
+            logging.error(f"خطأ في تحديث حالة التقرير: {e}")
+            await message.reply("❌ حدث خطأ في تحديث التقرير")
+
+    async def give_reward(self, user_id: int, priority: str, report_id: str):
+        """منح المكافأة للمبلغ"""
+        try:
+            reward = REPORT_SETTINGS["rewards"].get(priority, REPORT_SETTINGS["rewards"]["minor"])
+            
+            # إضافة الأموال للمستخدم
+            user = await get_or_create_user(user_id)
+            if user:
+                new_balance = user['balance'] + reward['money']
+                await update_user_balance(user_id, new_balance)
+                
+                # تسجيل المعاملة
+                await add_transaction(
+                    user_id,
+                    f"مكافأة تقرير - {report_id}",
+                    reward['money'],
+                    "bug_report_reward"
+                )
+                
+                # تحديث النقاط الذهبية
+                await execute_query("""
+                    UPDATE users SET gold_points = COALESCE(gold_points, 0) + ? WHERE user_id = ?
+                """, (reward['gold'], user_id))
+                
+                # تحديث إحصائيات التقارير
+                await execute_query("""
+                    UPDATE reporter_stats 
+                    SET total_rewards = total_rewards + ?, 
+                        total_gold_earned = total_gold_earned + ?
+                    WHERE user_id = ?
+                """, (reward['money'], reward['gold'], user_id))
+                
+                # تحديث حالة المكافأة في التقرير
+                await execute_query("""
+                    UPDATE bug_reports 
+                    SET reward_given = ?, gold_reward = ?, is_rewarded = TRUE
+                    WHERE report_id = ?
+                """, (reward['money'], reward['gold'], report_id))
+                
+                logging.info(f"تم منح مكافأة {reward['money']}$ + {reward['gold']}⭐ للمستخدم {user_id} عن التقرير {report_id}")
+                
+        except Exception as e:
+            logging.error(f"خطأ في منح المكافأة: {e}")
+
+    async def notify_user_status_change(self, bot: Bot, user_id: int, report_id: str, new_status: str):
+        """إشعار المستخدم بتغيير حالة تقريره"""
+        try:
+            status_messages = {
+                "in_progress": "🔧 **تحديث هام!** تقريرك قيد العمل الآن!",
+                "testing": "🧪 **تقريرك في مرحلة الاختبار!** نتحقق من الإصلاح",
+                "fixed": "🎉 **مبروك!** تم إصلاح المشكلة وستحصل على مكافأتك!",
+                "rejected": "❌ **تم رفض التقرير** - المشكلة غير قابلة للإصلاح حالياً",
+                "duplicate": "🔄 **تقرير مكرر** - تم الإبلاغ عن هذه المشكلة سابقاً"
+            }
+            
+            if new_status in status_messages:
+                notification = f"""
+{status_messages[new_status]}
+
+📋 **تقرير رقم:** `{report_id}`
+
+اكتب `تقرير {report_id}` لمشاهدة التفاصيل الكاملة
+                """
+                
+                try:
+                    await bot.send_message(user_id, notification.strip())
+                except Exception as send_error:
+                    logging.warning(f"لم يتم إرسال إشعار للمستخدم {user_id}: {send_error}")
+                    
+        except Exception as e:
+            logging.error(f"خطأ في إرسال إشعار تغيير الحالة: {e}")
+
+# إنشاء نسخة عالمية من النظام
+bug_report_system = BugReportSystem()

@@ -14,7 +14,7 @@ from aiogram.client.default import DefaultBotProperties
 
 from config.settings import BOT_TOKEN
 from config.database import init_database
-from handlers import commands, callbacks, messages, smart_commands
+from handlers import commands, callbacks, messages, smart_commands, bug_report_handler
 from utils.helpers import setup_logging
 
 # متغير عام لتتبع وقت بدء التشغيل
@@ -70,6 +70,7 @@ async def main():
     dp.include_router(commands.router)
     dp.include_router(callbacks.router)
     dp.include_router(smart_commands.router)
+    dp.include_router(bug_report_handler.router)
     
     
     # تسجيل معالج الرسائل العادي
@@ -94,6 +95,14 @@ async def main():
     
     # تهيئة قاعدة البيانات
     await init_database()
+    
+    # تهيئة نظام التقرير الملكي
+    try:
+        from modules.bug_report_system import bug_report_system
+        await bug_report_system.init_database()
+        logging.info("✅ تم تهيئة نظام التقرير الملكي")
+    except Exception as e:
+        logging.error(f"❌ خطأ في تهيئة نظام التقرير الملكي: {e}")
     
     # تهيئة نظام التصنيف
     try:
