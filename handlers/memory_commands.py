@@ -46,7 +46,7 @@ async def memory_info_command(message: Message):
 async def search_command(message: Message):
     """أمر البحث في الذاكرة المشتركة"""
     try:
-        if len(message.text.split()) < 2:
+        if not message.text or len(message.text.split()) < 2:
             await message.reply("""
 🔍 **أمر البحث في الذاكرة المشتركة**
 
@@ -61,7 +61,7 @@ async def search_command(message: Message):
             return
         
         # استخراج النص المراد البحث عنه
-        search_query = message.text.replace('/بحث', '').strip()
+        search_query = message.text.replace('/بحث', '').strip() if message.text else ""
         
         if not search_query:
             await message.reply("⚠️ يرجى كتابة شيء للبحث عنه")
@@ -72,7 +72,7 @@ async def search_command(message: Message):
         
         result = await topic_search_engine.process_query(
             search_query, 
-            message.from_user.id, 
+            message.from_user.id if message.from_user else 0, 
             message.chat.id
         )
         
@@ -96,15 +96,18 @@ async def memory_stats_command(message: Message):
         async with aiosqlite.connect(DATABASE_URL) as db:
             # عدد المحادثات المحفوظة
             cursor = await db.execute('SELECT COUNT(*) FROM shared_conversations WHERE chat_id = ?', (message.chat.id,))
-            conversations_count = (await cursor.fetchone())[0]
+            result = await cursor.fetchone()
+            conversations_count = result[0] if result else 0
             
             # عدد المواضيع المختلفة
             cursor = await db.execute('SELECT COUNT(DISTINCT topic) FROM topic_links WHERE chat_id = ?', (message.chat.id,))
-            topics_count = (await cursor.fetchone())[0]
+            result = await cursor.fetchone()
+            topics_count = result[0] if result else 0
             
             # عدد المستخدمين النشطين
             cursor = await db.execute('SELECT COUNT(DISTINCT user_id) FROM shared_conversations WHERE chat_id = ?', (message.chat.id,))
-            users_count = (await cursor.fetchone())[0]
+            result = await cursor.fetchone()
+            users_count = result[0] if result else 0
             
             stats_text = f"""
 📊 **إحصائيات الذاكرة المشتركة**
@@ -152,7 +155,7 @@ async def detect_sheikh_mention(message: Message):
 async def handle_memory_commands(message: Message):
     """معالج أوامر الذاكرة المشتركة للنصوص العادية"""
     try:
-        text = message.text.lower().strip()
+        text = message.text.lower().strip() if message.text else ""
         
         if text == '/ذاكرة' or text == 'ذاكرة':
             await memory_info_command(message)

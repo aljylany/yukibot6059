@@ -44,6 +44,14 @@ class SharedGroupMemoryPG:
                 'title': 'الحبيبة المميزة',
                 'special_traits': ['محبوبة من الجميع', 'شخصية جميلة', 'مميزة جداً'],
                 'greeting_style': 'رومانسي'
+            },
+            # يوكي براندون - المطور - 6524680126
+            6524680126: {  # يوكي براندون
+                'name': 'يوكي براندون',
+                'age': 7,
+                'title': 'المطور الصغير',
+                'special_traits': ['مطور البوت', 'عبقري صغير', 'مبدع'],
+                'greeting_style': 'ودود'
             }
         }
     
@@ -246,8 +254,46 @@ class SharedGroupMemoryPG:
         """جلب السياق الخاص للمستخدمين المميزين"""
         if user_id in self.special_users:
             user_data = self.special_users[user_id]
-            return f"أنت تتحدث مع {user_data['title']} {user_data['name']}. سماته: {', '.join(user_data['special_traits'])}. "
+            context = f"أنت تتحدث مع {user_data['title']} {user_data['name']}. سماته: {', '.join(user_data['special_traits'])}. "
+            if 'age' in user_data:
+                context += f"العمر: {user_data['age']} سنوات. "
+            return context
         return ""
+    
+    async def get_brandon_info(self) -> Dict:
+        """جلب معلومات يوكي براندون المحفوظة"""
+        try:
+            if 6524680126 in self.special_users:
+                return self.special_users[6524680126]
+            
+            # البحث في قاعدة البيانات
+            conn = await self.get_db_connection()
+            if not conn:
+                return {}
+                
+            try:
+                row = await conn.fetchrow('''
+                    SELECT message_text, ai_response FROM shared_conversations 
+                    WHERE user_id = 6524680126 AND (message_text LIKE '%عمري%' OR message_text LIKE '%براندون%')
+                    ORDER BY timestamp DESC LIMIT 1
+                ''')
+                
+                if row:
+                    return {
+                        'name': 'يوكي براندون',
+                        'age': 7,
+                        'title': 'المطور الصغير',
+                        'message': row['message_text'],
+                        'response': row['ai_response']
+                    }
+                    
+            finally:
+                await conn.close()
+                
+        except Exception as e:
+            logging.error(f"خطأ في جلب معلومات براندون: {e}")
+        
+        return {}
 
 # إنشاء نسخة واحدة من نظام الذاكرة المشتركة
 shared_group_memory_pg = SharedGroupMemoryPG()
