@@ -15,7 +15,6 @@ from modules import banks, real_estate, theft, stocks, investment, ranking, admi
 from utils.decorators import user_required, admin_required, group_only
 from config.settings import SYSTEM_MESSAGES, ADMIN_IDS, NOTIFICATION_CHANNEL
 from handlers.advanced_admin_handler import handle_advanced_admin_commands
-from modules.content_filter import content_filter
 from config.hierarchy import has_permission, AdminLevel
 
 router = Router()

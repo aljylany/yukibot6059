@@ -71,9 +71,6 @@ async def main():
     dp.include_router(callbacks.router)
     dp.include_router(smart_commands.router)
     
-    # تسجيل أوامر السيد الأعلى الخاصة (أولوية عليا)
-    from modules import supreme_master_commands
-    dp.include_router(supreme_master_commands.router)
     
     # تسجيل معالج الرسائل العادي
     dp.include_router(messages.router)
