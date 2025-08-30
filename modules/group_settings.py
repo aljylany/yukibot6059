@@ -15,11 +15,7 @@ from config.hierarchy import has_permission, AdminLevel
 
 # إعدادات القفل والفتح
 LOCK_SETTINGS = {
-    "السب": "profanity",
-    "الايرانيه": "persian", 
     "الكتابه": "writing",
-    "الاباحي": "nsfw",
-    "تعديل الميديا": "media_edit",
     "التعديل": "edit",
     "الفيديو": "video",
     "الصور": "photos",
@@ -33,11 +29,9 @@ LOCK_SETTINGS = {
     "البوتات": "bots",
     "المعرفات": "mentions",
     "الكاليش": "long_messages",
-    "التكرار": "spam",
     "التوجيه": "forwarding",
     "الانلاين": "inline",
-    "الجهات": "contacts",
-    "الكل": "all"
+    "الجهات": "contacts"
 }
 
 # إعدادات التفعيل والتعطيل
@@ -50,8 +44,6 @@ TOGGLE_SETTINGS = {
     "الكت": "quote_tweets",
     "الترحيب": "welcome",
     "الردود": "replies",
-    "الانذار": "warnings",
-    "التحذير": "alerts",
     "الايدي": "id_command",
     "الرابط": "link_command",
     "اطردني": "kick_me",
@@ -59,7 +51,6 @@ TOGGLE_SETTINGS = {
     "الرفع": "promote_command",
     "التنزيل": "demote_command",
     "التحويل": "transfer_command",
-    "الحمايه": "protection",
     "المنشن": "mention_all",
     "وضع الاقتباسات": "quotes_mode",
     "الايدي بالصوره": "id_with_photo",

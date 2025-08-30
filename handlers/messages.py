@@ -27,7 +27,6 @@ from modules.response_tester import handle_response_tester_commands
 from modules.master_commands import handle_master_commands
 from modules.group_hierarchy import handle_hierarchy_commands
 from modules.utility_commands import handle_utility_commands
-from modules.protection_commands import handle_protection_commands
 from utils.states import *
 from utils.decorators import user_required, group_only
 from config.settings import SYSTEM_MESSAGES
@@ -39,11 +38,6 @@ from modules.ai_integration_handler import ai_integration
 from modules.smart_menu_handler import smart_menu_handler
 # استيراد نظام كشف المحتوى الإباحي
 from modules.content_filter import content_filter
-# استيراد النظام الشامل لكشف المحتوى
-from handlers.comprehensive_content_handler import (
-    comprehensive_handler,
-    integrate_with_existing_handlers
-)
 
 router = Router()
 
@@ -1620,10 +1614,6 @@ async def handle_general_message(message: Message, state: FSMContext):
     #     await handle_simple_progress_command(message)
     #     return
     
-    # === فحص النظام الشامل للمحتوى (الأساسي) ===
-    # النظام الشامل يتعامل مع النصوص، الصور، الفيديو، الملصقات وجميع أنواع المحتوى
-    if await comprehensive_handler.process_message_content(message):
-        return
     
     
     # فحص الردود المهينة للصلاحيات أولاً (أعلى أولوية)
@@ -2186,13 +2176,6 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_unlock_command(message, text)
     
     # === أوامر التفعيل والتعطيل ===
-    # معالجة أوامر الحماية أولاً قبل المعالج العام
-    elif text in ["تفعيل الحماية", "تشغيل الحماية", "فعل الحماية"]:
-        await handle_protection_commands(message)
-    elif text in ["تعطيل الحماية", "إيقاف الحماية", "عطل الحماية"]:
-        await handle_protection_commands(message)
-    elif text in ["حالة الحماية", "وضع الحماية", "إعدادات الحماية"]:
-        await handle_protection_commands(message)
     elif text.startswith('تفعيل '):
         await handle_toggle_command(message, text, 'تفعيل')
     elif text.startswith('تعطيل '):
@@ -2900,17 +2883,6 @@ async def handle_sticker_messages(message: Message):
     )
 
 
-# معالج الأوامر العربية للحماية - يجب أن يأتي قبل المعالج العام
-@router.message(F.text.in_(["تفعيل الحماية", "تشغيل الحماية", "فعل الحماية", 
-                            "تعطيل الحماية", "إيقاف الحماية", "عطل الحماية",
-                            "حالة الحماية", "وضع الحماية", "إعدادات الحماية"]))
-async def handle_protection_arabic_commands(message: Message):
-    """معالج الأوامر العربية للحماية"""
-    try:
-        await handle_protection_commands(message)
-    except Exception as e:
-        logging.error(f"خطأ في معالج أوامر الحماية العربية: {e}")
-        await message.reply("❌ حدث خطأ في تنفيذ الأمر!")
 
 # معالج جهات الاتصال
 @router.message(F.contact)

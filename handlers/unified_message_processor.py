@@ -1,35 +1,25 @@
 """
 معالج الرسائل الموحد - Unified Message Processor
-نظام موحد لمعالجة جميع أنواع الرسائل مع ضمان مرور كل شيء عبر نظام الكشف
+نظام موحد لمعالجة جميع أنواع الرسائل
 """
 
 import logging
-import asyncio
 from aiogram import Router, F
-from aiogram.types import Message, ChatPermissions
-from aiogram.exceptions import TelegramBadRequest
-from datetime import datetime, timedelta
-
-from config.hierarchy import is_master, is_supreme_master
-from modules.supreme_master_commands import get_masters_punishment_status
+from aiogram.types import Message
 from utils.decorators import group_only
-from modules.comprehensive_content_filter import comprehensive_filter, ViolationType, SeverityLevel
-from modules.admin_reports_system import admin_reports
 
 router = Router()
 
 class UnifiedMessageProcessor:
-    """معالج الرسائل الموحد - يضمن معالجة كل رسالة"""
+    """معالج الرسائل الموحد - معالجة بسيطة للرسائل"""
     
     def __init__(self):
-        self.filter = comprehensive_filter
-        self.reports = admin_reports
         self.processing_lock = {}  # لمنع المعالجة المتكررة
         
     async def process_any_message(self, message: Message) -> bool:
         """
         معالج موحد لجميع أنواع الرسائل
-        Returns True إذا تم العثور على مخالفات
+        Returns False - لا يوجد فحص حاليا
         """
         try:
             # منع المعالجة المتكررة
@@ -48,134 +38,14 @@ class UnifiedMessageProcessor:
                 if not message.from_user:
                     return False
                 
-                
-                # السيد الأعلى محمي دائماً من جميع أنواع الفحص
-                if is_supreme_master(message.from_user.id):
-                    logging.info(f"👑 تم استثناء السيد الأعلى {message.from_user.id} من الفحص (حماية مطلقة)")
-                    return False
-                
-                # فحص حالة تفعيل العقوبات على الأسياد من النظام الجديد
-                masters_punishment_enabled = get_masters_punishment_status()
-                
-                # فحص خاص: إذا كانت الرسالة تحتوي على "اختبار النظام" فالأسياد الآخرين يتم فحصهم
-                is_testing = message.text and "اختبار النظام" in message.text
-                
-                # استثناء الأسياد الآخرين من الفحص (إلا في حالة الاختبار أو إذا كان نظام العقوبات مفعل)
-                if not is_testing and not masters_punishment_enabled and is_master(message.from_user.id):
-                    logging.info(f"🔓 تم استثناء السيد {message.from_user.id} من الفحص (العقوبات معطلة)")
-                    return False
-                
-                # إذا كان نظام العقوبات مفعل على الأسياد، سجل ذلك
-                if (masters_punishment_enabled or is_testing) and is_master(message.from_user.id):
-                    status_msg = "نظام العقوبات مفعل" if masters_punishment_enabled else "وضع اختبار"
-                    logging.warning(f"🔥 {status_msg} - سيتم فحص السيد {message.from_user.id} كعضو عادي")
-                
                 # تسجيل تفاصيل الرسالة
                 content_type = self._get_content_type(message)
                 user_name = message.from_user.first_name or "مجهول"
                 
-                logging.info(f"🔍 فحص {content_type} من {user_name} (ID: {message.from_user.id})")
+                logging.info(f"📝 رسالة {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # فحص السباب فقط باستخدام النظام المحسن (تعطيل النظام الشامل مؤقتاً)
-                if message.text:
-                    from modules.profanity_filter import handle_profanity_detection
-                    profanity_detected = await handle_profanity_detection(message)
-                    if profanity_detected:
-                        logging.info("✅ تم التعامل مع السباب باستخدام النظام المحسن")
-                        return True
-                    else:
-                        # رسالة عادية - لا نحذفها
-                        if not user_is_muted:
-                            return False
-                        else:
-                            # المستخدم مكتوم - حذف أي رسالة منه حتى لو لم تكن سباب
-                            logging.info(f"🔇 حذف رسالة من مستخدم مكتوم")
-                            try:
-                                await message.delete()
-                                # إرسال تذكير للمستخدم المكتوم
-                                reminder_msg = await message.answer(
-                                    f"🔇 **{message.from_user.first_name}** أنت مكتوم حالياً\n"
-                                    f"⚠️ لا يمكنك إرسال الرسائل حتى ينتهي الكتم أو يتم إلغاؤه من قبل المشرفين"
-                                )
-                                # حذف الرسالة التذكيرية بعد 8 ثواني
-                                await asyncio.sleep(8)
-                                try:
-                                    await reminder_msg.delete()
-                                except:
-                                    pass
-                            except Exception as delete_error:
-                                logging.warning(f"لم يتمكن من حذف رسالة المستخدم المكتوم: {delete_error}")
-                            return True
-                else:
-                    # محتوى غير نصي - تعطيل الفحص الشامل مؤقتاً
-                    if user_is_muted:
-                        # المستخدم مكتوم - حذف أي محتوى منه
-                        logging.info(f"🔇 حذف محتوى غير نصي من مستخدم مكتوم")
-                        try:
-                            await message.delete()
-                        except Exception as delete_error:
-                            logging.warning(f"لم يتمكن من حذف محتوى المستخدم المكتوم: {delete_error}")
-                        return True
-                    else:
-                        # مستخدم غير مكتوم ومحتوى غير نصي - لا نحذفه (نظام محافظ)
-                        return False
-                
-                # إزالة الفحص الشامل مؤقتاً لحل مشكلة الكشف الخاطئ
-                # check_result = await self.filter.comprehensive_content_check(message)
-                    
-                    if not check_result['has_violations']:
-                        # حتى لو لم يكن هناك مخالفات، المستخدم مكتوم - لا يجب أن يرسل رسائل
-                        logging.info(f"🔇 رسالة من مستخدم مكتوم - سيتم حذفها")
-                        try:
-                            await message.delete()
-                            logging.info("🗑️ تم حذف رسالة من مستخدم مكتوم")
-                        except Exception as delete_error:
-                            logging.warning(f"⚠️ لم يتمكن من حذف رسالة من مستخدم مكتوم: {delete_error}")
-                        return True
-                
-                # إذا وصلنا هنا، فهناك مخالفات تحتاج للمعالجة
-                if not hasattr(locals(), 'check_result') or not check_result.get('has_violations'):
-                    return False
-                
-                violations_count = len(check_result['violations'])
-                logging.warning(
-                    f"🚨 اكتشاف {violations_count} مخالفة من {user_name} "
-                    f"في المجموعة {message.chat.title or message.chat.id}"
-                )
-                
-                # تسجيل تفاصيل المخالفات
-                for i, violation in enumerate(check_result['violations'], 1):
-                    logging.warning(
-                        f"📝 مخالفة {i}: {violation['violation_type']} "
-                        f"(خطورة: {violation['severity']}) - {violation.get('content_summary', 'غير محدد')}"
-                    )
-                
-                # حذف الرسالة المخالفة فوراً
-                try:
-                    await message.delete()
-                    logging.info("🗑️ تم حذف الرسالة المخالفة")
-                except Exception as delete_error:
-                    logging.warning(f"⚠️ لم يتمكن من حذف الرسالة: {delete_error}")
-                
-                # تطبيق العقوبة
-                punishment_result = await self.filter.apply_punishment(
-                    message, 
-                    check_result['recommended_action'],
-                    check_result['violations']
-                )
-                
-                # إرسال رسالة تحذيرية
-                await self._send_warning_message(
-                    message, 
-                    check_result, 
-                    punishment_result
-                )
-                
-                # إنشاء تقرير للمشرفين إذا لزم الأمر
-                if check_result['admin_notification_required']:
-                    await self._create_admin_report(message, check_result)
-                
-                return True
+                # لا يوجد فحص - السماح بجميع الرسائل
+                return False
                 
             finally:
                 # إزالة القفل
@@ -205,68 +75,6 @@ class UnifiedMessageProcessor:
             return "فيديو دائري"
         else:
             return "محتوى غير معروف"
-    
-    async def _send_warning_message(self, message: Message, check_result: dict, punishment_result: dict):
-        """إرسال رسالة تحذيرية"""
-        try:
-            user_name = (message.from_user.first_name if message.from_user else None) or "المستخدم"
-            violations_count = len(check_result['violations'])
-            total_severity = check_result['total_severity']
-            
-            # تحديد مستوى التحذير
-            if total_severity <= 2:
-                warning_level = "⚠️ تحذير خفيف"
-                emoji = "🟡"
-            elif total_severity <= 4:
-                warning_level = "🔴 تحذير متوسط"
-                emoji = "🔴"
-            elif total_severity <= 6:
-                warning_level = "🚨 تحذير شديد"
-                emoji = "🚨"
-            else:
-                warning_level = "💀 تحذير خطير"
-                emoji = "💀"
-            
-            warning_message = (
-                f"{emoji} **{warning_level}**\n\n"
-                f"👤 **المستخدم:** {user_name}\n"
-                f"🔢 **عدد المخالفات:** {violations_count}\n"
-                f"📊 **مستوى الخطورة:** {total_severity}\n"
-                f"⚡ **الإجراء:** {punishment_result.get('action_taken', 'غير محدد')}\n\n"
-                f"🛡️ **نظام الحماية المتطور**\n"
-                f"💡 يرجى الالتزام بقوانين المجموعة"
-            )
-            
-            await message.answer(warning_message, parse_mode="Markdown")
-            
-        except Exception as e:
-            logging.error(f"❌ خطأ في إرسال رسالة التحذير: {e}")
-    
-    async def _create_admin_report(self, message: Message, check_result: dict):
-        """إنشاء تقرير للمشرفين"""
-        try:
-            report_id = await self.reports.generate_violation_report(
-                message,
-                check_result['violations'],
-                check_result['recommended_action'].value,
-                ai_data={
-                    'total_severity': check_result['total_severity'],
-                    'violations_count': len(check_result['violations'])
-                }
-            )
-            
-            # إرسال تنبيه فوري للمشرفين
-            if message.bot:
-                await self.reports.send_instant_admin_alert(
-                    message.bot, 
-                    message.chat.id, 
-                    report_id
-                )
-            
-            logging.info(f"📊 تم إنشاء تقرير للمشرفين: {report_id}")
-            
-        except Exception as e:
-            logging.error(f"❌ خطأ في إنشاء تقرير المشرفين: {e}")
 
 # إنشاء المعالج الموحد
 unified_processor = UnifiedMessageProcessor()
@@ -338,6 +146,6 @@ async def handle_any_other_message(message: Message):
 async def check_message_unified(message: Message) -> bool:
     """
     دالة موحدة لفحص الرسائل - للاستخدام من الأنظمة الأخرى
-    Returns True إذا تم اكتشاف مخالفات
+    Returns False - لا يوجد فحص حاليا
     """
     return await unified_processor.process_any_message(message)

@@ -17,8 +17,6 @@ from config.settings import SYSTEM_MESSAGES, ADMIN_IDS, NOTIFICATION_CHANNEL
 from handlers.advanced_admin_handler import handle_advanced_admin_commands
 from modules.content_filter import content_filter
 from config.hierarchy import has_permission, AdminLevel
-# استيراد أوامر النظام الشامل للمشرفين
-from modules.comprehensive_admin_commands import comprehensive_admin
 
 router = Router()
 
@@ -1354,333 +1352,5 @@ async def filter_status_command(message: Message):
     except Exception as e:
         logging.error(f"خطأ في عرض حالة كشف المحتوى: {e}")
         await message.reply("❌ حدث خطأ أثناء جلب معلومات النظام")
-
-
-# ===== أوامر النظام الشامل للمشرفين =====
-
-@router.message(F.text.in_({
-    "احصائيات الأمان", "احصائيات_الأمان", "إحصائيات الأمان", "احصائيات الامان",
-    "تقرير الأمان", "تقرير_الأمان", "إحصائيات الحماية", "إحصائيات_الحماية"
-}))
-@group_only
-async def comprehensive_security_stats_command(message: Message):
-    """أمر إحصائيات الأمان الشاملة"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "احصائيات_الأمان", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر إحصائيات الأمان: {e}")
-        await message.reply("❌ حدث خطأ في جلب الإحصائيات")
-
-
-@router.message(F.text.in_({
-    "تقرير المجموعة", "تقرير_المجموعة", "تقرير مجموعة", "تقرير_مجموعة"
-}))
-@group_only
-async def comprehensive_group_report_command(message: Message):
-    """أمر تقرير المجموعة المفصل"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "تقرير_المجموعة", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر تقرير المجموعة: {e}")
-        await message.reply("❌ حدث خطأ في إنشاء التقرير")
-
-
-@router.message(F.text.regexp(r"^تقرير[_ ]مستخدم[_ ](\d+)$"))
-@group_only
-async def comprehensive_user_report_command(message: Message):
-    """أمر تقرير مستخدم محدد"""
-    try:
-        import re
-        match = re.search(r"^تقرير[_ ]مستخدم[_ ](\d+)$", message.text)
-        if match:
-            user_id = match.group(1)
-            await comprehensive_admin.handle_admin_command(
-                message, "تقرير_مستخدم", [user_id]
-            )
-        else:
-            await message.reply("❌ تنسيق خاطئ. استخدم: تقرير_مستخدم [معرف المستخدم]")
-    except Exception as e:
-        logging.error(f"خطأ في أمر تقرير المستخدم: {e}")
-        await message.reply("❌ حدث خطأ في إنشاء تقرير المستخدم")
-
-
-@router.message(F.text.in_({
-    "ملخص يومي", "ملخص_يومي", "الملخص اليومي", "الملخص_اليومي", "تقرير يومي"
-}))
-@group_only
-async def comprehensive_daily_summary_command(message: Message):
-    """أمر الملخص اليومي"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "ملخص_يومي", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر الملخص اليومي: {e}")
-        await message.reply("❌ حدث خطأ في إنشاء الملخص اليومي")
-
-
-@router.message(F.text.in_({
-    "تفعيل النظام الشامل", "تفعيل_النظام_الشامل", "تشغيل النظام الشامل",
-    "تفعيل النظام المتقدم", "تفعيل_النظام_المتقدم"
-}))
-@group_only
-async def enable_comprehensive_system_command(message: Message):
-    """أمر تفعيل النظام الشامل"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "تفعيل_النظام_الشامل", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر تفعيل النظام الشامل: {e}")
-        await message.reply("❌ حدث خطأ في تفعيل النظام")
-
-
-@router.message(F.text.in_({
-    "تعطيل النظام الشامل", "تعطيل_النظام_الشامل", "إيقاف النظام الشامل",
-    "تعطيل النظام المتقدم", "تعطيل_النظام_المتقدم"
-}))
-@group_only
-async def disable_comprehensive_system_command(message: Message):
-    """أمر تعطيل النظام الشامل"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "تعطيل_النظام_الشامل", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر تعطيل النظام الشامل: {e}")
-        await message.reply("❌ حدث خطأ في تعطيل النظام")
-
-
-@router.message(F.text.in_({
-    "حالة النظام", "حالة_النظام", "وضع النظام", "حالة النظام الشامل",
-    "حالة_النظام_الشامل", "وضع النظام الشامل"
-}))
-@group_only
-async def comprehensive_system_status_command(message: Message):
-    """أمر حالة النظام الشامل"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "حالة_النظام", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر حالة النظام: {e}")
-        await message.reply("❌ حدث خطأ في جلب حالة النظام")
-
-
-@router.message(F.text.in_({
-    "اشتراك تقارير", "اشتراك_تقارير", "الاشتراك في التقارير",
-    "الاشتراك_في_التقارير", "تفعيل التقارير"
-}))
-@group_only
-async def subscribe_reports_command(message: Message):
-    """أمر الاشتراك في التقارير"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "اشتراك_تقارير", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر الاشتراك في التقارير: {e}")
-        await message.reply("❌ حدث خطأ في عملية الاشتراك")
-
-
-@router.message(F.text.in_({
-    "إلغاء اشتراك تقارير", "إلغاء_اشتراك_تقارير", "إلغاء الاشتراك في التقارير",
-    "إلغاء_الاشتراك_في_التقارير", "تعطيل التقارير"
-}))
-@group_only
-async def unsubscribe_reports_command(message: Message):
-    """أمر إلغاء الاشتراك في التقارير"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "إلغاء_اشتراك_تقارير", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر إلغاء الاشتراك: {e}")
-        await message.reply("❌ حدث خطأ في إلغاء الاشتراك")
-
-
-@router.message(F.text.regexp(r"^مراجعة[_ ]تقرير[_ ](\d+)$"))
-@group_only
-async def review_report_command(message: Message):
-    """أمر مراجعة تقرير محدد"""
-    try:
-        import re
-        match = re.search(r"^مراجعة[_ ]تقرير[_ ](\d+)$", message.text)
-        if match:
-            report_id = match.group(1)
-            await comprehensive_admin.handle_admin_command(
-                message, "مراجعة_تقرير", [report_id]
-            )
-        else:
-            await message.reply("❌ تنسيق خاطئ. استخدم: مراجعة_تقرير [رقم التقرير]")
-    except Exception as e:
-        logging.error(f"خطأ في أمر مراجعة التقرير: {e}")
-        await message.reply("❌ حدث خطأ في مراجعة التقرير")
-
-
-@router.message(F.text.regexp(r"^حذف[_ ]سجل[_ ]مستخدم[_ ](\d+)$"))
-@group_only
-async def clear_user_record_command(message: Message):
-    """أمر حذف سجل مستخدم"""
-    try:
-        import re
-        match = re.search(r"^حذف[_ ]سجل[_ ]مستخدم[_ ](\d+)$", message.text)
-        if match:
-            user_id = match.group(1)
-            await comprehensive_admin.handle_admin_command(
-                message, "حذف_سجل_مستخدم", [user_id]
-            )
-        else:
-            await message.reply("❌ تنسيق خاطئ. استخدم: حذف_سجل_مستخدم [معرف المستخدم]")
-    except Exception as e:
-        logging.error(f"خطأ في أمر حذف السجل: {e}")
-        await message.reply("❌ حدث خطأ في العملية")
-
-
-@router.message(F.text.regexp(r"^إعادة[_ ]تعيين[_ ]نقاط[_ ](\d+)$"))
-@group_only
-async def reset_user_points_command(message: Message):
-    """أمر إعادة تعيين نقاط المستخدم"""
-    try:
-        import re
-        match = re.search(r"^إعادة[_ ]تعيين[_ ]نقاط[_ ](\d+)$", message.text)
-        if match:
-            user_id = match.group(1)
-            await comprehensive_admin.handle_admin_command(
-                message, "إعادة_تعيين_نقاط", [user_id]
-            )
-        else:
-            await message.reply("❌ تنسيق خاطئ. استخدم: إعادة_تعيين_نقاط [معرف المستخدم]")
-    except Exception as e:
-        logging.error(f"خطأ في أمر إعادة تعيين النقاط: {e}")
-        await message.reply("❌ حدث خطأ في العملية")
-
-
-@router.message(F.text.in_({
-    "قائمة المحظورين", "قائمة_المحظورين", "المحظورين", "المستخدمين المحظورين"
-}))
-@group_only
-async def banned_users_list_command(message: Message):
-    """أمر عرض قائمة المحظورين"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "قائمة_المحظورين", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر قائمة المحظورين: {e}")
-        await message.reply("❌ حدث خطأ في جلب القائمة")
-
-
-@router.message(F.text.in_({
-    "تحليل المخاطر", "تحليل_المخاطر", "تحليل مخاطر المجموعة", 
-    "تقييم المخاطر", "تقييم_المخاطر"
-}))
-@group_only
-async def analyze_risks_command(message: Message):
-    """أمر تحليل مخاطر المجموعة"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "تحليل_المخاطر", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر تحليل المخاطر: {e}")
-        await message.reply("❌ حدث خطأ في التحليل")
-
-
-@router.message(F.text.in_({
-    "إحصائيات أسبوعية", "إحصائيات_أسبوعية", "تقرير أسبوعي", "تقرير_أسبوعي"
-}))
-@group_only
-async def weekly_stats_command(message: Message):
-    """أمر الإحصائيات الأسبوعية"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "إحصائيات_أسبوعية", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر الإحصائيات الأسبوعية: {e}")
-        await message.reply("❌ حدث خطأ في جلب الإحصائيات")
-
-
-@router.message(F.text.in_({
-    "إحصائيات شهرية", "إحصائيات_شهرية", "تقرير شهري", "تقرير_شهري"
-}))
-@group_only
-async def monthly_stats_command(message: Message):
-    """أمر الإحصائيات الشهرية"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "إحصائيات_شهرية", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر الإحصائيات الشهرية: {e}")
-        await message.reply("❌ حدث خطأ في جلب الإحصائيات")
-
-
-@router.message(F.text.in_({
-    "تصدير التقارير", "تصدير_التقارير", "تصدير تقارير", "تصدير_تقارير",
-    "إنشاء ملف التقارير", "إنشاء_ملف_التقارير"
-}))
-@group_only
-async def export_reports_command(message: Message):
-    """أمر تصدير التقارير"""
-    try:
-        await comprehensive_admin.handle_admin_command(
-            message, "تصدير_التقارير", []
-        )
-    except Exception as e:
-        logging.error(f"خطأ في أمر تصدير التقارير: {e}")
-        await message.reply("❌ حدث خطأ في التصدير")
-
-
-# ===== معالج عام للأوامر الشاملة غير المطابقة =====
-
-@router.message(F.text.regexp(r"^(نظام[_ ]شامل|نظام[_ ]متقدم|حماية[_ ]شاملة)"))
-@group_only
-async def comprehensive_help_command(message: Message):
-    """مساعدة للنظام الشامل"""
-    try:
-        help_text = """
-🔒 **النظام الشامل لكشف المحتوى - أوامر المشرفين**
-
-📊 **أوامر الإحصائيات:**
-• `احصائيات الأمان` - إحصائيات شاملة للأمان
-• `تقرير المجموعة` - تقرير مفصل للمجموعة
-• `تقرير مستخدم [المعرف]` - تقرير مستخدم محدد
-• `ملخص يومي` - ملخص اليوم الحالي
-
-⚙️ **أوامر التحكم:**
-• `تفعيل النظام الشامل` - تفعيل الحماية الشاملة
-• `تعطيل النظام الشامل` - تعطيل النظام
-• `حالة النظام` - عرض حالة النظام الحالية
-
-📧 **أوامر التقارير:**
-• `اشتراك تقارير` - الاشتراك في التقارير
-• `إلغاء اشتراك تقارير` - إلغاء الاشتراك
-• `مراجعة تقرير [الرقم]` - مراجعة تقرير محدد
-
-🛠️ **أوامر الإدارة المتقدمة:**
-• `حذف سجل مستخدم [المعرف]` - حذف سجل المخالفات
-• `إعادة تعيين نقاط [المعرف]` - إعادة تعيين النقاط
-• `قائمة المحظورين` - عرض المحظورين نهائياً
-
-📈 **أوامر التحليل:**
-• `تحليل المخاطر` - تحليل مخاطر المجموعة
-• `إحصائيات أسبوعية` - تقرير آخر أسبوع
-• `إحصائيات شهرية` - تقرير آخر شهر
-• `تصدير التقارير` - تصدير ملف شامل
-
-🔐 **ملاحظة:** معظم الأوامر تتطلب صلاحيات مالك المجموعة أو السادة
-        """
-        
-        await message.reply(help_text.strip())
-        
-    except Exception as e:
-        logging.error(f"خطأ في مساعدة النظام الشامل: {e}")
-        await message.reply("❌ حدث خطأ في عرض المساعدة")
 
 
