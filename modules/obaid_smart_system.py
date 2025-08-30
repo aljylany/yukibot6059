@@ -157,15 +157,27 @@ class ObaidSmartSystem:
         if not message.text:
             return None
             
-        # فحص إذا تم ذكر عبيد أو براندون
+        # فحص إذا تم ذكر عبيد أو براندون أو سؤال عنه
         text_lower = message.text.lower()
         obaid_mentions = ['عبيد', 'عبيدة', 'براندون', 'brandon', 'يوكي براندون']
+        obaid_questions = ['ماذا تعرف عن عبيد', 'من هو عبيد', 'اخبرني عن عبيد', 'معلومات عن عبيد']
         
         mentioned = False
-        for mention in obaid_mentions:
-            if mention in text_lower:
+        is_question_about_obaid = False
+        
+        # فحص الأسئلة المباشرة عن عبيد
+        for question in obaid_questions:
+            if question in text_lower:
+                is_question_about_obaid = True
                 mentioned = True
                 break
+        
+        # فحص ذكر الاسم
+        if not mentioned:
+            for mention in obaid_mentions:
+                if mention in text_lower:
+                    mentioned = True
+                    break
         
         if not mentioned:
             return None
@@ -177,6 +189,20 @@ class ObaidSmartSystem:
         # الحصول على معلومات المستخدم من الذاكرة المشتركة
         replier_name = message.from_user.first_name or "صديق"
         user_info = await self.get_user_memory_info(message.from_user.id, message.chat.id)
+        
+        # رد خاص للأسئلة المباشرة عن عبيد
+        if is_question_about_obaid:
+            return f"""📋 **معلومات عن عبيد:**
+
+👦 **الاسم:** عبيد (براندون)
+🎂 **العمر:** 7 سنوات
+🏌️‍♂️ **الهواية المفضلة:** الجولف
+💼 **الصفة:** المطور الصغير
+✨ **الشخصية:** ولد طيب ومؤدب ومتفائل
+🧠 **الذكاء:** ذكي جداً رغم صغر سنه
+🎮 **الأنشطة:** يحب الألعاب والتعلم
+
+يوكي يعرف عبيد جيداً لأنه صديقه المقرب! 🤗"""
         
         # ردود خاصة حسب السياق
         if any(word in text_lower for word in ['أين', 'وين', 'موجود']):
@@ -236,7 +262,7 @@ class ObaidSmartSystem:
     async def get_user_memory_info(self, user_id: int, chat_id: int) -> Optional[dict]:
         """الحصول على معلومات المستخدم من الذاكرة المشتركة"""
         try:
-            from modules.shared_memory_pg import shared_memory
+            from modules.shared_memory_pg import shared_group_memory_pg as shared_memory
             
             # الحصول على معلومات المستخدم
             user_memory = await shared_memory.get_user_memory(user_id, chat_id)
