@@ -98,8 +98,9 @@ WEDDING_DANCE_MESSAGES = [
     "🎁 *ترقص وتوزع الحلوى على الحضور*\n🍬 فرحة مضاعفة للجميع!"
 ]
 
-# إطارات الحركة للرسائل المتحركة 🎬
+# إطارات الحركة المتقدمة للرسائل المتحركة الهستيرية 🎬
 ANIMATED_DANCE_FRAMES = {
+    # راقص متحرك بسيط
     "moving_dancer": [
         "    🕺     ",
         "   🕺      ",
@@ -111,12 +112,16 @@ ANIMATED_DANCE_FRAMES = {
         "   🕺      ",
         "    🕺     "
     ],
+    
+    # رقصة دوارة
     "spinning_dancer": [
         "🕺",
         "🤸‍♂️",
         "🕺",
         "🤸‍♀️"
     ],
+    
+    # رقصة جماعية
     "group_dance": [
         "💃   🕺   💃",
         " 💃 🕺 💃 ",
@@ -124,6 +129,8 @@ ANIMATED_DANCE_FRAMES = {
         " 💃 🕺 💃 ",
         "💃   🕺   💃"
     ],
+    
+    # موكب ملكي
     "royal_procession": [
         "👑     🏰     👑",
         " 👑   🏰   👑 ",
@@ -133,11 +140,78 @@ ANIMATED_DANCE_FRAMES = {
         " 👑   🏰   👑 ",
         "👑     🏰     👑"
     ],
+    
+    # موجة احتفال
     "celebration_wave": [
         "🎉🎊🎉🎊🎉",
         "🎊🎉🎊🎉🎊",
         "🎉🎊🎉🎊🎉",
         "🎊🎉🎊🎉🎊"
+    ],
+    
+    # شخصيات مضحكة مع رؤوس ايموجي وأجسام نصية
+    "crazy_dancers": [
+        "     😂    \n    /|\\   \n    / \\   \n   HAHA   ",
+        "     🤪    \n   \\|/    \n    | |   \n   LOL!   ",
+        "     😵‍💫    \n    \\o/   \n     |    \n   WOOO   ",
+        "     🥳    \n    /|\\   \n   / | \\  \n  PARTY  ",
+        "     🤡    \n   <--|   \n    /\\    \n  CRAZY  "
+    ],
+    
+    # راقصين هستيريين بحركات جنونية
+    "hysterical_dance": [
+        "  🤪      😂      🥳  \n /|||\\    /|\\    <-|-> \n / | \\    / \\     /\\   \n HEHE    HAHA    WOW   ",
+        "  😵‍💫      🤡      😁  \n <-|->   /|||\\   \\|/  \n  /\\     / | \\    |   \n DIZZY   FUNNY   YAY   ",
+        "  🥴      😜      🤩  \n  \\|/    <--|    /|\\  \n   |      /\\     / \\  \n SILLY   WILD   COOL  ",
+        "  🤯      😋      🤪  \n  /|\\    \\|||/   <-|-> \n  / \\     | |     /\\  \n BOOM    YUMMY   LOL  "
+    ],
+    
+    # بالي راقص متطور
+    "ballet_dancer": [
+        "     👸     \n    /|\\    \n   / | \\   \n  GRACE   ",
+        "     👸     \n    \\|/    \n    / \\    \n  BEAUTY  ",
+        "     👸     \n   --|--   \n    / \\    \n  ELEGANT ",
+        "     👸     \n    /|\\    \n   /   \\   \n  DIVINE  "
+    ],
+    
+    # راقص بريك دانس
+    "breakdancer": [
+        "  🕺  \n /|\\ \n / \\ \n TOP ",
+        "  🕺  \n<-|->\\n /\\ \nSPIN",
+        "  🕺  \n \\|/ \n  |  \nFREEZE",
+        "  🕺  \n/|||\\n/ | \\nFLOW"
+    ],
+    
+    # رقصة الديسكو المجنونة
+    "disco_fever": [
+        "✨🕺✨\n DISCO \n FEVER ",
+        "🌟💃🌟\n BOOGIE\n  TIME ",
+        "💫🕺💫\n FUNKY \n MOVES ",
+        "⭐💃⭐\n GROOVY\n VIBES "
+    ],
+    
+    # حيوانات ترقص
+    "animal_party": [
+        "🐵    🐸    🐱\n|||   |||   |||\n| |   | |   | |\nOOK   HOP   MEW",
+        "🐶    🐷    🐰\nWOOF  OINK  HOP\n|||   |||   |||\n| |   | |   | |",
+        "🐯    🐻    🐼\nROAR  GROWL CHOMP\n|||   |||   |||\n| |   | |   | |",
+        "🦁    🐺    🐨\nROAR  HOWL  CHILL\n|||   |||   |||\n| |   | |   | |"
+    ],
+    
+    # رقصة الروبوت
+    "robot_dance": [
+        "🤖\n█▌█\n███\nBEEP",
+        "🤖\n▐█▌\n███\nBOOP",
+        "🤖\n█▌█\n▐█▌\nWHIR",
+        "🤖\n▌█▐\n███\nBZZT"
+    ],
+    
+    # مهرجان الألوان
+    "color_festival": [
+        "🌈🎨🌈\n COLOR \n SPLASH",
+        "🎭🌟🎭\n PAINT \n  DANCE",
+        "🎪💫🎪\n RAINBOW\n  PARTY",
+        "🎨🌈🎨\n BRIGHT \n  VIBES"
     ]
 }
 
@@ -1449,30 +1523,71 @@ async def wedding_congratulation(message: Message):
 
 # وظائف الرسائل المتحركة والرقص التلقائي الجديدة 🎬
 
-async def animate_message(bot, chat_id, frames, delay=0.5, title=""):
-    """إنشاء رسالة متحركة بتحرير الرسالة"""
+async def animate_message(bot, chat_id, frames, delay=0.5, title="", repeat_cycles=1):
+    """إنشاء رسالة متحركة متقدمة بتحرير الرسالة مع تأثيرات بصرية"""
     try:
         if not frames:
             return None
             
-        # إرسال الإطار الأول
-        initial_text = f"```\n{title}\n{frames[0]}\n```" if title else f"```\n{frames[0]}\n```"
+        # إرسال الإطار الأول مع تحسينات بصرية
+        if title:
+            initial_text = f"🎬 **{title}** 🎬\n\n```\n{frames[0]}\n```\n\n⚡ *جاري التحميل...* ⚡"
+        else:
+            initial_text = f"```\n{frames[0]}\n```"
+            
         message = await bot.send_message(chat_id, initial_text, parse_mode='Markdown')
         
-        # تحريك الإطارات المتبقية
-        for frame in frames[1:]:
+        # تحريك الإطارات مع دورات التكرار
+        for cycle in range(repeat_cycles):
+            frame_list = frames[1:] if cycle == 0 else frames
+            
+            for i, frame in enumerate(frame_list):
+                await asyncio.sleep(delay)
+                
+                # إضافة مؤشر التقدم والحالة
+                progress_bar = "▓" * (i % 10 + 1) + "░" * (10 - (i % 10 + 1))
+                cycle_indicator = f" [دورة {cycle + 1}/{repeat_cycles}]" if repeat_cycles > 1 else ""
+                
+                try:
+                    if title:
+                        new_text = (
+                            f"🎬 **{title}** 🎬\n\n"
+                            f"```\n{frame}\n```\n\n"
+                            f"🎯 التقدم: {progress_bar}{cycle_indicator}\n"
+                            f"✨ *يرقص بجنون...* ✨"
+                        )
+                    else:
+                        new_text = f"```\n{frame}\n```"
+                        
+                    await bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message.message_id,
+                        text=new_text,
+                        parse_mode='Markdown'
+                    )
+                except Exception as edit_error:
+                    logging.error(f"خطأ في تحرير الرسالة المتحركة: {edit_error}")
+                    # إنشاء رسالة جديدة في حالة فشل التحرير
+                    message = await bot.send_message(chat_id, new_text, parse_mode='Markdown')
+        
+        # إضافة رسالة نهاية الرسوم المتحركة
+        if title:
+            final_text = (
+                f"🎬 **{title}** 🎬\n\n"
+                f"```\n{frames[-1]}\n```\n\n"
+                f"🎯 التقدم: ▓▓▓▓▓▓▓▓▓▓ [مكتمل!]\n"
+                f"🎉 *انتهت الرسوم المتحركة بنجاح!* 🎉"
+            )
             await asyncio.sleep(delay)
             try:
-                new_text = f"```\n{title}\n{frame}\n```" if title else f"```\n{frame}\n```"
                 await bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=message.message_id,
-                    text=new_text,
+                    text=final_text,
                     parse_mode='Markdown'
                 )
-            except Exception as edit_error:
-                logging.error(f"خطأ في تحرير الرسالة المتحركة: {edit_error}")
-                break
+            except Exception:
+                await bot.send_message(chat_id, final_text, parse_mode='Markdown')
                 
         return message
         
@@ -1482,69 +1597,156 @@ async def animate_message(bot, chat_id, frames, delay=0.5, title=""):
 
 
 async def trigger_automatic_wedding_celebration(bot, chat_id, marriage_data, royal_wedding=False):
-    """تفعيل الاحتفال التلقائي بالعرس مع رقص الحاضرين"""
+    """حفلة زفاف هستيرية تدوم دقيقة كاملة مع أنشطة متنوعة ومضحكة"""
     try:
         # الحصول على قائمة أعضاء المجموعة النشطين
         recent_users = await get_recent_active_users(chat_id)
         
         if royal_wedding:
-            # احتفال ملكي فخم
+            # 🎭 حفلة ملكية فخمة مدتها دقيقة كاملة
+            
+            # 1. بداية الموكب الملكي (10 ثواني)
             await animate_message(
                 bot, chat_id, 
                 ANIMATED_DANCE_FRAMES["royal_procession"], 
-                delay=0.4,
-                title="🏰 الموكب الملكي الفخم 🏰"
-            )
-            await asyncio.sleep(2)
-            
-            # رقص الحاضرين للعرس الملكي
-            for user in recent_users[:5]:  # أول 5 أعضاء نشطين
-                await asyncio.sleep(1)
-                celebration_msg = random.choice(AUTO_CELEBRATION_MESSAGES).format(
-                    name=user.get('first_name', 'عضو')
-                )
-                await bot.send_message(
-                    chat_id, 
-                    f"👑 **احتفال ملكي:** {celebration_msg}\n"
-                    f"✨ يشارك في الفرحة الملكية العظيمة!"
-                )
-                
-            # رقصة جماعية ملكية
-            await animate_message(
-                bot, chat_id,
-                ANIMATED_DANCE_FRAMES["group_dance"],
                 delay=0.3,
-                title="💃👑 الرقصة الملكية الجماعية 👑🕺"
-            )
-            
-        else:
-            # احتفال عادي
-            await animate_message(
-                bot, chat_id,
-                ANIMATED_DANCE_FRAMES["celebration_wave"],
-                delay=0.3,
-                title="🎉 موجة الاحتفال 🎉"
+                title="🏰👑 بدء الموكب الملكي الأسطوري 👑🏰",
+                repeat_cycles=2
             )
             await asyncio.sleep(1)
             
-            # رقص الحاضرين للعرس العادي
-            for user in recent_users[:3]:  # أول 3 أعضاء نشطين
-                await asyncio.sleep(0.8)
-                celebration_msg = random.choice(AUTO_CELEBRATION_MESSAGES).format(
-                    name=user.get('first_name', 'عضو')
-                )
-                await bot.send_message(chat_id, f"🎊 {celebration_msg}")
-                
-            # رقصة جماعية عادية
+            # 2. رقصة البالي الملكية (8 ثواني)
             await animate_message(
                 bot, chat_id,
-                ANIMATED_DANCE_FRAMES["moving_dancer"],
+                ANIMATED_DANCE_FRAMES["ballet_dancer"],
                 delay=0.4,
-                title="💃🕺 رقصة الفرح الجماعية 🕺💃"
+                title="👸✨ رقصة البالي الملكية الساحرة ✨👸",
+                repeat_cycles=2
+            )
+            await asyncio.sleep(1)
+            
+            # 3. مشاركة النبلاء والحاضرين (15 ثانية)
+            for user in recent_users[:5]:
+                await asyncio.sleep(1.5)
+                celebration_msg = random.choice(AUTO_CELEBRATION_MESSAGES).format(
+                    name=user.get('first_name', 'نبيل')
+                )
+                await bot.send_message(
+                    chat_id, 
+                    f"👑 **النبيل {user.get('first_name', 'عضو')}** يشارك في الفرحة الملكية!\n"
+                    f"⚜️ {celebration_msg} مع التيجان والزهور الذهبية! ✨"
+                )
+            
+            # 4. مهرجان الألوان الملكي (متقدم)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["color_festival"],
+                delay=0.5,
+                title="🌈👑 مهرجان الألوان الملكي الفخم 👑🌈",
+                repeat_cycles=3
+            )
+            await asyncio.sleep(1)
+            
+            # 5. رقصة الديسكو الملكية (هستيرية)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["disco_fever"],
+                delay=0.4,
+                title="✨👑 ديسكو العائلة الملكية الأسطوري 👑✨",
+                repeat_cycles=3
+            )
+            await asyncio.sleep(1)
+            
+            # 6. ختام بالحيوانات الملكية (مجنون)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["animal_party"],
+                delay=0.5,
+                title="🦁👑 حفلة الحيوانات الملكية المجنونة 👑🐯",
+                repeat_cycles=2
+            )
+            
+        else:
+            # 🎉 حفلة عادية هستيرية مدتها دقيقة كاملة
+            
+            # 1. بداية مجنونة بالراقصين المضحكين (هستيرية!)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["crazy_dancers"],
+                delay=0.6,
+                title="🤪😂 بداية الحفلة المجنونة! 😂🤪",
+                repeat_cycles=3
+            )
+            await asyncio.sleep(1)
+            
+            # 2. رقصة هستيرية جماعية (مجنونة جداً!)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["hysterical_dance"],
+                delay=0.8,
+                title="🤯🥳 الرقصة الهستيرية الجماعية! 🥳🤯",
+                repeat_cycles=4
+            )
+            await asyncio.sleep(1)
+            
+            # 3. مشاركة الحاضرين مع رسائل مضحكة (12 ثانية)
+            funny_messages = [
+                "😂 {name} يرقص كأنه مجنون!",
+                "🤪 {name} فقد عقله من الفرح!",
+                "🥳 {name} يرقص رقصة الديك!",
+                "😵‍💫 {name} دائخ من كثرة الدوران!",
+                "🤡 {name} يقلد المهرجين!"
+            ]
+            for user in recent_users[:4]:
+                await asyncio.sleep(1.5)
+                funny_msg = random.choice(funny_messages).format(
+                    name=user.get('first_name', 'عضو')
+                )
+                await bot.send_message(chat_id, f"😂🎊 {funny_msg} 🎊😂")
+            
+            # 4. رقصة البريك دانس (مجنونة!)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["breakdancer"],
+                delay=0.5,
+                title="🕺💫 عرض بريك دانس خرافي! 💫🕺",
+                repeat_cycles=2
+            )
+            await asyncio.sleep(1)
+            
+            # 5. حفلة الحيوانات المضحكة (هستيرية!)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["animal_party"],
+                delay=0.6,
+                title="🐵🐸 حفلة الحيوانات المجنونة! 🐸🐵",
+                repeat_cycles=3
+            )
+            await asyncio.sleep(1)
+            
+            # 6. رقصة الروبوت النهائية (مجنونة!)
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["robot_dance"],
+                delay=0.5,
+                title="🤖⚡ رقصة الروبوت الختامية! ⚡🤖",
+                repeat_cycles=2
             )
         
-        # رسالة ختامية للاحتفال
-        final_message = "🎉✨ انتهى الاحتفال! كل عام والجميع بخير! ✨🎉"
+        # رسالة ختامية مضحكة ومميزة
+        if royal_wedding:
+            final_message = (
+                "🏰✨ انتهت الحفلة الملكية الأسطورية! ✨🏰\n"
+                "👑 العائلة الملكية راضية ومسرورة! 👑\n"
+                "⚜️ كان هذا أعظم احتفال في تاريخ المملكة! ⚜️"
+            )
+        else:
+            final_message = (
+                "😂🎉 انتهت الحفلة المجنونة! 🎉😂\n"
+                "🤪 الجميع تعب من كثرة الرقص! 🤪\n" 
+                "🥳 هذه كانت أفضل حفلة على الإطلاق! 🥳"
+            )
+        
         await bot.send_message(chat_id, final_message)
         
     except Exception as e:
