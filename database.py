@@ -77,6 +77,19 @@ def init_db():
         last_xp_gain TIMESTAMP DEFAULT 0
     )''')
     
+    # جدول إصمات المشرفين - أمر خاص بالسيد الأعلى
+    c.execute('''CREATE TABLE IF NOT EXISTS silenced_moderators (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        chat_id INTEGER NOT NULL,
+        silenced_by INTEGER NOT NULL,
+        silenced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        silenced_until TIMESTAMP,
+        reason TEXT DEFAULT 'أصمت بواسطة السيد الأعلى',
+        is_active BOOLEAN DEFAULT 1,
+        UNIQUE(user_id, chat_id)
+    )''')
+    
     conn.commit()
     conn.close()
 
@@ -99,6 +112,7 @@ def delete_user(user_id):
         c.execute("DELETE FROM farms WHERE user_id = ?", (user_id,))
         c.execute("DELETE FROM castles WHERE user_id = ?", (user_id,))
         c.execute("DELETE FROM levels WHERE user_id = ?", (user_id,))
+        c.execute("DELETE FROM silenced_moderators WHERE user_id = ?", (user_id,))
         conn.commit()
         return True
     except Exception as e:

@@ -68,7 +68,7 @@ def is_master(user_id: int) -> bool:
 
 def is_supreme_master(user_id: int) -> bool:
     """التحقق من أن المستخدم هو السيد الأعلى (الأول) - محمي من جميع الأوامر"""
-    return user_id == 5524680126  # السيد الأعلى الوحيد المحمي من جميع الأوامر
+    return user_id == 6524680126  # السيد الأعلى الوحيد المحمي من جميع الأوامر
 
 
 async def is_group_owner(user_id: int, group_id: int) -> bool:

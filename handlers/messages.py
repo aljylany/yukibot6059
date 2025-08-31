@@ -157,6 +157,22 @@ async def handle_sheikh_call(message: Message):
 async def handle_text_messages(message: Message, state: FSMContext):
     """معالج الرسائل النصية العامة حسب الحالة"""
     try:
+        # أولاً: فحص أوامر الإصمات الخاصة بالسيد الأعلى
+        from modules.supreme_silence_commands import handle_silence_command, handle_unsilence_command, handle_silenced_list_command
+        
+        # فحص أوامر الإصمات
+        if await handle_silence_command(message):
+            return
+        if await handle_unsilence_command(message):
+            return
+        if await handle_silenced_list_command(message):
+            return
+            
+        # ثانياً: فحص إذا كان المرسل مشرف مصمت وحذف رسالته
+        from modules.silence_message_handler import handle_silenced_moderator_message
+        if await handle_silenced_moderator_message(message):
+            return  # تم حذف الرسالة، لا نواصل المعالجة
+        
         # استثناء أوامر نظام التقرير الملكي
         if message.text in ["تقرير", "إبلاغ", "تقارير", "تقاريري", "تقاريري الخاصة", "تقارير المستخدم", "إحصائيات_التقارير"]:
             return  # تمرير للمعالج المخصص
