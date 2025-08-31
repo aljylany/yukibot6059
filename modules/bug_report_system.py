@@ -866,6 +866,8 @@ class BugReportSystem:
     async def show_admin_report_details(self, message: Message, report_id: str):
         """عرض تفاصيل التقرير للمديرين مع أزرار التحكم"""
         try:
+            logging.info(f"البحث عن التقرير: {report_id}")
+            
             report = await execute_query("""
                 SELECT r.*, u.first_name, u.username 
                 FROM bug_reports r
@@ -873,12 +875,39 @@ class BugReportSystem:
                 WHERE r.report_id = ?
             """, (report_id,), fetch_one=True)
             
-            if not report or not isinstance(report, dict):
-                await message.reply(f"❌ لم يتم العثور على تقرير: `{report_id}`")
+            logging.info(f"نتيجة البحث: {report}")
+            
+            if not report:
+                # البحث في جميع التقارير لمساعدة المدير
+                all_reports = await execute_query("""
+                    SELECT report_id, title FROM bug_reports 
+                    ORDER BY created_at DESC LIMIT 5
+                """, fetch_all=True)
+                
+                recent_list = ""
+                if all_reports:
+                    recent_list = "\n\n📋 **آخر التقارير:**\n"
+                    for r in all_reports:
+                        if isinstance(r, dict):
+                            recent_list += f"• `{r.get('report_id', '')}` - {r.get('title', '')[:30]}\n"
+                
+                await message.reply(f"❌ لم يتم العثور على تقرير: `{report_id}`{recent_list}")
+                return
+            
+            if not isinstance(report, dict):
+                await message.reply(f"❌ خطأ في بيانات التقرير: `{report_id}`")
                 return
             
             status_emoji = REPORT_SETTINGS["status_emojis"].get(report.get('status', ''), '❓')
             priority_emoji = REPORT_SETTINGS["priority_emojis"].get(report.get('priority', ''), '📝')
+            
+            # تحسين عرض الأسماء
+            reporter_name = report.get('first_name', 'غير معروف')
+            reporter_username = report.get('username', '')
+            if reporter_username:
+                reporter_display = f"{reporter_name} (@{reporter_username})"
+            else:
+                reporter_display = reporter_name
             
             admin_details = f"""
 👑 **مراجعة إدارية للتقرير** `{report.get('report_id', '')}`
@@ -886,28 +915,35 @@ class BugReportSystem:
 {priority_emoji} **الأولوية:** {report.get('priority', '')}
 {status_emoji} **الحالة:** {report.get('status', '')}
 
-👤 **المبلغ:** {report.get('first_name', 'غير معروف')} (@{report.get('username', 'لا يوجد')})
+👤 **المبلغ:** {reporter_display}
 🆔 **معرف المستخدم:** `{report.get('user_id', '')}`
 
-📋 **العنوان:** {report.get('title', '')}
+📋 **العنوان:** 
+{report.get('title', '')}
 
-📝 **الوصف:**
+📝 **الوصف التفصيلي:**
 {report.get('description', '')}
 
 📊 **معلومات إضافية:**
 • تاريخ الإرسال: {str(report.get('created_at', ''))[:19]}
 • آخر تحديث: {str(report.get('updated_at', ''))[:19]}
 • التصويت المجتمعي: {report.get('votes_count', 0)} صوت
+
+🛠️ **أوامر الإدارة:**
+• `/update_report {report.get('report_id', '')} in_progress` - بدء العمل
+• `/update_report {report.get('report_id', '')} fixed` - تم الإصلاح
+• `/update_report {report.get('report_id', '')} rejected` - رفض التقرير
             """
             
             if report.get('fixed_at'):
                 admin_details += f"• تاريخ الإصلاح: {str(report.get('fixed_at', ''))[:19]}\n"
             
             await message.reply(admin_details.strip())
+            logging.info(f"تم عرض تفاصيل التقرير {report_id} بنجاح")
             
         except Exception as e:
             logging.error(f"خطأ في عرض تفاصيل التقرير للمدير: {e}")
-            await message.reply("❌ حدث خطأ في جلب التقرير")
+            await message.reply(f"❌ حدث خطأ في جلب التقرير: {str(e)}")
 
     async def show_system_stats(self, message: Message):
         """عرض إحصائيات شاملة للنظام - للمديرين"""
