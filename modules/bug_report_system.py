@@ -132,6 +132,8 @@ class BugReportSystem:
 
     def get_report_keyboard(self, level: str = "basic") -> InlineKeyboardMarkup:
         """إنشاء لوحة مفاتيح تفاعلية للتقارير"""
+        keyboard = []
+        
         if level == "basic":
             keyboard = [
                 [
@@ -165,6 +167,10 @@ class BugReportSystem:
         """عرض القائمة الرئيسية لنظام التقارير"""
         try:
             # التأكد من وجود المستخدم
+            if not message.from_user:
+                await message.reply("❌ خطأ في معلومات المستخدم")
+                return
+                
             user = await get_or_create_user(
                 message.from_user.id,
                 message.from_user.username or "",
@@ -231,11 +237,11 @@ class BugReportSystem:
                 }
             
             return {
-                'total_reports': stats.get('total_reports', 0) if stats else 0,
-                'fixed_reports': stats.get('fixed_reports', 0) if stats else 0,
-                'total_rewards': stats.get('total_rewards', 0) if stats else 0,
-                'total_gold_earned': stats.get('total_gold_earned', 0) if stats else 0,
-                'reporter_rank': stats.get('reporter_rank', 'مبلغ مبتدئ') if stats else 'مبلغ مبتدئ'
+                'total_reports': stats.get('total_reports', 0) if isinstance(stats, dict) else 0,
+                'fixed_reports': stats.get('fixed_reports', 0) if isinstance(stats, dict) else 0,
+                'total_rewards': stats.get('total_rewards', 0) if isinstance(stats, dict) else 0,
+                'total_gold_earned': stats.get('total_gold_earned', 0) if isinstance(stats, dict) else 0,
+                'reporter_rank': stats.get('reporter_rank', 'مبلغ مبتدئ') if isinstance(stats, dict) else 'مبلغ مبتدئ'
             }
             
         except Exception as e:
@@ -282,10 +288,11 @@ class BugReportSystem:
                 InlineKeyboardButton(text="❌ إلغاء", callback_data="report:cancel")
             ]])
             
-            await callback.message.edit_text(
-                instructions.strip(),
-                reply_markup=cancel_keyboard
-            )
+            if callback.message:
+                await callback.message.edit_text(
+                    instructions.strip(),
+                    reply_markup=cancel_keyboard
+                )
             
         except Exception as e:
             logging.error(f"خطأ في بدء تقرير الخطأ: {e}")
@@ -349,7 +356,9 @@ class BugReportSystem:
                 return
             
             data = await state.get_data()
-            report_id = f"RPT{datetime.now().strftime('%Y%m%d%H%M%S')}{message.from_user.id % 1000}"
+            user_id = message.from_user.id if message.from_user else 0
+            chat_id = message.chat.id if message.chat else 0
+            report_id = f"RPT{datetime.now().strftime('%Y%m%d%H%M%S')}{user_id % 1000}"
             
             # حفظ التقرير في قاعدة البيانات
             await execute_query("""
@@ -359,8 +368,8 @@ class BugReportSystem:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 report_id, 
-                message.from_user.id, 
-                message.chat.id,
+                user_id, 
+                chat_id,
                 data.get('title', ''),
                 description,
                 data.get('report_type', 'minor'),
@@ -370,7 +379,7 @@ class BugReportSystem:
             ))
             
             # تحديث إحصائيات المستخدم
-            await self.update_user_stats(message.from_user.id, data.get('report_type', 'minor'))
+            await self.update_user_stats(user_id, data.get('report_type', 'minor'))
             
             # إرسال إشعار للمديرين
             if message.bot:
@@ -445,8 +454,8 @@ class BugReportSystem:
             if not stats:
                 return
                 
-            total_reports = stats.get('total_reports', 0) if stats else 0
-            fixed_reports = stats.get('fixed_reports', 0) if stats else 0
+            total_reports = stats.get('total_reports', 0) if isinstance(stats, dict) else 0
+            fixed_reports = stats.get('fixed_reports', 0) if isinstance(stats, dict) else 0
             
             # تحديد الرتبة الجديدة
             if fixed_reports >= 50:
@@ -502,6 +511,10 @@ class BugReportSystem:
     async def show_user_reports(self, message: Message):
         """عرض تقارير المستخدم"""
         try:
+            if not message.from_user:
+                await message.reply("❌ خطأ في معلومات المستخدم")
+                return
+                
             reports = await execute_query("""
                 SELECT report_id, title, priority, status, created_at, reward_given
                 FROM bug_reports 

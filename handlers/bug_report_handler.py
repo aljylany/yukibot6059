@@ -76,6 +76,10 @@ async def report_stats_command(message: Message):
 async def check_specific_report(message: Message):
     """التحقق من حالة تقرير معين"""
     try:
+        if not message.text:
+            await message.reply("❌ استخدم: تقرير RPT123456789")
+            return
+            
         parts = message.text.split()
         if len(parts) < 2:
             await message.reply("❌ استخدم: تقرير RPT123456789")
@@ -93,13 +97,18 @@ async def check_specific_report(message: Message):
 async def handle_report_callbacks(callback: CallbackQuery, state: FSMContext):
     """معالج callbacks نظام التقارير"""
     try:
+        if not callback.data:
+            await callback.answer("❌ خطأ في البيانات")
+            return
+            
         action = callback.data.split(":")[1]
         
         if action in ["critical", "major", "minor", "suggestion"]:
             await bug_report_system.start_bug_report(callback, state, action)
         elif action == "cancel":
             await state.clear()
-            await callback.message.edit_text("❌ تم إلغاء العملية")
+            if callback.message:
+                await callback.message.edit_text("❌ تم إلغاء العملية")
         elif action == "stats":
             # تحويل callback إلى message-like object
             fake_message = type('FakeMessage', (), {
