@@ -61,8 +61,41 @@ async def is_target_moderator(user_id: int, chat_id: int) -> bool:
     """التحقق من أن المستخدم المستهدف مشرف فعلي وليس عضو عادي"""
     try:
         user_level = get_user_admin_level(user_id, chat_id)
+        logging.info(f"فحص مستوى المستخدم {user_id}: {user_level}")
+        
         # الأمر يعمل فقط على المشرفين ومالكي المجموعات، وليس الأعضاء العاديين
-        return user_level in [AdminLevel.MODERATOR, AdminLevel.GROUP_OWNER]
+        # أيضاً نسمح للأسياد بأن يكونوا مستهدفين (عدا السيد الأعلى)
+        if user_level in [AdminLevel.MODERATOR, AdminLevel.GROUP_OWNER, AdminLevel.MASTER]:
+            return True
+            
+        # فحص إضافي عبر تيليجرام مباشرة
+        try:
+            from aiogram import Bot
+            import os
+            
+            # الحصول على توكن البوت من متغيرات البيئة أو ملف API
+            bot_token = None
+            try:
+                with open('api.txt', 'r') as f:
+                    lines = f.readlines()
+                    for line in lines:
+                        if 'BOT_TOKEN' in line:
+                            bot_token = line.split('=')[1].strip()
+                            break
+            except:
+                pass
+                
+            if bot_token:
+                bot = Bot(token=bot_token)
+                chat_member = await bot.get_chat_member(chat_id, user_id)
+                is_admin = chat_member.status in ['administrator', 'creator']
+                logging.info(f"فحص تيليجرام: المستخدم {user_id} إدمن: {is_admin}")
+                return is_admin
+        except Exception as telegram_error:
+            logging.warning(f"فشل فحص تيليجرام: {telegram_error}")
+            
+        return False
+        
     except Exception as e:
         logging.error(f"خطأ في فحص مستوى المستخدم: {e}")
         return False
