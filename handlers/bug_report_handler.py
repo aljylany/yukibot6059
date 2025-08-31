@@ -28,6 +28,17 @@ async def report_command(message: Message):
         logging.error(f"خطأ في أمر التقرير: {e}")
         await message.reply("❌ حدث خطأ في عرض قائمة التقارير")
 
+# معالج النصوص العادية لكلمة "تقرير"
+@router.message(F.text.in_(["تقرير", "إبلاغ", "تقارير"]))
+@user_required
+async def report_text_command(message: Message):
+    """معالج النص العادي لإنشاء تقرير"""
+    try:
+        await bug_report_system.show_report_menu(message)
+    except Exception as e:
+        logging.error(f"خطأ في أمر التقرير النصي: {e}")
+        await message.reply("❌ حدث خطأ في عرض قائمة التقارير")
+
 @router.message(Command("my_reports", "تقاريري"))
 @user_required  
 async def my_reports_command(message: Message):
@@ -36,6 +47,17 @@ async def my_reports_command(message: Message):
         await bug_report_system.show_user_reports(message)
     except Exception as e:
         logging.error(f"خطأ في عرض تقارير المستخدم: {e}")
+        await message.reply("❌ حدث خطأ في عرض تقاريرك")
+
+# معالج النصوص العادية لكلمة "تقاريري"
+@router.message(F.text.in_(["تقاريري", "تقاريري الخاصة", "تقارير المستخدم"]))
+@user_required
+async def my_reports_text_command(message: Message):
+    """معالج النص العادي لعرض تقارير المستخدم"""
+    try:
+        await bug_report_system.show_user_reports(message)
+    except Exception as e:
+        logging.error(f"خطأ في عرض تقارير المستخدم النصي: {e}")
         await message.reply("❌ حدث خطأ في عرض تقاريرك")
 
 @router.message(Command("report_stats", "إحصائيات_التقارير"))

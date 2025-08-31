@@ -157,6 +157,10 @@ async def handle_sheikh_call(message: Message):
 async def handle_text_messages(message: Message, state: FSMContext):
     """معالج الرسائل النصية العامة حسب الحالة"""
     try:
+        # استثناء أوامر نظام التقرير الملكي
+        if message.text in ["تقرير", "إبلاغ", "تقارير", "تقاريري", "تقاريري الخاصة", "تقارير المستخدم", "إحصائيات_التقارير"]:
+            return  # تمرير للمعالج المخصص
+            
         # تم إزالة النظام غير الضروري - يوكي الذكي الأساسي يكفي
         
         current_state = await state.get_state()
@@ -2917,6 +2921,10 @@ async def handle_location_messages(message: Message):
 async def handle_ai_comprehensive_response(message: Message):
     """المعالج الذكي الشامل للرسائل - يدمج جميع أنظمة الذكاء الاصطناعي"""
     try:
+        # استثناء أوامر نظام التقرير الملكي
+        if message.text in ["تقرير", "إبلاغ", "تقارير", "تقاريري", "تقاريري الخاصة", "تقارير المستخدم", "إحصائيات_التقارير"]:
+            return  # تمرير للمعالج المخصص
+            
         # التحقق من أن الرسالة تحتوي على نص
         if not message.text or message.text.strip() == "":
             return
