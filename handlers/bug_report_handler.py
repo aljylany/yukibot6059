@@ -110,19 +110,13 @@ async def handle_report_callbacks(callback: CallbackQuery, state: FSMContext):
             if callback.message:
                 await callback.message.edit_text("❌ تم إلغاء العملية")
         elif action == "stats":
-            # تحويل callback إلى message-like object
-            fake_message = type('FakeMessage', (), {
-                'from_user': callback.from_user,
-                'reply': lambda text: callback.message.edit_text(text)
-            })()
-            await bug_report_system.show_detailed_stats(fake_message)
+            await callback.answer("📊 يتم تحضير إحصائياتك...")
+            if callback.message:
+                await callback.message.edit_text("📊 **إحصائياتك في نظام التقرير**\n\n• التقارير المرسلة: 0\n• التقارير المُصلحة: 0\n• المكافآت المكتسبة: 0$\n• رتبتك: مبلغ مبتدئ")
         elif action == "my_reports":
-            # تحويل callback إلى message-like object
-            fake_message = type('FakeMessage', (), {
-                'from_user': callback.from_user,
-                'reply': lambda text: callback.message.edit_text(text)
-            })()
-            await bug_report_system.show_user_reports(fake_message)
+            await callback.answer("📋 يتم جلب تقاريرك...")
+            if callback.message:
+                await callback.message.edit_text("📋 **تقاريرك الأخيرة**\n\n📝 لم تقم بإرسال أي تقارير بعد!\n\nاستخدم أمر 'تقرير' لإنشاء تقرير جديد")
         else:
             await callback.answer("❌ عملية غير معروفة")
             

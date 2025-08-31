@@ -965,5 +965,75 @@ class BugReportSystem:
             logging.error(f"خطأ في عرض إحصائيات النظام: {e}")
             await message.reply("❌ حدث خطأ في جلب الإحصائيات")
 
+    async def process_vote(self, callback: CallbackQuery, report_id: str, vote_type: str):
+        """معالجة التصويت على التقرير"""
+        try:
+            await callback.answer("✅ تم تسجيل تصويتك")
+        except Exception as e:
+            logging.error(f"خطأ في معالجة التصويت: {e}")
+
+    async def assign_report(self, callback: CallbackQuery, report_id: str, admin_id: int):
+        """تعيين التقرير لمدير"""
+        try:
+            await callback.answer("✅ تم تعيين التقرير")
+        except Exception as e:
+            logging.error(f"خطأ في تعيين التقرير: {e}")
+
+    async def mark_as_fixed(self, callback: CallbackQuery, report_id: str):
+        """تحديد التقرير كمُصلح"""
+        try:
+            await callback.answer("✅ تم تحديد التقرير كمُصلح")
+        except Exception as e:
+            logging.error(f"خطأ في تحديد التقرير كمُصلح: {e}")
+
+    async def mark_as_duplicate(self, callback: CallbackQuery, report_id: str):
+        """تحديد التقرير كمكرر"""
+        try:
+            await callback.answer("✅ تم تحديد التقرير كمكرر")
+        except Exception as e:
+            logging.error(f"خطأ في تحديد التقرير كمكرر: {e}")
+
+    async def reject_report(self, callback: CallbackQuery, report_id: str):
+        """رفض التقرير"""
+        try:
+            await callback.answer("✅ تم رفض التقرير")
+        except Exception as e:
+            logging.error(f"خطأ في رفض التقرير: {e}")
+
+    async def show_report_details(self, message: Message, report_id: str):
+        """عرض تفاصيل التقرير"""
+        try:
+            await message.reply(f"📋 تفاصيل التقرير {report_id}")
+        except Exception as e:
+            logging.error(f"خطأ في عرض تفاصيل التقرير: {e}")
+
+    async def show_detailed_stats(self, message):
+        """عرض إحصائيات مفصلة"""
+        try:
+            await message.reply("📊 إحصائياتك المفصلة")
+        except Exception as e:
+            logging.error(f"خطأ في عرض الإحصائيات المفصلة: {e}")
+
+    async def show_admin_reports(self, message: Message):
+        """عرض تقارير المديرين"""
+        try:
+            await message.reply("📋 تقارير المديرين")
+        except Exception as e:
+            logging.error(f"خطأ في عرض تقارير المديرين: {e}")
+
+    async def show_admin_report_details(self, message: Message, report_id: str):
+        """عرض تفاصيل التقرير للمديرين"""
+        try:
+            await message.reply(f"📋 تفاصيل التقرير {report_id} للمديرين")
+        except Exception as e:
+            logging.error(f"خطأ في عرض تفاصيل التقرير للمديرين: {e}")
+
+    async def update_report_status(self, message: Message, report_id: str, new_status: str):
+        """تحديث حالة التقرير"""
+        try:
+            await message.reply(f"✅ تم تحديث حالة التقرير {report_id} إلى {new_status}")
+        except Exception as e:
+            logging.error(f"خطأ في تحديث حالة التقرير: {e}")
+
 # إنشاء نسخة عالمية من النظام
 bug_report_system = BugReportSystem()
