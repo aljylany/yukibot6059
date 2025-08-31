@@ -1050,26 +1050,7 @@ class BugReportSystem:
         except Exception as e:
             logging.error(f"خطأ في عرض الإحصائيات المفصلة: {e}")
 
-    async def show_admin_reports(self, message: Message):
-        """عرض تقارير المديرين"""
-        try:
-            await message.reply("📋 تقارير المديرين")
-        except Exception as e:
-            logging.error(f"خطأ في عرض تقارير المديرين: {e}")
-
-    async def show_admin_report_details(self, message: Message, report_id: str):
-        """عرض تفاصيل التقرير للمديرين"""
-        try:
-            await message.reply(f"📋 تفاصيل التقرير {report_id} للمديرين")
-        except Exception as e:
-            logging.error(f"خطأ في عرض تفاصيل التقرير للمديرين: {e}")
-
-    async def update_report_status(self, message: Message, report_id: str, new_status: str):
-        """تحديث حالة التقرير"""
-        try:
-            await message.reply(f"✅ تم تحديث حالة التقرير {report_id} إلى {new_status}")
-        except Exception as e:
-            logging.error(f"خطأ في تحديث حالة التقرير: {e}")
+    # تم نقل جميع دوال المديرين للأعلى - هذه مجرد دوال وهمية محذوفة
 
 # إنشاء نسخة عالمية من النظام
 bug_report_system = BugReportSystem()
