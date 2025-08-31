@@ -161,6 +161,61 @@ async def init_database() -> None:
                 )
             """)
             
+            # جداول الذاكرة المشتركة
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS shared_conversations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    username TEXT,
+                    message_text TEXT NOT NULL,
+                    ai_response TEXT,
+                    mentioned_users TEXT,
+                    topics TEXT,
+                    sentiment TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # جدول روابط المواضيع
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS topic_links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    topic TEXT NOT NULL,
+                    user_ids TEXT NOT NULL,
+                    relation_type TEXT DEFAULT 'discussion',
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # جدول ملفات المستخدمين
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS user_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    username TEXT,
+                    display_name TEXT,
+                    personality_traits TEXT,
+                    interests TEXT,
+                    mentioned_by TEXT,
+                    last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, chat_id)
+                )
+            """)
+            
+            # جدول ذاكرة المحادثات للمستخدمين الأفراد
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS conversation_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    user_message TEXT NOT NULL,
+                    ai_response TEXT NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
             await db.commit()
             logging.info("✅ تم تهيئة قاعدة البيانات بنجاح")
             

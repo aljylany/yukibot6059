@@ -592,6 +592,56 @@ async def init_database():
             
             await db.execute('CREATE INDEX IF NOT EXISTS idx_user_message_count ON user_message_count(user_id, chat_id)')
             
+            # جداول الذاكرة المشتركة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS shared_conversations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    username TEXT,
+                    message_text TEXT NOT NULL,
+                    ai_response TEXT,
+                    mentioned_users TEXT,
+                    topics TEXT,
+                    sentiment TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # جدول روابط المواضيع
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS topic_links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    topic TEXT NOT NULL,
+                    user_ids TEXT NOT NULL,
+                    relation_type TEXT DEFAULT 'discussion',
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # جدول ملفات المستخدمين
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS user_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    username TEXT,
+                    display_name TEXT,
+                    personality_traits TEXT,
+                    interests TEXT,
+                    mentioned_by TEXT,
+                    last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, chat_id)
+                )
+            ''')
+            
+            # فهارس الذاكرة المشتركة
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_shared_conversations_chat ON shared_conversations(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_shared_conversations_user ON shared_conversations(user_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_topic_links_chat ON topic_links(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_user_profiles_chat_user ON user_profiles(chat_id, user_id)')
+            
             await db.commit()
             logger.info("✅ تم تهيئة قاعدة البيانات بنجاح")
             
