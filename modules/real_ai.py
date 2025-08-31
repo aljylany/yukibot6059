@@ -234,6 +234,91 @@ class RealYukiAI:
             logging.error(f"خطأ في جمع معلومات اللاعب الشاملة: {e}")
             return "معلومات اللاعب غير متاحة حالياً"
     
+    async def get_all_registered_players(self) -> str:
+        """جلب قائمة جميع اللاعبين المسجلين في النظام"""
+        try:
+            from database.operations import execute_query
+            
+            players_info = ""
+            
+            # جلب جميع اللاعبين مع معلوماتهم الأساسية
+            all_players_query = """
+                SELECT user_id, username, first_name, last_name, balance, bank_balance, 
+                       level, xp, (balance + bank_balance) as total_wealth
+                FROM users 
+                WHERE first_name IS NOT NULL 
+                ORDER BY total_wealth DESC, level DESC, xp DESC
+            """
+            
+            all_players = await execute_query(all_players_query, fetch_all=True)
+            
+            if all_players and len(all_players) > 0:
+                players_info += f"🎮 **قائمة جميع اللاعبين المسجلين في النظام:**\n"
+                players_info += f"📊 العدد الإجمالي: **{len(all_players)}** لاعب\n\n"
+                
+                # ترتيب اللاعبين حسب الثروة والمستوى
+                for i, player in enumerate(all_players, 1):
+                    first_name = player.get('first_name', 'مجهول')
+                    username = player.get('username', '')
+                    user_id = player.get('user_id', '')
+                    balance = player.get('balance', 0) or 0
+                    bank_balance = player.get('bank_balance', 0) or 0
+                    level = player.get('level', 1)
+                    xp = player.get('xp', 0)
+                    total_wealth = player.get('total_wealth', 0) or 0
+                    
+                    # تنسيق الأرقام الكبيرة
+                    def format_number(num):
+                        if num == 0:
+                            return "0"
+                        elif num >= 1e18:
+                            return f"{num/1e18:.1f} كوينتليون"
+                        elif num >= 1e15:
+                            return f"{num/1e15:.1f} كوادريليون"
+                        elif num >= 1e12:
+                            return f"{num/1e12:.1f} تريليون"
+                        elif num >= 1e9:
+                            return f"{num/1e9:.1f} مليار"
+                        elif num >= 1e6:
+                            return f"{num/1e6:.1f} مليون"
+                        elif num >= 1e3:
+                            return f"{num/1e3:.1f}ك"
+                        else:
+                            return f"{num:,.0f}"
+                    
+                    # تحديد أيقونة المرتبة
+                    if i == 1:
+                        rank_icon = "🥇"
+                    elif i == 2:
+                        rank_icon = "🥈"
+                    elif i == 3:
+                        rank_icon = "🥉"
+                    elif i <= 5:
+                        rank_icon = "🏆"
+                    elif i <= 10:
+                        rank_icon = "⭐"
+                    else:
+                        rank_icon = "👤"
+                    
+                    # عرض معلومات اللاعب
+                    username_display = f"(@{username})" if username else ""
+                    players_info += f"{rank_icon} **{i}.** {first_name} {username_display}\n"
+                    players_info += f"   💰 الثروة: {format_number(total_wealth)}$ | "
+                    players_info += f"⭐ المستوى: {level} | 🎯 XP: {xp:,}\n"
+                    
+                    # إضافة فاصل كل 5 لاعبين لتحسين القراءة
+                    if i % 5 == 0 and i < len(all_players):
+                        players_info += "\n"
+                    
+            else:
+                players_info = "❌ لا توجد بيانات لاعبين متاحة في قاعدة البيانات"
+            
+            return players_info
+            
+        except Exception as e:
+            logging.error(f"خطأ في جلب قائمة جميع اللاعبين: {e}")
+            return "❌ تعذر جلب قائمة اللاعبين"
+    
     async def get_comprehensive_group_data(self, chat_id: int, bot) -> str:
         """جمع معلومات المجموعة الشاملة للذكاء الاصطناعي"""
         try:
@@ -492,7 +577,10 @@ class RealYukiAI:
                     'معدل التسجيل', 'نسبة المسجلين', 'المجموعة فيها كم', 'كم واحد في المجموعة',
                     'معرف المجموعة', 'اسم المجموعة', 'نوع المجموعة', 'رابط المجموعة',
                     'جميع الاعضاء مسجلين', 'جميع الأعضاء مسجلين', 'هل جميع', 'كلهم مسجلين', 'حساب بنكي',
-                    'مسجلين بالبنك', 'مسجلين في البنك', 'بحساب بنكي', 'لديهم حساب', 'عندهم حساب'
+                    'مسجلين بالبنك', 'مسجلين في البنك', 'بحساب بنكي', 'لديهم حساب', 'عندهم حساب',
+                    'اللاعبين المسجلين', 'اللاعبين المسجلون', 'جميع اللاعبين', 'كل اللاعبين', 'الاعبين',
+                    'اذكر لي اللاعبين', 'اذكر اللاعبين', 'قائمة اللاعبين', 'قائمة الاعبين', 'المسجلين في النظام',
+                    'من هم اللاعبين', 'من هم الاعبين', 'اللاعبين في النظام', 'الاعبين في النظام'
                 ]
                 
                 if any(trigger in user_message.lower() for trigger in group_triggers):
@@ -501,6 +589,23 @@ class RealYukiAI:
                         logging.info(f"✅ تم جلب معلومات المجموعة للذكاء الاصطناعي للمجموعة {chat_id}")
                     except Exception as group_error:
                         logging.error(f"خطأ في جلب معلومات المجموعة: {group_error}")
+            
+            # جلب قائمة جميع اللاعبين المسجلين إذا كان السؤال متعلق باللاعبين تحديداً
+            all_players_context = ""
+            if chat_id:
+                # كلمات مفتاحية خاصة باللاعبين فقط
+                players_specific_triggers = [
+                    'اللاعبين المسجلين', 'اللاعبين المسجلون', 'جميع اللاعبين', 'كل اللاعبين', 'الاعبين',
+                    'اذكر لي اللاعبين', 'اذكر اللاعبين', 'قائمة اللاعبين', 'قائمة الاعبين', 'المسجلين في النظام',
+                    'من هم اللاعبين', 'من هم الاعبين', 'اللاعبين في النظام', 'الاعبين في النظام'
+                ]
+                
+                if any(trigger in user_message.lower() for trigger in players_specific_triggers):
+                    try:
+                        all_players_context = await self.get_all_registered_players()
+                        logging.info(f"✅ تم جلب قائمة جميع اللاعبين للذكاء الاصطناعي")
+                    except Exception as players_error:
+                        logging.error(f"خطأ في جلب قائمة اللاعبين: {players_error}")
             
             # دمج جميع السياقات
             full_context = conversation_context
@@ -512,6 +617,9 @@ class RealYukiAI:
             
             if group_data_context:
                 full_context += f"\n\n{group_data_context}\n"
+            
+            if all_players_context:
+                full_context += f"\n\n{all_players_context}\n"
             
             full_prompt = f"{self.system_prompt}{special_prompt}{full_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             
