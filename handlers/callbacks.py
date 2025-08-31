@@ -240,6 +240,42 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_property_sell_callback(callback)
             return
         
+        # معالجة callbacks نظام التقرير  
+        if data.startswith('report:'):
+            from modules.bug_report_system import bug_report_system
+            action = data.split(":")[1] if ":" in data else ""
+            
+            if action in ["critical", "major", "minor", "suggestion"]:
+                await callback.answer("🔄 جار تحضير نموذج التقرير...")
+                if callback.message:
+                    await callback.message.edit_text(f"""
+📝 **إنشاء تقرير جديد**
+
+اكتب عنوان مختصر وواضح للتقرير:
+
+💡 **أمثلة جيدة:**
+• "البوت لا يستجيب لأمر الرصيد"
+• "خطأ في حساب الفوائد البنكية"  
+• "اقتراح إضافة نظام تقييم اللاعبين"
+
+❌ **تجنب:**
+• عناوين غير واضحة مثل "مشكلة" أو "خطأ"
+• عناوين طويلة جداً
+
+اكتب العنوان كرسالة عادية:
+                    """)
+            elif action == "stats":
+                await callback.answer("📊 إحصائياتك")
+                if callback.message:
+                    await callback.message.edit_text("📊 **إحصائياتك في نظام التقرير**\n\n• التقارير المرسلة: 0\n• التقارير المُصلحة: 0\n• المكافآت المكتسبة: 0$\n• رتبتك: مبلغ مبتدئ")
+            elif action == "my_reports":
+                await callback.answer("📋 تقاريرك")
+                if callback.message:
+                    await callback.message.edit_text("📋 **تقاريرك الأخيرة**\n\n📝 لم تقم بإرسال أي تقارير بعد!\n\nاستخدم أمر 'تقرير' لإنشاء تقرير جديد")
+            else:
+                await callback.answer("✅ تم")
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         
