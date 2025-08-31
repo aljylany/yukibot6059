@@ -130,34 +130,34 @@ class BugReportSystem:
         except Exception as e:
             logging.error(f"❌ خطأ في تهيئة قاعدة البيانات لنظام التقارير: {e}")
 
-    def get_report_keyboard(self, level: str = "basic") -> InlineKeyboardMarkup:
+    def get_report_keyboard(self, level: str = "basic", user_id: int = 0) -> InlineKeyboardMarkup:
         """إنشاء لوحة مفاتيح تفاعلية للتقارير"""
         keyboard = []
         
         if level == "basic":
             keyboard = [
                 [
-                    InlineKeyboardButton(text="🔥 خطأ قاتل", callback_data="report:critical"),
-                    InlineKeyboardButton(text="⚠️ خطأ مهم", callback_data="report:major")
+                    InlineKeyboardButton(text="🔥 خطأ قاتل", callback_data=f"report:critical:{user_id}"),
+                    InlineKeyboardButton(text="⚠️ خطأ مهم", callback_data=f"report:major:{user_id}")
                 ],
                 [
-                    InlineKeyboardButton(text="📝 خطأ بسيط", callback_data="report:minor"),
-                    InlineKeyboardButton(text="💡 اقتراح", callback_data="report:suggestion")
+                    InlineKeyboardButton(text="📝 خطأ بسيط", callback_data=f"report:minor:{user_id}"),
+                    InlineKeyboardButton(text="💡 اقتراح", callback_data=f"report:suggestion:{user_id}")
                 ],
                 [
-                    InlineKeyboardButton(text="📊 إحصائياتي", callback_data="report:stats"),
-                    InlineKeyboardButton(text="📋 تقاريري", callback_data="report:my_reports")
+                    InlineKeyboardButton(text="📊 إحصائياتي", callback_data=f"report:stats:{user_id}"),
+                    InlineKeyboardButton(text="📋 تقاريري", callback_data=f"report:my_reports:{user_id}")
                 ]
             ]
         elif level == "advanced":
             keyboard = [
                 [
-                    InlineKeyboardButton(text="🔥 خطأ قاتل مفصل", callback_data="report:critical_detailed"),
-                    InlineKeyboardButton(text="⚠️ خطأ مهم مفصل", callback_data="report:major_detailed")
+                    InlineKeyboardButton(text="🔥 خطأ قاتل مفصل", callback_data=f"report:critical_detailed:{user_id}"),
+                    InlineKeyboardButton(text="⚠️ خطأ مهم مفصل", callback_data=f"report:major_detailed:{user_id}")
                 ],
                 [
-                    InlineKeyboardButton(text="🧪 تقرير فني", callback_data="report:technical"),
-                    InlineKeyboardButton(text="🔍 اقتراح متقدم", callback_data="report:advanced_suggestion")
+                    InlineKeyboardButton(text="🧪 تقرير فني", callback_data=f"report:technical:{user_id}"),
+                    InlineKeyboardButton(text="🔍 اقتراح متقدم", callback_data=f"report:advanced_suggestion:{user_id}")
                 ]
             ]
         
@@ -208,7 +208,7 @@ class BugReportSystem:
             
             await message.reply(
                 welcome_text.strip(),
-                reply_markup=self.get_report_keyboard("basic")
+                reply_markup=self.get_report_keyboard("basic", message.from_user.id)
             )
             
         except Exception as e:
@@ -285,7 +285,7 @@ class BugReportSystem:
             """
             
             cancel_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="❌ إلغاء", callback_data="report:cancel")
+                InlineKeyboardButton(text="❌ إلغاء", callback_data=f"report:cancel:{callback.from_user.id}")
             ]])
             
             if callback.message:

@@ -4,6 +4,7 @@ Bot Callbacks Handler
 """
 
 import logging
+from datetime import datetime
 from aiogram import Router
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -242,28 +243,21 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
         
         # معالجة callbacks نظام التقرير  
         if data.startswith('report:'):
-            from modules.bug_report_system import bug_report_system
-            action = data.split(":")[1] if ":" in data else ""
+            # استخراج البيانات
+            parts = data.split(":")
+            action = parts[1] if len(parts) > 1 else ""
+            original_user_id = int(parts[2]) if len(parts) > 2 else None
+            
+            # التحقق من أن الضاغط هو المالك
+            if original_user_id and callback.from_user.id != original_user_id:
+                await callback.answer("⚠️ هذا الزر خاص بمن طلب التقرير فقط!", show_alert=True)
+                return
             
             if action in ["critical", "major", "minor", "suggestion"]:
-                await callback.answer("🔄 جار تحضير نموذج التقرير...")
-                if callback.message:
-                    await callback.message.edit_text(f"""
-📝 **إنشاء تقرير جديد**
-
-اكتب عنوان مختصر وواضح للتقرير:
-
-💡 **أمثلة جيدة:**
-• "البوت لا يستجيب لأمر الرصيد"
-• "خطأ في حساب الفوائد البنكية"  
-• "اقتراح إضافة نظام تقييم اللاعبين"
-
-❌ **تجنب:**
-• عناوين غير واضحة مثل "مشكلة" أو "خطأ"
-• عناوين طويلة جداً
-
-اكتب العنوان كرسالة عادية:
-                    """)
+                # استخدام معالج التقرير المناسب مع FSM
+                from handlers.bug_report_handler import handle_report_callbacks
+                await handle_report_callbacks(callback, state)
+                
             elif action == "stats":
                 await callback.answer("📊 إحصائياتك")
                 if callback.message:
