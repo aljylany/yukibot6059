@@ -31,8 +31,18 @@ except ImportError:
     GEMINI_AVAILABLE = False
     logging.warning("Google Gemini SDK not available")
 
-# استيراد الوحدات المحلية
-from modules.conversation_memory import conversation_memory
+# استيراد الوحدات المحلية - نسخة محسنة SQLite
+try:
+    from modules.conversation_memory_sqlite import conversation_memory_sqlite as conversation_memory
+    from modules.shared_memory_sqlite import shared_group_memory_sqlite as shared_group_memory
+    logging.info("✅ تم تحميل أنظمة الذاكرة SQLite المحسنة")
+except ImportError:
+    from modules.conversation_memory import conversation_memory
+    try:
+        from modules.shared_memory import shared_group_memory
+    except ImportError:
+        shared_group_memory = None
+    logging.warning("⚠️ استخدام أنظمة الذاكرة القديمة")
 
 
 class ComprehensiveAISystem:
@@ -49,6 +59,9 @@ class ComprehensiveAISystem:
         
         # نظام الذاكرة المتقدم للمحادثات
         self.conversation_memory = conversation_memory
+        
+        # نظام الذاكرة المشتركة للمجموعة
+        self.shared_memory = shared_group_memory if shared_group_memory else None
         
         # قاعدة معرفة البوت الشاملة
         self.knowledge_base = self._initialize_knowledge_base()

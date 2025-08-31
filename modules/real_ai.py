@@ -366,13 +366,13 @@ class RealYukiAI:
             # تحضير السياق والرسالة
             arabic_name = self.convert_name_to_arabic(user_name)
             
-            # جلب المحادثات السابقة للسياق
+            # جلب المحادثات السابقة للسياق - نسخة SQLite محسنة
             conversation_context = ""
             if user_id:
-                from modules.conversation_memory_pg import conversation_memory_pg
-                history = await conversation_memory_pg.get_conversation_history(user_id, limit=15)
+                from modules.conversation_memory_sqlite import conversation_memory_sqlite
+                history = await conversation_memory_sqlite.get_conversation_history(user_id, limit=15)
                 if history:
-                    conversation_context = f"\n\n{conversation_memory_pg.format_conversation_context(history)}\n"
+                    conversation_context = f"\n\n{conversation_memory_sqlite.format_conversation_context(history)}\n"
             
             # معاملة خاصة للمستخدمين المميزين
             special_prompt = ""
@@ -397,7 +397,7 @@ class RealYukiAI:
             shared_context = ""
             if user_id:
                 try:
-                    from modules.shared_memory_pg import shared_group_memory_pg
+                    from modules.shared_memory_sqlite import shared_group_memory_sqlite
                     
                     # فحص إذا كان السؤال يتطلب البحث في الذاكرة المشتركة
                     memory_triggers = [
@@ -433,7 +433,7 @@ class RealYukiAI:
                         
                         if target_user_id:
                             # البحث عن محادثات مستخدم محدد
-                            shared_context = await shared_group_memory_pg.get_shared_context_about_user(
+                            shared_context = await shared_group_memory_sqlite.get_shared_context_about_user(
                                 search_chat_id,
                                 target_user_id,
                                 user_id,
@@ -441,7 +441,7 @@ class RealYukiAI:
                             )
                         else:
                             # البحث العام في الذاكرة المشتركة
-                            shared_context = await shared_group_memory_pg.get_shared_context_about_user(
+                            shared_context = await shared_group_memory_sqlite.get_shared_context_about_user(
                                 search_chat_id,
                                 user_id,
                                 user_id,
@@ -449,7 +449,7 @@ class RealYukiAI:
                             )
                     
                     # إضافة سياق المستخدمين المميزين
-                    special_user_context = shared_group_memory_pg.get_special_user_context(user_id)
+                    special_user_context = shared_group_memory_sqlite.get_special_user_context(user_id)
                     if special_user_context:
                         special_prompt += f" {special_user_context}"
                     
@@ -565,22 +565,24 @@ class RealYukiAI:
                     ]
                     ai_response += random.choice(extras)
                 
-                # حفظ المحادثة في الذاكرة الفردية والمشتركة
+                # حفظ المحادثة في الذاكرة الفردية والمشتركة - نسخة SQLite محسنة
                 if user_id:
                     try:
-                        from modules.conversation_memory_pg import conversation_memory_pg
-                        await conversation_memory_pg.save_conversation(user_id, user_message, ai_response)
+                        # استخدام نظام الذاكرة SQLite المحسن
+                        from modules.conversation_memory_sqlite import conversation_memory_sqlite
+                        await conversation_memory_sqlite.save_conversation(user_id, user_message, ai_response)
                         
                         # حفظ في الذاكرة المشتركة أيضاً
-                        from modules.shared_memory_pg import shared_group_memory_pg
+                        from modules.shared_memory_sqlite import shared_group_memory_sqlite
                         save_chat_id = chat_id if chat_id else -1002549788763  # استخدام chat_id الصحيح
-                        await shared_group_memory_pg.save_shared_conversation(
+                        await shared_group_memory_sqlite.save_shared_conversation(
                             save_chat_id,
                             user_id,
                             arabic_name,
                             user_message,
                             ai_response
                         )
+                        logging.info(f"✅ تم حفظ المحادثة بنجاح للمستخدم {user_id} في الذاكرة SQLite")
                     except Exception as memory_error:
                         logging.error(f"خطأ في حفظ المحادثة: {memory_error}")
                 

@@ -5,7 +5,7 @@ Topic Search and Shared Memory Query System
 
 import logging
 from typing import List, Dict, Optional
-from modules.shared_memory_pg import shared_group_memory_pg
+from modules.shared_memory_sqlite import shared_group_memory_sqlite
 
 class TopicSearchEngine:
     """محرك البحث في المواضيع والذاكرة المشتركة"""
@@ -64,7 +64,7 @@ class TopicSearchEngine:
         # البحث في الذاكرة المشتركة
         # البحث عن المستخدم بالاسم في قاعدة البيانات
         try:
-            conn = await shared_group_memory_pg.get_db_connection()
+            conn = await shared_group_memory_sqlite.get_db_connection()
             if not conn:
                 return f"لم أتمكن من الاتصال بقاعدة البيانات للبحث عن {target_username}."
             
@@ -111,7 +111,7 @@ class TopicSearchEngine:
     
     async def _search_conversation_history(self, query: str, user_id: int, chat_id: int) -> str:
         """البحث في تاريخ المحادثات"""
-        context = await shared_group_memory_pg.get_shared_context_about_user(chat_id, user_id, user_id, limit=8)
+        context = await shared_group_memory_sqlite.get_shared_context_about_user(chat_id, user_id, user_id, limit=8)
         
         if context:
             return f"🗣️ **المحادثات التي تخصك:**\n\n{context}"
@@ -135,7 +135,7 @@ class TopicSearchEngine:
         
         # البحث عن المحادثات المتعلقة بالموضوع
         try:
-            conn = await shared_group_memory_pg.get_db_connection()
+            conn = await shared_group_memory_sqlite.get_db_connection()
             if not conn:
                 return f"لم أتمكن من الاتصال بقاعدة البيانات للبحث عن الموضوع {topic}."
             
@@ -171,7 +171,7 @@ class TopicSearchEngine:
     async def _search_user_connections(self, query: str, user_id: int, chat_id: int) -> str:
         """البحث عن الروابط بين المستخدمين"""
         try:
-            conn = await shared_group_memory_pg.get_db_connection()
+            conn = await shared_group_memory_sqlite.get_db_connection()
             if not conn:
                 return "لم أتمكن من الاتصال بقاعدة البيانات."
             
