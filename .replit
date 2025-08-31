@@ -5,7 +5,7 @@ integrations = ["python_database==1.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["curl", "ffmpeg-full", "freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pkg-config", "postgresql", "tcl", "tk", "zlib"]
+packages = ["curl", "ffmpeg-full", "freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pkg-config", "postgresql", "tcl", "tk", "zlib", "sqlite"]
 
 [workflows]
 runButton = "Project"
