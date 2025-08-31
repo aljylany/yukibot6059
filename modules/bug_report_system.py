@@ -775,5 +775,182 @@ class BugReportSystem:
         except Exception as e:
             logging.error(f"خطأ في إرسال إشعار تغيير الحالة: {e}")
 
+    async def show_admin_reports(self, message: Message):
+        """عرض جميع التقارير للمديرين"""
+        try:
+            # الحصول على التقارير مرتبة حسب الأولوية والحالة
+            reports = await execute_query("""
+                SELECT report_id, title, priority, status, user_id, created_at, votes_count
+                FROM bug_reports 
+                ORDER BY 
+                    CASE priority 
+                        WHEN 'critical' THEN 1
+                        WHEN 'major' THEN 2  
+                        WHEN 'minor' THEN 3
+                        WHEN 'suggestion' THEN 4
+                    END,
+                    CASE status
+                        WHEN 'pending' THEN 1
+                        WHEN 'in_progress' THEN 2
+                        WHEN 'testing' THEN 3
+                        ELSE 4
+                    END,
+                    created_at DESC
+                LIMIT 15
+            """, fetch_all=True)
+            
+            if not reports or not isinstance(reports, list):
+                await message.reply("📝 لا توجد تقارير في النظام حالياً")
+                return
+            
+            admin_text = "👑 **لوحة تحكم التقارير الملكية**\n\n"
+            
+            # تجميع التقارير حسب الحالة
+            pending_reports = [r for r in reports if isinstance(r, dict) and r.get('status') == 'pending']
+            in_progress_reports = [r for r in reports if isinstance(r, dict) and r.get('status') == 'in_progress']
+            
+            # التقارير المعلقة (أولوية عليا)
+            if pending_reports:
+                admin_text += "⏳ **تقارير تحتاج مراجعة عاجلة:**\n"
+                for report in pending_reports[:5]:
+                    if not isinstance(report, dict):
+                        continue
+                    priority_emoji = REPORT_SETTINGS["priority_emojis"].get(report.get('priority', ''), '📝')
+                    title = report.get('title', '')[:40]
+                    report_id = report.get('report_id', '')
+                    votes = report.get('votes_count', 0)
+                    admin_text += f"{priority_emoji} `{report_id}` - {title}...\n"
+                    admin_text += f"   👥 أصوات التأكيد: {votes}\n"
+                admin_text += "\n"
+            
+            # التقارير قيد العمل
+            if in_progress_reports:
+                admin_text += "🔧 **تقارير قيد العمل:**\n"
+                for report in in_progress_reports[:3]:
+                    if not isinstance(report, dict):
+                        continue
+                    priority_emoji = REPORT_SETTINGS["priority_emojis"].get(report.get('priority', ''), '📝')
+                    title = report.get('title', '')[:40]
+                    report_id = report.get('report_id', '')
+                    admin_text += f"{priority_emoji} `{report_id}` - {title}...\n"
+                admin_text += "\n"
+            
+            admin_text += """
+🎮 **أوامر الإدارة:**
+• `/admin_report RPT123` - مراجعة تقرير
+• `/update_report RPT123 fixed` - تحديث حالة 
+• `/reports_stats` - إحصائيات شاملة
+
+📊 استخدم `/reports_stats` لمشاهدة تحليل شامل لجميع التقارير
+            """
+            
+            await message.reply(admin_text.strip())
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض تقارير المديرين: {e}")
+            await message.reply("❌ حدث خطأ في جلب التقارير")
+
+    async def show_admin_report_details(self, message: Message, report_id: str):
+        """عرض تفاصيل التقرير للمديرين مع أزرار التحكم"""
+        try:
+            report = await execute_query("""
+                SELECT r.*, u.first_name, u.username 
+                FROM bug_reports r
+                LEFT JOIN users u ON r.user_id = u.user_id
+                WHERE r.report_id = ?
+            """, (report_id,), fetch_one=True)
+            
+            if not report or not isinstance(report, dict):
+                await message.reply(f"❌ لم يتم العثور على تقرير: `{report_id}`")
+                return
+            
+            status_emoji = REPORT_SETTINGS["status_emojis"].get(report.get('status', ''), '❓')
+            priority_emoji = REPORT_SETTINGS["priority_emojis"].get(report.get('priority', ''), '📝')
+            
+            admin_details = f"""
+👑 **مراجعة إدارية للتقرير** `{report.get('report_id', '')}`
+
+{priority_emoji} **الأولوية:** {report.get('priority', '')}
+{status_emoji} **الحالة:** {report.get('status', '')}
+
+👤 **المبلغ:** {report.get('first_name', 'غير معروف')} (@{report.get('username', 'لا يوجد')})
+🆔 **معرف المستخدم:** `{report.get('user_id', '')}`
+
+📋 **العنوان:** {report.get('title', '')}
+
+📝 **الوصف:**
+{report.get('description', '')}
+
+📊 **معلومات إضافية:**
+• تاريخ الإرسال: {str(report.get('created_at', ''))[:19]}
+• آخر تحديث: {str(report.get('updated_at', ''))[:19]}
+• التصويت المجتمعي: {report.get('votes_count', 0)} صوت
+            """
+            
+            if report.get('fixed_at'):
+                admin_details += f"• تاريخ الإصلاح: {str(report.get('fixed_at', ''))[:19]}\n"
+            
+            await message.reply(admin_details.strip())
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض تفاصيل التقرير للمدير: {e}")
+            await message.reply("❌ حدث خطأ في جلب التقرير")
+
+    async def show_system_stats(self, message: Message):
+        """عرض إحصائيات شاملة للنظام - للمديرين"""
+        try:
+            # إحصائيات عامة
+            general_stats = await execute_query("""
+                SELECT 
+                    COUNT(*) as total_reports,
+                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
+                    COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_count,
+                    COUNT(CASE WHEN status = 'fixed' THEN 1 END) as fixed_count,
+                    COUNT(CASE WHEN priority = 'critical' THEN 1 END) as critical_count,
+                    COUNT(CASE WHEN priority = 'major' THEN 1 END) as major_count
+                FROM bug_reports
+            """, fetch_one=True)
+            
+            # أفضل المبلغين
+            top_reporters = await execute_query("""
+                SELECT u.first_name, rs.total_reports, rs.fixed_reports, rs.reporter_rank
+                FROM reporter_stats rs
+                LEFT JOIN users u ON rs.user_id = u.user_id
+                ORDER BY rs.fixed_reports DESC, rs.total_reports DESC
+                LIMIT 5
+            """, fetch_all=True)
+            
+            if not general_stats:
+                general_stats = {}
+            
+            stats_text = f"""
+📊 **إحصائيات نظام التقرير الملكي الشاملة**
+
+📈 **إحصائيات عامة:**
+• إجمالي التقارير: {general_stats.get('total_reports', 0)}
+• في الانتظار: {general_stats.get('pending_count', 0)} ⏳
+• قيد العمل: {general_stats.get('in_progress_count', 0)} 🔧
+• تم الإصلاح: {general_stats.get('fixed_count', 0)} ✅
+
+🔥 **توزيع الأولويات:**
+• أخطاء قاتلة: {general_stats.get('critical_count', 0)}
+• أخطاء مهمة: {general_stats.get('major_count', 0)}
+
+🏆 **أفضل المبلغين:**
+            """
+            
+            if top_reporters and isinstance(top_reporters, list):
+                for i, reporter in enumerate(top_reporters[:3], 1):
+                    if isinstance(reporter, dict):
+                        name = reporter.get('first_name', 'غير معروف')
+                        fixed = reporter.get('fixed_reports', 0)
+                        stats_text += f"{i}. {name} - {fixed} إصلاح\n"
+            
+            await message.reply(stats_text.strip())
+            
+        except Exception as e:
+            logging.error(f"خطأ في عرض إحصائيات النظام: {e}")
+            await message.reply("❌ حدث خطأ في جلب الإحصائيات")
+
 # إنشاء نسخة عالمية من النظام
 bug_report_system = BugReportSystem()
