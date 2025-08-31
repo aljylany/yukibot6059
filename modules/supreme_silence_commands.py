@@ -11,11 +11,15 @@ from typing import Optional
 from aiogram.types import Message
 from config.hierarchy import is_supreme_master, get_user_admin_level, AdminLevel
 
-# استيراد دالة الاتصال بقاعدة البيانات
+# استيراد دالة الاتصال بقاعدة البيانات من الملف الصحيح
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from database import get_db
+
+# الحصول على دالة الاتصال بقاعدة البيانات
+def get_db():
+    import sqlite3
+    return sqlite3.connect('yukibot.db')
 
 
 async def parse_time_duration(time_text: str) -> Optional[datetime]:
