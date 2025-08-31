@@ -2370,6 +2370,16 @@ async def handle_general_message(message: Message, state: FSMContext):
         await entertainment.handle_marriage_response(message, "رفض")
     elif text in ['زوجي', 'زوجتي']:
         await entertainment.show_marriage_status(message)
+    elif text == 'رقص':
+        await entertainment.wedding_dance(message)
+    elif text == 'اعراس' or text == 'أعراس':
+        await entertainment.show_group_weddings(message)
+    elif text == 'مراسم':
+        await entertainment.start_royal_ceremony(message)
+    elif text == 'هدية':
+        await entertainment.give_wedding_gift(message)
+    elif text == 'تهنئة':
+        await entertainment.wedding_congratulation(message)
     elif text == 'سيارتي':
         await fun_commands.my_car(message)
     elif text == 'منزلي':

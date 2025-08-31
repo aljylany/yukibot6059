@@ -83,6 +83,52 @@ HATE_RESPONSES = [
     "🙄 لا أكرهك ولا أحبك"
 ]
 
+# رسائل رقص العرس 💃🕺
+WEDDING_DANCE_MESSAGES = [
+    "💃 *ترقص بحماس وسط الجمهور*\n🎵 الجميع يصفق لها!",
+    "🕺 *يرقص رقصة شعبية تراثية*\n🎉 الحضور ينضم للرقص!", 
+    "👫 *يرقصان معاً رقصة رومانسية*\n💕 منظر خلاب يسحر القلوب!",
+    "🎭 *ترقص رقصة شرقية مذهلة*\n✨ الجميع مبهور بجمال الحركات!",
+    "🎪 *يرقص رقصة بهلوانية مدهشة*\n🤹 الجميع يهتف ويصفق بقوة!",
+    "💫 *ترقص كالفراشة بخفة ورشاقة*\n🦋 حركات شاعرية تأسر الأنظار!",
+    "🔥 *يرقص رقصة حماسية مليئة بالطاقة*\n⚡ الجميع يشعر بالإثارة والحماس!",
+    "🌟 *ترقص مع الأطفال رقصة مرحة*\n👶 ضحكات الأطفال تملأ المكان!",
+    "🎨 *يرقص رقصة فنية معبرة*\n🖼️ كل حركة تحكي قصة جميلة!",
+    "🎁 *ترقص وتوزع الحلوى على الحضور*\n🍬 فرحة مضاعفة للجميع!"
+]
+
+# رسائل مراسم العرس الملكي 👑
+ROYAL_WEDDING_CEREMONIES = [
+    "👑 **مراسم التتويج الملكية:**\n🎭 العرسان يرتديان التيجان الذهبية\n💎 مرصعة بأثمن الجواهر",
+    "🏰 **موكب العرس الملكي:**\n🐎 العربات المزينة بالورود الذهبية\n🎺 عازفو البوق الملكي يعلنون الفرح",
+    "⚔️ **حرس الشرف الملكي:**\n🛡️ 100 فارس بالخيول البيضاء\n🎖️ يرفعون السيوف تحية للعرسان",
+    "🕯️ **إضاءة الشموع المقدسة:**\n✨ 1000 شمعة ذهبية تضيء القصر\n🌟 رمز للحب الأبدي والخلود",
+    "🎵 **الأوركسترا الملكية:**\n🎼 50 عازف من أشهر موسيقيي المملكة\n🎹 سيمفونية الحب الخالدة",
+    "🌹 **مطر الورود الملكي:**\n🌺 آلاف البتلات الذهبية من السماء\n💫 منظر خيالي يحبس الأنفاس"
+]
+
+# هدايا العرس الملكي 🎁
+ROYAL_WEDDING_GIFTS = [
+    {"name": "تاج الملكة الماسي", "value": 1000000, "description": "تاج مرصع بـ 500 ماسة نادرة"},
+    {"name": "عقد اللؤلؤ الملكي", "value": 750000, "description": "عقد من اللؤلؤ الطبيعي النادر"},
+    {"name": "خاتم الحب الأبدي", "value": 500000, "description": "خاتم ذهبي مرصع بالياقوت الأزرق"},
+    {"name": "صولجان الملك الذهبي", "value": 800000, "description": "صولجان من الذهب الخالص مع الزمرد"},
+    {"name": "عرش العرسان الملكي", "value": 2000000, "description": "عرش مصنوع من خشب الأبنوس والذهب"},
+    {"name": "مفاتيح القصر الصيفي", "value": 5000000, "description": "قصر صيفي مطل على البحر"},
+]
+
+# رسائل احتفالية للعرس العادي 🎉
+WEDDING_CELEBRATION_MESSAGES = [
+    "🎊 الحمد لله الذي أتم لكم هذا الحب الجميل!",
+    "💒 بارك الله لكما وبارك عليكما وجمع بينكما في خير!",
+    "🌹 ألف مبروك! عقبال المولود الجديد إن شاء الله!",
+    "🎭 فرحة القلب وسعادة الروح... كل عام وأنتم بخير!",
+    "🎯 الحب انتصر والقلوب فرحت... مبروك للعرسان!",
+    "💝 هدية الله لكما بعضكما البعض... دوموا بخير!",
+    "🎪 يوم تاريخي في حياتكما... بداية رحلة العمر!",
+    "🎈 بالرفاء والبنين... وعقبال الفرحة الكبيرة!",
+]
+
 
 async def handle_entertainment_rank(message: Message, rank: str, action: str):
     """معالج رتب التسلية"""
@@ -307,16 +353,24 @@ async def handle_marriage(message: Message, action: str):
                 if target_is_royal:
                     target_royal_title = "الملك" if is_king(target_user.id) else "الملكة"
                 
+                # اختيار هدية ملكية عشوائية
+                royal_gift = random.choice(ROYAL_WEDDING_GIFTS)
+                ceremony = random.choice(ROYAL_WEDDING_CEREMONIES)
+                
                 marriage_message = (
-                    f"👑 **طلب زواج ملكي أسطوري!** 👑\n\n"
+                    f"👑 **طلب زواج ملكي أسطوري خالد!** 👑\n\n"
                     f"🎭 من: {royal_title} {proposer_name}\n"
                     f"🎭 إلى: {target_royal_title + ' ' if target_royal_title else ''}{target_name}\n"
-                    f"💎 المهر: مجاني تماماً - شرف ملكي!\n"
-                    f"🏰 نوع الزواج: **زواج ملكي فخم**\n"
-                    f"🎊 المكافآت: حفل زفاف أسطوري + هدايا ملكية\n\n"
+                    f"💎 المهر: مجاني تماماً - شرف ملكي عظيم!\n"
+                    f"🏰 نوع الزواج: **زواج ملكي أسطوري**\n\n"
+                    f"🎁 **الهدايا الملكية المضمونة:**\n"
+                    f"✨ {royal_gift['name']}\n"
+                    f"💰 قيمة: {format_number(royal_gift['value'])}$\n"
+                    f"📝 {royal_gift['description']}\n\n"
+                    f"{ceremony}\n\n"
                     f"⏰ **في انتظار الموافقة الملكية من {target_name}**\n"
-                    f"👑 يجب على {target_name} الرد بكلمة **موافقة** للحصول على الشرف الملكي\n"
-                    f"🚫 أو **رفض** لتفويت هذا الشرف العظيم"
+                    f"👑 يجب على {target_name} الرد بكلمة **موافقة** للحصول على الشرف الملكي الأبدي\n"
+                    f"🚫 أو **رفض** لتفويت هذا الشرف العظيم والهدايا الثمينة"
                 )
             else:
                 marriage_message = (
@@ -860,6 +914,225 @@ async def clear_entertainment_ranks(message: Message):
         await message.reply("❌ حدث خطأ أثناء مسح الرتب")
 
 
+async def handle_wedding_dance(message: Message):
+    """معالج رقص العرس"""
+    try:
+        if not await is_entertainment_enabled(message.chat.id):
+            await message.reply("❌ التسلية معطلة في هذه المجموعة")
+            return
+
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name or "شخص"
+        
+        # التحقق من وجود زواج في المجموعة
+        marriage = await execute_query(
+            "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
+            (user_id, user_id, message.chat.id),
+            fetch_one=True
+        )
+        
+        # اختيار رسالة رقص عشوائية
+        dance_message = random.choice(WEDDING_DANCE_MESSAGES)
+        
+        if marriage:
+            # إذا كان متزوج، رقص خاص للعرسان
+            dance_response = (
+                f"💃🕺 **رقص العروسين!** 💃🕺\n\n"
+                f"👤 الراقص/ة: {user_name}\n"
+                f"{dance_message}\n\n"
+                f"🎊 **مبروك للعروسين مرة أخرى!**\n"
+                f"💕 الحب يجعل كل شيء أجمل!"
+            )
+        else:
+            # رقص عادي للحضور
+            dance_response = (
+                f"💃🕺 **رقص في العرس!** 💃🕺\n\n"
+                f"👤 الراقص/ة: {user_name}\n"
+                f"{dance_message}\n\n"
+                f"🎉 الجميع يستمتع بالاحتفال!"
+            )
+        
+        await message.reply(dance_response)
+
+    except Exception as e:
+        logging.error(f"خطأ في رقص العرس: {e}")
+        await message.reply("❌ حدث خطأ أثناء الرقص")
+
+
+async def show_group_weddings(message: Message):
+    """عرض الأعراس في المجموعة"""
+    try:
+        if not await is_entertainment_enabled(message.chat.id):
+            await message.reply("❌ التسلية معطلة في هذه المجموعة")
+            return
+
+        # الحصول على جميع الزيجات في المجموعة
+        marriages = await execute_query(
+            "SELECT * FROM entertainment_marriages WHERE chat_id = ?",
+            (message.chat.id,),
+            fetch_all=True
+        )
+        
+        if not marriages:
+            await message.reply("💔 لا توجد أعراس في هذه المجموعة حالياً")
+            return
+
+        wedding_list = "💒 **قائمة الأعراس في المجموعة:** 💒\n\n"
+        
+        from config.hierarchy import is_royal, is_king, is_queen
+        
+        for i, marriage in enumerate(marriages, 1):
+            if isinstance(marriage, dict):
+                user1_id = marriage['user1_id']
+                user2_id = marriage['user2_id']
+                married_date = marriage.get('married_at', '')
+                dowry_amount = marriage.get('dowry_amount', 0)
+            else:
+                user1_id = marriage[1]
+                user2_id = marriage[2]
+                married_date = marriage[6] if len(marriage) > 6 else ''
+                dowry_amount = marriage[4] if len(marriage) > 4 else 0
+            
+            # جلب بيانات الزوجين
+            user1 = await get_user(user1_id)
+            user2 = await get_user(user2_id)
+            
+            if user1 and user2:
+                user1_name = user1.get('first_name', f'المستخدم #{user1_id}')
+                user2_name = user2.get('first_name', f'المستخدم #{user2_id}')
+                
+                # تحديد نوع الزواج
+                user1_royal = is_royal(user1_id)
+                user2_royal = is_royal(user2_id)
+                
+                if user1_royal or user2_royal:
+                    wedding_type = "👑 زواج ملكي"
+                    user1_title = ("الملك" if is_king(user1_id) else "الملكة" if is_queen(user1_id) else "الأمير/ة") if user1_royal else ""
+                    user2_title = ("الملك" if is_king(user2_id) else "الملكة" if is_queen(user2_id) else "الأمير/ة") if user2_royal else ""
+                    
+                    wedding_list += f"{i}. {wedding_type}\n"
+                    wedding_list += f"   👸 {user2_title + ' ' if user2_title else ''}{user2_name}\n"
+                    wedding_list += f"   🤴 {user1_title + ' ' if user1_title else ''}{user1_name}\n"
+                    wedding_list += f"   💎 زواج ملكي مجاني\n"
+                else:
+                    wedding_type = "💍 زواج عادي"
+                    wedding_list += f"{i}. {wedding_type}\n"
+                    wedding_list += f"   👰 {user2_name}\n"
+                    wedding_list += f"   🤵 {user1_name}\n"
+                    
+                    if dowry_amount > 0:
+                        from utils.helpers import format_number
+                        wedding_list += f"   💰 المهر: {format_number(dowry_amount)}$\n"
+                
+                wedding_list += f"   📅 التاريخ: {married_date[:10] if married_date else 'غير محدد'}\n\n"
+        
+        wedding_list += f"💕 **المجموع:** {len(marriages)} زواج\n"
+        wedding_list += "🎉 مبروك لجميع الأزواج!"
+        
+        await message.reply(wedding_list)
+
+    except Exception as e:
+        logging.error(f"خطأ في عرض أعراس المجموعة: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض الأعراس")
+
+
+async def start_royal_ceremony(message: Message):
+    """بدء المراسم الملكية للعرس"""
+    try:
+        user_id = message.from_user.id
+        
+        from config.hierarchy import is_royal, is_king, is_queen
+        
+        if not is_royal(user_id):
+            await message.reply("❌ هذا الأمر للعائلة الملكية فقط!")
+            return
+
+        # التحقق من وجود زواج ملكي للمستخدم
+        marriage = await execute_query(
+            "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
+            (user_id, user_id, message.chat.id),
+            fetch_one=True
+        )
+        
+        if not marriage:
+            await message.reply("❌ يجب أن تكون متزوجاً لإقامة المراسم الملكية!")
+            return
+
+        # إقامة المراسم الملكية
+        royal_title = "الملك" if is_king(user_id) else "الملكة"
+        ceremony1 = random.choice(ROYAL_WEDDING_CEREMONIES)
+        ceremony2 = random.choice(ROYAL_WEDDING_CEREMONIES)
+        
+        ceremony_message = (
+            f"👑✨ **المراسم الملكية الكبرى** ✨👑\n\n"
+            f"🎭 بأمر من {royal_title} الأعظم\n"
+            f"🏰 تقام المراسم الملكية الفخمة\n\n"
+            f"{ceremony1}\n\n"
+            f"{ceremony2}\n\n"
+            f"🎊 **دعوة عامة لجميع الرعايا:**\n"
+            f"💃 اكتبوا **رقص** للانضمام للاحتفال\n"
+            f"🎁 اكتبوا **هدية** لتقديم الهدايا الملكية\n"
+            f"🎉 اكتبوا **تهنئة** للتهنئة بالزفاف الملكي\n\n"
+            f"👑 **عاشت العائلة الملكية!** 👑"
+        )
+        
+        await message.reply(ceremony_message)
+
+    except Exception as e:
+        logging.error(f"خطأ في المراسم الملكية: {e}")
+        await message.reply("❌ حدث خطأ أثناء إقامة المراسم")
+
+
+async def give_wedding_gift(message: Message):
+    """تقديم هدية العرس"""
+    try:
+        if not await is_entertainment_enabled(message.chat.id):
+            await message.reply("❌ التسلية معطلة في هذه المجموعة")
+            return
+
+        giver_id = message.from_user.id
+        giver_name = message.from_user.first_name or "شخص"
+        
+        # التحقق من وجود أي زواج في المجموعة
+        marriages = await execute_query(
+            "SELECT * FROM entertainment_marriages WHERE chat_id = ?",
+            (message.chat.id,),
+            fetch_all=True
+        )
+        
+        if not marriages:
+            await message.reply("❌ لا توجد أعراس في المجموعة لتقديم الهدايا!")
+            return
+
+        # اختيار هدية عشوائية
+        gifts = [
+            {"name": "باقة ورود جميلة", "value": 100},
+            {"name": "صندوق شوكولاتة فاخرة", "value": 200},
+            {"name": "إطار صور ذهبي", "value": 300},
+            {"name": "عطر فرنسي راقي", "value": 500},
+            {"name": "مجوهرات فضية", "value": 1000},
+            {"name": "ساعة يد أنيقة", "value": 1500},
+        ]
+        
+        gift = random.choice(gifts)
+        celebration_message = random.choice(WEDDING_CELEBRATION_MESSAGES)
+        
+        gift_message = (
+            f"🎁 **هدية عرس جميلة!** 🎁\n\n"
+            f"👤 مقدم الهدية: {giver_name}\n"
+            f"💝 الهدية: {gift['name']}\n"
+            f"💰 القيمة: {gift['value']}$\n\n"
+            f"{celebration_message}\n\n"
+            f"🌟 شكراً لكم على هذا الكرم!"
+        )
+        
+        await message.reply(gift_message)
+
+    except Exception as e:
+        logging.error(f"خطأ في هدية العرس: {e}")
+        await message.reply("❌ حدث خطأ أثناء تقديم الهدية")
+
+
 # دوال مساعدة
 async def is_entertainment_enabled(chat_id: int) -> bool:
     """التحقق من تفعيل التسلية"""
@@ -897,3 +1170,163 @@ async def has_admin_permission(user_id: int, chat_id: int) -> bool:
     except Exception as e:
         logging.error(f"خطأ في التحقق من الصلاحيات: {e}")
         return False
+
+
+async def wedding_dance(message: Message):
+    """الرقص في العرس"""
+    try:
+        if not await is_entertainment_enabled(message.chat.id):
+            await message.reply("❌ التسلية معطلة في هذه المجموعة")
+            return
+
+        dancer_name = message.from_user.first_name or "الراقص"
+        
+        # التحقق من وجود أي زواج في المجموعة
+        marriages = await execute_query(
+            "SELECT * FROM entertainment_marriages WHERE chat_id = ?",
+            (message.chat.id,),
+            fetch_all=True
+        )
+        
+        if not marriages:
+            await message.reply("❌ لا توجد أعراس في المجموعة للرقص فيها!")
+            return
+
+        # رسائل الرقص
+        dance_messages = [
+            f"💃 {dancer_name} يرقص بحماس في العرس!",
+            f"🕺 {dancer_name} يؤدي رقصة جميلة!",
+            f"🎭 {dancer_name} يرقص والكل يصفق له!",
+            f"💫 {dancer_name} يقدم عرض رقص رائع!",
+            f"🌟 {dancer_name} يرقص بفرح شديد!",
+            f"✨ {dancer_name} يضيف البهجة للحفل برقصه!",
+        ]
+        
+        # رسائل رقص ملكي خاصة
+        royal_dance_messages = [
+            f"👑 {dancer_name} يؤدي الرقصة الملكية المقدسة!",
+            f"🏰 {dancer_name} يرقص رقصة النبلاء القديمة!",
+            f"⚜️ {dancer_name} يقدم عرضاً ملكياً مبهراً!",
+            f"💎 {dancer_name} يرقص بأناقة الأمراء والأميرات!",
+            f"🎭 {dancer_name} يؤدي الرقصة الإمبراطورية النادرة!",
+        ]
+        
+        from config.hierarchy import is_royal
+        
+        # تحديد نوع الرقصة حسب الرتبة
+        if is_royal(message.from_user.id):
+            dance_msg = random.choice(royal_dance_messages)
+            celebration = random.choice(ROYAL_WEDDING_CEREMONIES)
+            
+            dance_response = (
+                f"👑✨ **رقصة ملكية فخمة** ✨👑\n\n"
+                f"{dance_msg}\n\n"
+                f"{celebration}\n\n"
+                f"🎊 **الحضور يصفق بحماس للعرض الملكي!**\n"
+                f"👏 عاشت العائلة الملكية! عاش الحب!"
+            )
+        else:
+            dance_msg = random.choice(dance_messages)
+            celebration = random.choice(WEDDING_CELEBRATION_MESSAGES)
+            
+            dance_response = (
+                f"💃🕺 **رقصة عرس جميلة** 🕺💃\n\n"
+                f"{dance_msg}\n\n"
+                f"{celebration}\n\n"
+                f"🎉 **الجميع يشارك في الفرحة!**\n"
+                f"👏 يا هلا يا هلا! مبروك للعرسان!"
+            )
+        
+        await message.reply(dance_response)
+        
+        # إضافة XP للراقص
+        try:
+            from modules.simple_level_display import add_simple_xp
+            await add_simple_xp(message.from_user.id, 15)  # XP إضافي للرقص
+        except Exception as xp_error:
+            logging.error(f"خطأ في إضافة XP للرقص: {xp_error}")
+
+    except Exception as e:
+        logging.error(f"خطأ في رقص العرس: {e}")
+        await message.reply("❌ حدث خطأ أثناء الرقص")
+
+
+async def wedding_congratulation(message: Message):
+    """التهنئة بالعرس"""
+    try:
+        if not await is_entertainment_enabled(message.chat.id):
+            await message.reply("❌ التسلية معطلة في هذه المجموعة")
+            return
+
+        congratulator_name = message.from_user.first_name or "المهنئ"
+        
+        # التحقق من وجود أي زواج في المجموعة
+        marriages = await execute_query(
+            "SELECT * FROM entertainment_marriages WHERE chat_id = ?",
+            (message.chat.id,),
+            fetch_all=True
+        )
+        
+        if not marriages:
+            await message.reply("❌ لا توجد أعراس في المجموعة للتهنئة!")
+            return
+
+        # رسائل التهنئة العادية
+        congratulation_messages = [
+            f"🎉 {congratulator_name} يهنئ العرسان بأجمل التهاني!",
+            f"💐 {congratulator_name} يقدم أحر التهاني للعروسين!",
+            f"🌹 {congratulator_name} يبارك للزوجين الجدد!",
+            f"🎊 {congratulator_name} يهنئهم من القلب!",
+            f"💕 {congratulator_name} يتمنى لهم حياة سعيدة!",
+            f"✨ {congratulator_name} يدعو لهم بالسعادة الدائمة!",
+        ]
+        
+        # رسائل تهنئة ملكية خاصة
+        royal_congratulation_messages = [
+            f"👑 {congratulator_name} يقدم التهاني الملكية للعرسان!",
+            f"🏰 {congratulator_name} يبارك بالأسلوب الإمبراطوري النبيل!",
+            f"⚜️ {congratulator_name} يهنئ بالطقوس الملكية المقدسة!",
+            f"💎 {congratulator_name} يقدم تحية العائلة الملكية!",
+            f"🎭 {congratulator_name} يبارك بلسان النبلاء والأمراء!",
+        ]
+        
+        from config.hierarchy import is_royal
+        
+        # تحديد نوع التهنئة حسب الرتبة
+        if is_royal(message.from_user.id):
+            congrat_msg = random.choice(royal_congratulation_messages)
+            blessing = random.choice(ROYAL_WEDDING_CEREMONIES)
+            
+            congratulation_response = (
+                f"👑🎉 **تهنئة ملكية فخمة** 🎉👑\n\n"
+                f"{congrat_msg}\n\n"
+                f"{blessing}\n\n"
+                f"🏰 **بركات العائلة الملكية على العرسان**\n"
+                f"💎 عسى أن تدوم المحبة والسعادة\n"
+                f"👑 **حفظكم الله ورعاكم بعنايته**"
+            )
+        else:
+            congrat_msg = random.choice(congratulation_messages)
+            blessing = random.choice(WEDDING_CELEBRATION_MESSAGES)
+            
+            congratulation_response = (
+                f"🎉💕 **تهنئة حارة بالعرس** 💕🎉\n\n"
+                f"{congrat_msg}\n\n"
+                f"{blessing}\n\n"
+                f"🌹 **دعوات خالصة بالسعادة**\n"
+                f"✨ عقبال كل الشباب والبنات\n"
+                f"🎊 **ألف مبروك للعروسين!**"
+            )
+        
+        await message.reply(congratulation_response)
+        
+        # إضافة XP للمهنئ
+        try:
+            from modules.simple_level_display import add_simple_xp
+            await add_simple_xp(message.from_user.id, 10)  # XP للتهنئة
+        except Exception as xp_error:
+            logging.error(f"خطأ في إضافة XP للتهنئة: {xp_error}")
+
+    except Exception as e:
+        logging.error(f"خطأ في تهنئة العرس: {e}")
+        await message.reply("❌ حدث خطأ أثناء التهنئة")
