@@ -184,10 +184,10 @@ class SharedGroupMemorySQLite:
                     SELECT user_id, username, message_text, ai_response, topics, timestamp
                     FROM shared_conversations
                     WHERE chat_id = ? 
-                    AND (mentioned_users LIKE ? OR user_id = ? OR message_text LIKE ?)
+                    AND (mentioned_users LIKE ? OR user_id = ?)
                     ORDER BY timestamp DESC
                     LIMIT ?
-                ''', (chat_id, f'%{target_user_id}%', target_user_id, f'%@%', limit))
+                ''', (chat_id, f'%{target_user_id}%', target_user_id, limit))
                 
                 rows = await cursor.fetchall()
                 
