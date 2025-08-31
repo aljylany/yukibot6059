@@ -559,6 +559,184 @@ async def uptime_command(message: Message):
         await message.reply("❌ حدث خطأ أثناء جلب معلومات وقت التشغيل.")
 
 
+# أوامر الترقية الملكية - للسيد الأعلى فقط
+@router.message(Command("promote_queen"))
+async def promote_queen_command(message: Message):
+    """ترقية مستخدم إلى ملكة /promote_queen [user_id] - للسيد الأعلى فقط"""
+    try:
+        from config.hierarchy import is_supreme_master, promote_to_queen
+        
+        # التحقق من أن المستخدم هو السيد الأعلى
+        if not is_supreme_master(message.from_user.id):
+            await message.reply("❌ هذا الأمر متاح للسيد الأعلى فقط!")
+            return
+        
+        # الحصول على معرف المستخدم من الأمر
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            await message.reply("❌ يرجى إدخال معرف المستخدم!\nمثال: `/promote_queen 123456789`")
+            return
+        
+        try:
+            user_id = int(command_parts[1].strip())
+        except ValueError:
+            await message.reply("❌ معرف المستخدم يجب أن يكون رقماً!")
+            return
+        
+        # ترقية المستخدم إلى ملكة
+        success = promote_to_queen(user_id)
+        
+        if success:
+            await message.reply(
+                f"👑✨ **تمت الترقية الملكية بنجاح!** ✨👑\n\n"
+                f"🎭 المستخدم {user_id} أصبح الآن **ملكة**!\n"
+                f"💎 يتمتع بجميع الامتيازات الملكية الحصرية\n"
+                f"🏰 زواج ملكي مجاني + راتب مضاعف 10 مرات\n\n"
+                f"👑 عاشت الملكة الجديدة! 👑"
+            )
+        else:
+            await message.reply(f"❌ فشل في ترقية المستخدم {user_id} إلى ملكة")
+        
+    except Exception as e:
+        logging.error(f"خطأ في ترقية الملكة: {e}")
+        await message.reply("❌ حدث خطأ أثناء ترقية الملكة")
+
+
+@router.message(Command("promote_king"))
+async def promote_king_command(message: Message):
+    """ترقية مستخدم إلى ملك /promote_king [user_id] - للسيد الأعلى فقط"""
+    try:
+        from config.hierarchy import is_supreme_master, promote_to_king
+        
+        # التحقق من أن المستخدم هو السيد الأعلى
+        if not is_supreme_master(message.from_user.id):
+            await message.reply("❌ هذا الأمر متاح للسيد الأعلى فقط!")
+            return
+        
+        # الحصول على معرف المستخدم من الأمر
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            await message.reply("❌ يرجى إدخال معرف المستخدم!\nمثال: `/promote_king 123456789`")
+            return
+        
+        try:
+            user_id = int(command_parts[1].strip())
+        except ValueError:
+            await message.reply("❌ معرف المستخدم يجب أن يكون رقماً!")
+            return
+        
+        # ترقية المستخدم إلى ملك
+        success = promote_to_king(user_id)
+        
+        if success:
+            await message.reply(
+                f"👑✨ **تمت الترقية الملكية بنجاح!** ✨👑\n\n"
+                f"🎭 المستخدم {user_id} أصبح الآن **ملك**!\n"
+                f"💎 يتمتع بجميع الامتيازات الملكية الحصرية\n"
+                f"🏰 زواج ملكي مجاني + راتب مضاعف 10 مرات\n\n"
+                f"👑 عاش الملك الجديد! 👑"
+            )
+        else:
+            await message.reply(f"❌ فشل في ترقية المستخدم {user_id} إلى ملك")
+        
+    except Exception as e:
+        logging.error(f"خطأ في ترقية الملك: {e}")
+        await message.reply("❌ حدث خطأ أثناء ترقية الملك")
+
+
+@router.message(Command("demote_royal"))
+async def demote_royal_command(message: Message):
+    """تنزيل مستخدم من المستوى الملكي /demote_royal [user_id] - للسيد الأعلى فقط"""
+    try:
+        from config.hierarchy import is_supreme_master, demote_from_royalty
+        
+        # التحقق من أن المستخدم هو السيد الأعلى
+        if not is_supreme_master(message.from_user.id):
+            await message.reply("❌ هذا الأمر متاح للسيد الأعلى فقط!")
+            return
+        
+        # الحصول على معرف المستخدم من الأمر
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            await message.reply("❌ يرجى إدخال معرف المستخدم!\nمثال: `/demote_royal 123456789`")
+            return
+        
+        try:
+            user_id = int(command_parts[1].strip())
+        except ValueError:
+            await message.reply("❌ معرف المستخدم يجب أن يكون رقماً!")
+            return
+        
+        # تنزيل المستخدم من المستوى الملكي
+        success = demote_from_royalty(user_id)
+        
+        if success:
+            await message.reply(
+                f"📉 **تم التنزيل من المستوى الملكي**\n\n"
+                f"👤 المستخدم {user_id} لم يعد ملكاً أو ملكة\n"
+                f"🔄 تمت إعادته إلى مستوى السيد\n"
+                f"❌ فقد جميع الامتيازات الملكية"
+            )
+        else:
+            await message.reply(f"❌ فشل في تنزيل المستخدم {user_id} من المستوى الملكي")
+        
+    except Exception as e:
+        logging.error(f"خطأ في تنزيل الملكي: {e}")
+        await message.reply("❌ حدث خطأ أثناء تنزيل المستخدم من المستوى الملكي")
+
+
+@router.message(Command("royal_status"))
+async def royal_status_command(message: Message):
+    """عرض حالة العائلة الملكية /royal_status - للسيد الأعلى فقط"""
+    try:
+        from config.hierarchy import is_supreme_master, ROYALTY
+        
+        # التحقق من أن المستخدم هو السيد الأعلى
+        if not is_supreme_master(message.from_user.id):
+            await message.reply("❌ هذا الأمر متاح للسيد الأعلى فقط!")
+            return
+        
+        kings = ROYALTY["KINGS"]
+        queens = ROYALTY["QUEENS"]
+        
+        status_message = f"""
+👑 **حالة العائلة الملكية** 👑
+
+🤴 **الملوك ({len(kings)}):**
+"""
+        
+        if kings:
+            for king_id in kings:
+                status_message += f"• {king_id}\n"
+        else:
+            status_message += "• لا يوجد ملوك حالياً\n"
+        
+        status_message += f"""
+👸 **الملكات ({len(queens)}):**
+"""
+        
+        if queens:
+            for queen_id in queens:
+                status_message += f"• {queen_id}\n"
+        else:
+            status_message += "• لا يوجد ملكات حالياً\n"
+        
+        status_message += f"""
+✨ **إجمالي العائلة الملكية:** {len(kings) + len(queens)} أفراد
+
+🎭 **الأوامر المتاحة:**
+• `/promote_king [user_id]` - ترقية إلى ملك
+• `/promote_queen [user_id]` - ترقية إلى ملكة  
+• `/demote_royal [user_id]` - تنزيل من المستوى الملكي
+        """
+        
+        await message.reply(status_message.strip())
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض حالة العائلة الملكية: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض حالة العائلة الملكية")
+
+
 @router.message(Command("groups"))
 async def groups_command(message: Message):
     """أمر المجموعات /groups - يعمل فقط في القناة الفرعية للإشعارات"""

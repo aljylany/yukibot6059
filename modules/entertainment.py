@@ -198,28 +198,44 @@ async def handle_marriage(message: Message, action: str):
 
         user_id = message.from_user.id
         
+        # فحص إذا كان المستخدم من العائلة الملكية
+        from config.hierarchy import is_royal, is_king, is_queen
+        user_is_royal = is_royal(user_id)
+        
         if action == "زواج":
-            # تحليل الرسالة للحصول على المهر
-            text_parts = message.text.split()
-            if len(text_parts) < 2:
+            # معالجة خاصة للعائلة الملكية
+            if user_is_royal:
+                # الزواج الملكي مجاني تماماً!
+                dowry_amount = 0
+                royal_title = "الملك" if is_king(user_id) else "الملكة"
                 await message.reply(
-                    "❌ **طريقة الزواج الصحيحة:**\n\n"
-                    "1️⃣ رد على رسالة من تريد/ين الزواج منه/ها\n"
-                    "2️⃣ اكتب: زواج [مبلغ المهر]\n\n"
-                    "**مثال:** زواج 5000\n"
-                    "💰 المهر يجب أن يكون 1000 أو أكثر"
+                    f"👑 **زواج ملكي مجاني!**\n\n"
+                    f"🎭 {royal_title} لا يدفع مهراً - هذا شرف للطرف الآخر!\n"
+                    f"💎 الزواج الملكي مجاني تماماً ومليء بالامتيازات\n"
+                    f"🏰 ستحصل على حفل زفاف أسطوري!"
                 )
-                return
-            
-            try:
-                dowry_amount = int(text_parts[1])
-            except ValueError:
-                await message.reply("❌ يرجى كتابة مبلغ مهر صحيح\n\n**مثال:** زواج 5000")
-                return
-            
-            if dowry_amount < 1000:
-                await message.reply("❌ مبلغ المهر يجب أن يكون 1,000 أو أكثر")
-                return
+            else:
+                # تحليل الرسالة للحصول على المهر للمستخدمين العاديين
+                text_parts = message.text.split()
+                if len(text_parts) < 2:
+                    await message.reply(
+                        "❌ **طريقة الزواج الصحيحة:**\n\n"
+                        "1️⃣ رد على رسالة من تريد/ين الزواج منه/ها\n"
+                        "2️⃣ اكتب: زواج [مبلغ المهر]\n\n"
+                        "**مثال:** زواج 5000\n"
+                        "💰 المهر يجب أن يكون 1000 أو أكثر"
+                    )
+                    return
+                
+                try:
+                    dowry_amount = int(text_parts[1])
+                except ValueError:
+                    await message.reply("❌ يرجى كتابة مبلغ مهر صحيح\n\n**مثال:** زواج 5000")
+                    return
+                
+                if dowry_amount < 1000:
+                    await message.reply("❌ مبلغ المهر يجب أن يكون 1,000 أو أكثر")
+                    return
             
             target_user = None
             if message.reply_to_message:
@@ -255,14 +271,15 @@ async def handle_marriage(message: Message, action: str):
                 await message.reply(f"💔 {target_name} متزوج بالفعل!")
                 return
 
-            # التحقق من رصيد المتقدم للزواج
+            # التحقق من رصيد المتقدم للزواج (إذا لم يكن من العائلة الملكية)
             from database.operations import get_user
             proposer = await get_user(user_id)
             if not proposer:
                 await message.reply("❌ يرجى إنشاء حساب بنكي أولاً")
                 return
             
-            if proposer['balance'] < dowry_amount:
+            # العائلة الملكية لا تحتاج لفحص الرصيد
+            if not user_is_royal and proposer['balance'] < dowry_amount:
                 from utils.helpers import format_number
                 await message.reply(
                     f"❌ ليس لديك رصيد كافٍ للمهر!\n"
@@ -281,15 +298,38 @@ async def handle_marriage(message: Message, action: str):
             target_name = target_user.first_name or "شخص"
             
             from utils.helpers import format_number
-            await message.reply(
-                f"💍 **طلب زواج جديد!**\n\n"
-                f"👤 من: {proposer_name}\n"
-                f"👤 إلى: {target_name}\n"
-                f"💰 المهر: {format_number(dowry_amount)}$\n\n"
-                f"⏰ **في انتظار موافقة {target_name}**\n"
-                f"📝 يجب على {target_name} الرد بكلمة **موافقة** للقبول\n"
-                f"🚫 أو **رفض** لرفض الطلب"
-            )
+            
+            # رسالة طلب زواج مختلفة للعائلة الملكية
+            if user_is_royal:
+                royal_title = "الملك" if is_king(user_id) else "الملكة"
+                target_is_royal = is_royal(target_user.id)
+                target_royal_title = ""
+                if target_is_royal:
+                    target_royal_title = "الملك" if is_king(target_user.id) else "الملكة"
+                
+                marriage_message = (
+                    f"👑 **طلب زواج ملكي أسطوري!** 👑\n\n"
+                    f"🎭 من: {royal_title} {proposer_name}\n"
+                    f"🎭 إلى: {target_royal_title + ' ' if target_royal_title else ''}{target_name}\n"
+                    f"💎 المهر: مجاني تماماً - شرف ملكي!\n"
+                    f"🏰 نوع الزواج: **زواج ملكي فخم**\n"
+                    f"🎊 المكافآت: حفل زفاف أسطوري + هدايا ملكية\n\n"
+                    f"⏰ **في انتظار الموافقة الملكية من {target_name}**\n"
+                    f"👑 يجب على {target_name} الرد بكلمة **موافقة** للحصول على الشرف الملكي\n"
+                    f"🚫 أو **رفض** لتفويت هذا الشرف العظيم"
+                )
+            else:
+                marriage_message = (
+                    f"💍 **طلب زواج جديد!**\n\n"
+                    f"👤 من: {proposer_name}\n"
+                    f"👤 إلى: {target_name}\n"
+                    f"💰 المهر: {format_number(dowry_amount)}$\n\n"
+                    f"⏰ **في انتظار موافقة {target_name}**\n"
+                    f"📝 يجب على {target_name} الرد بكلمة **موافقة** للقبول\n"
+                    f"🚫 أو **رفض** لرفض الطلب"
+                )
+            
+            await message.reply(marriage_message)
         
         elif action == "طلاق" or action == "خلع":
             # البحث عن الزواج
@@ -511,8 +551,13 @@ async def handle_marriage_response(message: Message, response_type: str):
         target_name = target.get('first_name', f'المستخدم #{user_id}')
         
         if response_type == "موافقة":
-            # التحقق من أن المتقدم لا يزال لديه الرصيد
-            if proposer['balance'] < dowry_amount:
+            # فحص إذا كان أحد الأطراف من العائلة الملكية
+            from config.hierarchy import is_royal, is_king, is_queen
+            proposer_is_royal = is_royal(proposer_id)
+            target_is_royal = is_royal(user_id)
+            
+            # التحقق من أن المتقدم لا يزال لديه الرصيد (إلا إذا كان ملكياً)
+            if not proposer_is_royal and proposer['balance'] < dowry_amount:
                 await execute_query(
                     "UPDATE marriage_proposals SET status = 'cancelled' WHERE id = ?",
                     (proposal_id,)
@@ -530,36 +575,68 @@ async def handle_marriage_response(message: Message, response_type: str):
             JUDGE_USERNAME = "@Hacker20263"
             JUDGE_NAME = "ردفان"
             
-            # حساب عمولة القاضي (بين 100-1000 حسب المهر)
-            judge_commission = max(100, min(1000, int(dowry_amount * 0.05)))  # 5% من المهر
-            
-            # التحقق من أن المتقدم يستطيع دفع المهر + العمولة
-            total_cost = dowry_amount + judge_commission
-            if proposer['balance'] < total_cost:
-                from utils.helpers import format_number
-                await message.reply(
-                    f"❌ **رصيد غير كافٍ!**\n"
-                    f"💰 المهر: {format_number(dowry_amount)}$\n"
-                    f"💼 عمولة القاضي: {format_number(judge_commission)}$\n"
-                    f"💸 المطلوب: {format_number(total_cost)}$\n"
-                    f"💰 الرصيد الحالي: {format_number(proposer['balance'])}$"
-                )
-                return
+            # معالجة مختلفة للزواج الملكي
+            if proposer_is_royal or target_is_royal:
+                # الزواج الملكي بدون رسوم أو عمولة
+                judge_commission = 0
+                total_cost = 0
+                royal_wedding = True
+            else:
+                # حساب عمولة القاضي (بين 100-1000 حسب المهر)
+                judge_commission = max(100, min(1000, int(dowry_amount * 0.05)))  # 5% من المهر
+                total_cost = dowry_amount + judge_commission
+                royal_wedding = False
+                
+                # التحقق من أن المتقدم يستطيع دفع المهر + العمولة
+                if proposer['balance'] < total_cost:
+                    from utils.helpers import format_number
+                    await message.reply(
+                        f"❌ **رصيد غير كافٍ!**\n"
+                        f"💰 المهر: {format_number(dowry_amount)}$\n"
+                        f"💼 عمولة القاضي: {format_number(judge_commission)}$\n"
+                        f"💸 المطلوب: {format_number(total_cost)}$\n"
+                        f"💰 الرصيد الحالي: {format_number(proposer['balance'])}$"
+                    )
+                    return
             
             # تنفيذ المعاملة المالية
             from database.operations import update_user_balance, add_transaction
             
-            # خصم من المتقدم
-            new_proposer_balance = proposer['balance'] - total_cost
-            await update_user_balance(proposer_id, new_proposer_balance)
+            # معالجة مختلفة للزواج الملكي
+            if royal_wedding:
+                # الزواج الملكي - هدايا ملكية بدلاً من المهر
+                royal_gift = 50000  # هدية ملكية كبيرة
+                new_proposer_balance = proposer['balance'] + royal_gift
+                new_target_balance = target['balance'] + royal_gift
+                await update_user_balance(proposer_id, new_proposer_balance)
+                await update_user_balance(user_id, new_target_balance)
+                
+                # إضافة المعاملات الملكية
+                await add_transaction(
+                    proposer_id,
+                    "هدية زواج ملكي",
+                    royal_gift,
+                    "royal_wedding_gift"
+                )
+                await add_transaction(
+                    user_id,
+                    "هدية زواج ملكي",
+                    royal_gift,
+                    "royal_wedding_gift"
+                )
+            else:
+                # الزواج العادي
+                # خصم من المتقدم
+                new_proposer_balance = proposer['balance'] - total_cost
+                await update_user_balance(proposer_id, new_proposer_balance)
+                
+                # إعطاء المهر للعروس
+                new_target_balance = target['balance'] + dowry_amount
+                await update_user_balance(user_id, new_target_balance)
             
-            # إعطاء المهر للعروس
-            new_target_balance = target['balance'] + dowry_amount
-            await update_user_balance(user_id, new_target_balance)
-            
-            # إعطاء العمولة للقاضي (إذا كان مسجل في البوت)
+            # إعطاء العمولة للقاضي (إذا كان مسجل في البوت وليس زواج ملكي)
             judge = await get_user(JUDGE_ID)
-            if judge:
+            if judge and not royal_wedding:
                 new_judge_balance = judge['balance'] + judge_commission
                 await update_user_balance(JUDGE_ID, new_judge_balance)
                 
@@ -570,26 +647,40 @@ async def handle_marriage_response(message: Message, response_type: str):
                     judge_commission,
                     "judge_commission"
                 )
+            elif judge and royal_wedding:
+                # القاضي يحصل على هدية ملكية خاصة
+                royal_judge_gift = 100000
+                new_judge_balance = judge['balance'] + royal_judge_gift
+                await update_user_balance(JUDGE_ID, new_judge_balance)
+                
+                # إضافة معاملة للقاضي
+                await add_transaction(
+                    JUDGE_ID,
+                    f"هدية ملكية لقاضي الزواج الملكي {proposer_name} و {target_name}",
+                    royal_judge_gift,
+                    "royal_judge_gift"
+                )
             
-            # إضافة المعاملات
-            await add_transaction(
-                proposer_id,
-                f"مهر زواج من {target_name}",
-                -dowry_amount,
-                "marriage_dowry"
-            )
-            await add_transaction(
-                proposer_id,
-                f"عمولة القاضي للزواج",
-                -judge_commission,
-                "judge_fee"
-            )
-            await add_transaction(
-                user_id,
-                f"مهر زواج من {proposer_name}",
-                dowry_amount,
-                "marriage_dowry"
-            )
+            # إضافة المعاملات للزواج العادي فقط
+            if not royal_wedding:
+                await add_transaction(
+                    proposer_id,
+                    f"مهر زواج من {target_name}",
+                    -dowry_amount,
+                    "marriage_dowry"
+                )
+                await add_transaction(
+                    proposer_id,
+                    f"عمولة القاضي للزواج",
+                    -judge_commission,
+                    "judge_fee"
+                )
+                await add_transaction(
+                    user_id,
+                    f"مهر زواج من {proposer_name}",
+                    dowry_amount,
+                    "marriage_dowry"
+                )
             
             # إجراء الزواج
             marriage_saved = await execute_query(
@@ -607,34 +698,72 @@ async def handle_marriage_response(message: Message, response_type: str):
             )
             
             from utils.helpers import format_number
-            marriage_message = (
-                f"💒 **مبروك الزواج!** 🎉\n\n"
-                f"👰 العروس: {target_name}\n"
-                f"🤵 العريس: {proposer_name}\n"
-                f"💎 المهر: {format_number(dowry_amount)}$\n"
-                f"⚖️ أتعاب الشيخ: {format_number(judge_commission)}$\n\n"
-                f"🕌 **شهد على العقد وكتبه فضيلة الشيخ المحترم:**\n"
-                f"📜 الشيخ {JUDGE_NAME} {JUDGE_USERNAME}\n"
-                f"🌟 بارك الله للعروسين وجمع بينهما في خير\n\n"
-                f"💕 ألف مبروك للعروسين!\n"
-                f"🌹 دام الحب والهناء!"
-            )
+            
+            # رسالة زواج مختلفة للعائلة الملكية
+            if royal_wedding:
+                # تحديد الألقاب الملكية
+                proposer_title = "الملك" if is_king(proposer_id) else "الملكة" if is_queen(proposer_id) else "الأمير/ة"
+                target_title = "الملك" if is_king(user_id) else "الملكة" if is_queen(user_id) else "الأمير/ة"
+                
+                marriage_message = (
+                    f"👑✨ **زفاف ملكي أسطوري!** ✨👑\n\n"
+                    f"🎭 **طقوس الزفاف الملكي الفخم:**\n"
+                    f"👸 العروس الملكية: {target_title} {target_name}\n"
+                    f"🤴 العريس الملكي: {proposer_title} {proposer_name}\n"
+                    f"💎 المهر الملكي: مجاني - شرف ملكي!\n"
+                    f"🎁 الهدايا الملكية: {format_number(royal_gift)}$ لكل طرف\n"
+                    f"👑 هدية القاضي الملكية: {format_number(royal_judge_gift)}$\n\n"
+                    f"🏰 **مراسم الزفاف الأسطوري:**\n"
+                    f"🕌 **كتب العقد الملكي فضيلة الشيخ الأعظم:**\n"
+                    f"📜 الشيخ {JUDGE_NAME} {JUDGE_USERNAME}\n"
+                    f"🎊 **إعلان لجميع الرعايا:** لقد تم الزفاف الملكي!\n"
+                    f"🎭 **مراسم احتفالية:** موكب ملكي + هدايا للحضور\n\n"
+                    f"✨ **بارك الله في العائلة الملكية الجديدة!** ✨\n"
+                    f"👑 عاشت العائلة الملكية! 👑\n"
+                    f"🌟 دام الحب الملكي والهناء الأبدي! 🌟"
+                )
+            else:
+                marriage_message = (
+                    f"💒 **مبروك الزواج!** 🎉\n\n"
+                    f"👰 العروس: {target_name}\n"
+                    f"🤵 العريس: {proposer_name}\n"
+                    f"💎 المهر: {format_number(dowry_amount)}$\n"
+                    f"⚖️ أتعاب الشيخ: {format_number(judge_commission)}$\n\n"
+                    f"🕌 **شهد على العقد وكتبه فضيلة الشيخ المحترم:**\n"
+                    f"📜 الشيخ {JUDGE_NAME} {JUDGE_USERNAME}\n"
+                    f"🌟 بارك الله للعروسين وجمع بينهما في خير\n\n"
+                    f"💕 ألف مبروك للعروسين!\n"
+                    f"🌹 دام الحب والهناء!"
+                )
             
             await message.reply(marriage_message)
             
             # إشعار القاضي إذا كان متاح
             if judge:
                 try:
-                    await message.bot.send_message(
-                        JUDGE_ID,
-                        f"🕌 **بارك الله في فضيلة الشيخ**\n\n"
-                        f"📜 تم إتمام عقد زواج جديد بحضرتكم المباركة\n"
-                        f"👰 العروس: {target_name}\n"
-                        f"🤵 العريس: {proposer_name}\n"
-                        f"💰 الأتعاب المستحقة: {format_number(judge_commission)}$\n"
-                        f"💳 رصيدكم الجديد: {format_number(new_judge_balance)}$\n\n"
-                        f"🌟 جزاكم الله خيراً على خدمة المسلمين"
-                    )
+                    if royal_wedding:
+                        await message.bot.send_message(
+                            JUDGE_ID,
+                            f"👑 **مبروك فضيلة الشيخ الأعظم** 👑\n\n"
+                            f"🎭 تم إتمام أول زفاف ملكي في التاريخ بحضرتكم المباركة!\n"
+                            f"👸 العروس الملكية: {target_name}\n"
+                            f"🤴 العريس الملكي: {proposer_name}\n"
+                            f"👑 الهدية الملكية الخاصة: {format_number(royal_judge_gift)}$\n"
+                            f"💳 رصيدكم الملكي الجديد: {format_number(new_judge_balance)}$\n\n"
+                            f"🏰 **شرف عظيم:** أنتم قاضي الزفاف الملكي الأول!\n"
+                            f"✨ جزاكم الله خيراً على خدمة العائلة الملكية والمسلمين"
+                        )
+                    else:
+                        await message.bot.send_message(
+                            JUDGE_ID,
+                            f"🕌 **بارك الله في فضيلة الشيخ**\n\n"
+                            f"📜 تم إتمام عقد زواج جديد بحضرتكم المباركة\n"
+                            f"👰 العروس: {target_name}\n"
+                            f"🤵 العريس: {proposer_name}\n"
+                            f"💰 الأتعاب المستحقة: {format_number(judge_commission)}$\n"
+                            f"💳 رصيدكم الجديد: {format_number(new_judge_balance)}$\n\n"
+                            f"🌟 جزاكم الله خيراً على خدمة المسلمين"
+                        )
                 except:
                     pass  # إذا فشل إرسال الإشعار
         

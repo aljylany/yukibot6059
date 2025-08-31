@@ -15,10 +15,18 @@ class AdminLevel(Enum):
     MODERATOR = 1  # مشرف
     GROUP_OWNER = 2  # مالك المجموعة
     MASTER = 3  # السيد - صلاحيات مطلقة
+    KING = 4  # الملك - أعلى مستوى في التسلسل الهرمي
+    QUEEN = 5  # الملكة - أعلى مستوى في التسلسل الهرمي
 
 
 # الأسياد - صلاحيات مطلقة في جميع المجموعات
 MASTERS = [6524680126, 8278493069, 6629947448, 7988917983, 7155814194]
+
+# الملوك والملكات - أعلى مستوى في التسلسل الهرمي مع امتيازات خاصة
+ROYALTY = {
+    "KINGS": [],  # قائمة الملوك
+    "QUEENS": []  # قائمة الملكات
+}
 
 # مالكي المجموعات (يتم إدارتهم ديناميكياً)
 GROUP_OWNERS: Dict[int, List[int]] = {}  # {group_id: [owner_ids]}
@@ -39,7 +47,15 @@ def get_user_admin_level(user_id: int, group_id: Optional[int] = None) -> AdminL
         مستوى الإدارة
     """
     try:
-        # فحص الأسياد أولاً - لهم صلاحيات مطلقة
+        # فحص الملكات أولاً - أعلى مستوى
+        if user_id in ROYALTY["QUEENS"]:
+            return AdminLevel.QUEEN
+            
+        # فحص الملوك - أعلى مستوى
+        if user_id in ROYALTY["KINGS"]:
+            return AdminLevel.KING
+
+        # فحص الأسياد - صلاحيات مطلقة
         if user_id in MASTERS:
             return AdminLevel.MASTER
 
@@ -65,6 +81,18 @@ def get_user_admin_level(user_id: int, group_id: Optional[int] = None) -> AdminL
 def is_master(user_id: int) -> bool:
     """التحقق من كون المستخدم سيد"""
     return user_id in MASTERS
+
+def is_king(user_id: int) -> bool:
+    """التحقق من كون المستخدم ملك"""
+    return user_id in ROYALTY["KINGS"]
+
+def is_queen(user_id: int) -> bool:
+    """التحقق من كون المستخدم ملكة"""
+    return user_id in ROYALTY["QUEENS"]
+
+def is_royal(user_id: int) -> bool:
+    """التحقق من كون المستخدم من العائلة الملكية"""
+    return is_king(user_id) or is_queen(user_id)
 
 def is_supreme_master(user_id: int) -> bool:
     """التحقق من أن المستخدم هو السيد الأعلى (الأول) - محمي من جميع الأوامر"""
@@ -284,7 +312,9 @@ def get_admin_level_name(level: AdminLevel) -> str:
         AdminLevel.MEMBER: "عضو عادي",
         AdminLevel.MODERATOR: "مشرف",
         AdminLevel.GROUP_OWNER: "مالك المجموعة",
-        AdminLevel.MASTER: "السيد"
+        AdminLevel.MASTER: "السيد",
+        AdminLevel.KING: "الملك",
+        AdminLevel.QUEEN: "الملكة"
     }
     return names.get(level, "غير محدد")
 
@@ -313,5 +343,92 @@ def get_user_permissions(user_id: int, group_id: Optional[int] = None) -> List[s
             "التدمير الذاتي للمجموعة", "مغادرة المجموعات",
             "إدارة مالكي المجموعات", "الوصول لجميع الأوامر الإدارية"
         ])
+        
+    if level.value >= AdminLevel.KING.value:
+        permissions.extend([
+            "👑 امتيازات الملك الحصرية:", "ترقية وتنزيل الأسياد",
+            "إدارة العائلة الملكية", "زواج ملكي مجاني", "حفلات زفاف أسطورية",
+            "امتيازات اقتصادية خاصة", "صلاحيات مطلقة في جميع الأنظمة"
+        ])
+    
+    if level.value >= AdminLevel.QUEEN.value:
+        permissions.extend([
+            "👸 امتيازات الملكة الحصرية:", "ترقية وتنزيل الأسياد", 
+            "إدارة العائلة الملكية", "زواج ملكي مجاني", "حفلات زفاف أسطورية",
+            "امتيازات اقتصادية خاصة", "صلاحيات مطلقة في جميع الأنظمة"
+        ])
 
     return permissions
+
+
+def promote_to_king(user_id: int) -> bool:
+    """ترقية مستخدم إلى ملك"""
+    try:
+        if user_id not in ROYALTY["KINGS"]:
+            ROYALTY["KINGS"].append(user_id)
+            # إزالة من قوائم أخرى إذا كان موجود
+            if user_id in ROYALTY["QUEENS"]:
+                ROYALTY["QUEENS"].remove(user_id)
+            if user_id in MASTERS:
+                MASTERS.remove(user_id)
+            
+            logging.info(f"تم ترقية المستخدم {user_id} إلى ملك")
+            # حفظ في قاعدة البيانات
+            asyncio.create_task(
+                sync_rank_to_database(user_id, 0, "ملك"))
+            return True
+        return False
+    except Exception as e:
+        logging.error(f"خطأ في promote_to_king: {e}")
+        return False
+
+
+def promote_to_queen(user_id: int) -> bool:
+    """ترقية مستخدم إلى ملكة"""
+    try:
+        if user_id not in ROYALTY["QUEENS"]:
+            ROYALTY["QUEENS"].append(user_id)
+            # إزالة من قوائم أخرى إذا كان موجود
+            if user_id in ROYALTY["KINGS"]:
+                ROYALTY["KINGS"].remove(user_id)
+            if user_id in MASTERS:
+                MASTERS.remove(user_id)
+            
+            logging.info(f"تم ترقية المستخدم {user_id} إلى ملكة")
+            # حفظ في قاعدة البيانات
+            asyncio.create_task(
+                sync_rank_to_database(user_id, 0, "ملكة"))
+            return True
+        return False
+    except Exception as e:
+        logging.error(f"خطأ في promote_to_queen: {e}")
+        return False
+
+
+def demote_from_royalty(user_id: int) -> bool:
+    """تنزيل مستخدم من المستوى الملكي"""
+    try:
+        removed = False
+        if user_id in ROYALTY["KINGS"]:
+            ROYALTY["KINGS"].remove(user_id)
+            removed = True
+        if user_id in ROYALTY["QUEENS"]:
+            ROYALTY["QUEENS"].remove(user_id)
+            removed = True
+        
+        if removed:
+            # إعادة إضافة إلى قائمة الأسياد
+            if user_id not in MASTERS:
+                MASTERS.append(user_id)
+            
+            logging.info(f"تم تنزيل المستخدم {user_id} من المستوى الملكي")
+            # إزالة من قاعدة البيانات
+            asyncio.create_task(
+                remove_rank_from_database(user_id, 0, "ملك"))
+            asyncio.create_task(
+                remove_rank_from_database(user_id, 0, "ملكة"))
+            return True
+        return False
+    except Exception as e:
+        logging.error(f"خطأ في demote_from_royalty: {e}")
+        return False

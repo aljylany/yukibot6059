@@ -206,8 +206,22 @@ async def collect_daily_salary(message: Message):
         
         bank_info = BANK_TYPES[bank_type]
         
-        # حساب راتب عشوائي حسب نوع البنك
+        # امتياز ملكي جهنمي - راتب مضاعف للملوك والملكات! 👑
+        from config.hierarchy import is_royal, is_king, is_queen
+        
         min_salary, max_salary = bank_info["daily_salary"]
+        royal_bonus_multiplier = 1
+        royal_bonus_msg = ""
+        
+        if is_royal(message.from_user.id):
+            # الملوك والملكات يحصلون على راتب مضاعف 10 مرات!
+            royal_bonus_multiplier = 10
+            min_salary *= royal_bonus_multiplier
+            max_salary *= royal_bonus_multiplier
+            
+            royal_title = "الملك" if is_king(message.from_user.id) else "الملكة"
+            royal_bonus_msg = f"\n👑 **امتياز ملكي حصري!** مضاعف {royal_title}: x{royal_bonus_multiplier}"
+        
         daily_salary = random.randint(min_salary, max_salary)
         
         # إضافة مكافآت عشوائية أحياناً
@@ -215,12 +229,23 @@ async def collect_daily_salary(message: Message):
         bonus = 0
         bonus_msg = ""
         
-        if bonus_chance <= 10:  # 10% احتمال مكافأة كبيرة
-            bonus = random.randint(500, 1500)
-            bonus_msg = f"\n🎉 **مكافأة خاصة:** +{format_number(bonus)}$"
-        elif bonus_chance <= 25:  # 15% احتمال مكافأة صغيرة  
-            bonus = random.randint(100, 400)
-            bonus_msg = f"\n🎁 **مكافأة إضافية:** +{format_number(bonus)}$"
+        # الملوك والملكات يحصلون على مكافآت أكبر بكثير!
+        if is_royal(message.from_user.id):
+            # 50% احتمال مكافأة ملكية ضخمة للملوك والملكات
+            if bonus_chance <= 50:
+                bonus = random.randint(5000, 15000)
+                bonus_msg = f"\n👑 **مكافأة ملكية أسطورية:** +{format_number(bonus)}$"
+            elif bonus_chance <= 75:
+                bonus = random.randint(2000, 8000)
+                bonus_msg = f"\n💎 **مكافأة ملكية خاصة:** +{format_number(bonus)}$"
+        else:
+            # مكافآت عادية للمستخدمين العاديين
+            if bonus_chance <= 10:  # 10% احتمال مكافأة كبيرة
+                bonus = random.randint(500, 1500)
+                bonus_msg = f"\n🎉 **مكافأة خاصة:** +{format_number(bonus)}$"
+            elif bonus_chance <= 25:  # 15% احتمال مكافأة صغيرة  
+                bonus = random.randint(100, 400)
+                bonus_msg = f"\n🎁 **مكافأة إضافية:** +{format_number(bonus)}$"
         
         total_earned = daily_salary + bonus
         new_balance = user['balance'] + total_earned
@@ -243,8 +268,27 @@ async def collect_daily_salary(message: Message):
             "salary"
         )
         
-        # رسالة النجاح
-        salary_msg = f"""
+        # رسالة النجاح مع إضافة امتيازات ملكية
+        if is_royal(message.from_user.id):
+            royal_title = "الملك" if is_king(message.from_user.id) else "الملكة"
+            salary_msg = f"""
+👑 **راتب {royal_title} الملكي من {bank_info['emoji']} {bank_info['name']}** 👑
+
+💰 الراتب الملكي: {format_number(daily_salary)}${royal_bonus_msg}{bonus_msg}
+📊 إجمالي المبلغ الملكي: {format_number(total_earned)}$
+👑 رصيدك الملكي الجديد: {format_number(new_balance)}$
+
+✨ **امتيازات ملكية حصرية:**
+• راتب مضاعف {royal_bonus_multiplier} مرات
+• مكافآت ملكية أسطورية
+• معاملة VIP في جميع الخدمات
+• زواج ملكي مجاني
+• امتيازات اقتصادية خاصة
+
+👑 عاشت العائلة الملكية! 👑
+            """
+        else:
+            salary_msg = f"""
 💼 **راتبك اليومي من {bank_info['emoji']} {bank_info['name']}**
 
 💰 الراتب: {format_number(daily_salary)}${bonus_msg}
@@ -257,7 +301,7 @@ async def collect_daily_salary(message: Message):
 • شارك في الأنشطة التجارية للحصول على مكافآت إضافية
 
 عد غداً لجمع راتب جديد! 🎯
-        """
+            """
         
         await message.reply(salary_msg)
         
