@@ -149,29 +149,29 @@ ANIMATED_DANCE_FRAMES = {
         "🎊🎉🎊🎉🎊"
     ],
     
-    # شخصيات مضحكة مع رؤوس ايموجي وأجسام نصية
+    # شخصيات مضحكة معقدة مع رؤوس ايموجي وأجسام نصية
     "crazy_dancers": [
-        "     😂    \n    /|\\   \n    / \\   \n   HAHA   ",
-        "     🤪    \n   \\|/    \n    | |   \n   LOL!   ",
-        "     😵‍💫    \n    \\o/   \n     |    \n   WOOO   ",
-        "     🥳    \n    /|\\   \n   / | \\  \n  PARTY  ",
-        "     🤡    \n   <--|   \n    /\\    \n  CRAZY  "
+        "  😂    🤪    😵‍💫    🥳    🤡  \n /|\\   \\|/    \\o/   /|\\   <--| \n / \\   | |     |   / | \\   /\\  \nHAHA   LOL!   WOOO  PARTY CRAZY",
+        "  🤡    😂    🥳    😵‍💫    🤪  \n<--|   /|\\   / | \\   \\o/   \\|/ \n /\\    / \\   /   \\    |    | | \nCRAZY  HAHA  PARTY  WOOO  LOL!",
+        "  🥳    🤡    😂    🤪    😵‍💫  \n/ | \\  <--|   /|\\   \\|/    \\o/ \n/   \\   /\\    / \\   | |     |  \nPARTY CRAZY  HAHA   LOL!   WOOO",
+        "  😵‍💫    🥳    🤡    😂    🤪  \n \\o/   / | \\  <--|   /|\\   \\|/ \n  |   /   \\   /\\    / \\   | | \nWOOO  PARTY CRAZY  HAHA   LOL!",
+        "  🤪    😵‍💫    🥳    🤡    😂  \n \\|/    \\o/   / | \\  <--|   /|\\ \n | |     |   /   \\   /\\    / \\ \nLOL!   WOOO  PARTY CRAZY  HAHA"
     ],
     
-    # راقصين هستيريين بحركات جنونية
+    # راقصين هستيريين معقدين بحركات جنونية
     "hysterical_dance": [
-        "  🤪      😂      🥳  \n /|||\\    /|\\    <-|-> \n / | \\    / \\     /\\   \n HEHE    HAHA    WOW   ",
-        "  😵‍💫      🤡      😁  \n <-|->   /|||\\   \\|/  \n  /\\     / | \\    |   \n DIZZY   FUNNY   YAY   ",
-        "  🥴      😜      🤩  \n  \\|/    <--|    /|\\  \n   |      /\\     / \\  \n SILLY   WILD   COOL  ",
-        "  🤯      😋      🤪  \n  /|\\    \\|||/   <-|-> \n  / \\     | |     /\\  \n BOOM    YUMMY   LOL  "
+        "😂🤪😵‍💫🥳🤡😁🥴😜🤩🤯\n|||/|||\\|||<|||>|||/|||\\|||/|||>|||\n| | | | | | | | | | | | | | | | | | | |\nHAHA LOL WOOO PARTY CRAZY YAY SILLY WILD COOL BOOM",
+        "🤯🤩😜🥴😁🤡🥳😵‍💫🤪😂\n\\|||>|||/|||\\|||<|||>|||/|||\\|||/|||\n| | | | | | | | | | | | | | | | | | | |\nBOOM COOL WILD SILLY YAY CRAZY PARTY WOOO LOL HAHA",
+        "🥳😂🤯🤪🤩😜😁🥴🤡😵‍💫\n<|||>|||\\|||/|||>|||/|||\\|||<|||>|||\n| | | | | | | | | | | | | | | | | | | |\nPARTY HAHA BOOM LOL COOL WILD YAY SILLY CRAZY WOOO",
+        "😜🥳🤯😂🤩😁🤪🥴🤡😵‍💫\n|||/|||<|||>|||\\|||/|||>|||/|||\\|||<\n| | | | | | | | | | | | | | | | | | | |\nWILD PARTY BOOM HAHA COOL YAY LOL SILLY CRAZY WOOO"
     ],
     
-    # بالي راقص متطور
+    # بالي راقص معقد ومتطور
     "ballet_dancer": [
-        "     👸     \n    /|\\    \n   / | \\   \n  GRACE   ",
-        "     👸     \n    \\|/    \n    / \\    \n  BEAUTY  ",
-        "     👸     \n   --|--   \n    / \\    \n  ELEGANT ",
-        "     👸     \n    /|\\    \n   /   \\   \n  DIVINE  "
+        "👸     👸     👸     👸     👸\n/|\\   \\|/   --|--   /|\\   /|\\\n| |    / \\    / \\   / | \\  /   \\\nGRACE  BEAUTY ELEGANT DIVINE ROYAL",
+        "👸     👸     👸     👸     👸\n\\|/   --|--   /|\\   /   \\  \\|/\n/ \\    / \\   / | \\  /     \\  | |\nBEAUTY ELEGANT DIVINE ROYAL  GRACE",
+        "👸     👸     👸     👸     👸\n--|--   /|\\   /   \\  \\|/   /|\\\n/ \\   / | \\  /     \\  | |   / \\\nELEGANT DIVINE ROYAL  GRACE  BEAUTY",
+        "👸     👸     👸     👸     👸\n/|\\   /   \\  \\|/   /|\\   --|--\n/ | \\  /     \\  | |   / \\   / \\\nDIVINE ROYAL  GRACE  BEAUTY ELEGANT"
     ],
     
     # راقص بريك دانس
@@ -182,20 +182,20 @@ ANIMATED_DANCE_FRAMES = {
         "  🕺  \n/|||\\n/ | \\nFLOW"
     ],
     
-    # رقصة الديسكو المجنونة
+    # رقصة الديسكو المجنونة والمعقدة
     "disco_fever": [
-        "✨🕺✨\n DISCO \n FEVER ",
-        "🌟💃🌟\n BOOGIE\n  TIME ",
-        "💫🕺💫\n FUNKY \n MOVES ",
-        "⭐💃⭐\n GROOVY\n VIBES "
+        "✨🕺✨🌟💃🌟💫🕺💫⭐💃⭐\n DISCO BOOGIE FUNKY GROOVY \n FEVER TIME MOVES VIBES \n🎵🎶🎵🎶🎵🎶🎵🎶🎵🎶",
+        "⭐💃⭐💫🕺💫🌟💃🌟✨🕺✨\n GROOVY FUNKY BOOGIE DISCO \n VIBES MOVES TIME FEVER \n🎶🎵🎶🎵🎶🎵🎶🎵🎶🎵",
+        "🌟💃🌟✨🕺✨⭐💃⭐💫🕺💫\n BOOGIE DISCO GROOVY FUNKY \n TIME FEVER VIBES MOVES \n🎵🎶🎵🎶🎵🎶🎵🎶🎵🎶",
+        "💫🕺💫⭐💃⭐✨🕺✨🌟💃🌟\n FUNKY GROOVY DISCO BOOGIE \n MOVES VIBES FEVER TIME \n🎶🎵🎶🎵🎶🎵🎶🎵🎶🎵"
     ],
     
-    # حيوانات ترقص
+    # حيوانات ترقص بشكل معقد ومضحك
     "animal_party": [
-        "🐵    🐸    🐱\n|||   |||   |||\n| |   | |   | |\nOOK   HOP   MEW",
-        "🐶    🐷    🐰\nWOOF  OINK  HOP\n|||   |||   |||\n| |   | |   | |",
-        "🐯    🐻    🐼\nROAR  GROWL CHOMP\n|||   |||   |||\n| |   | |   | |",
-        "🦁    🐺    🐨\nROAR  HOWL  CHILL\n|||   |||   |||\n| |   | |   | |"
+        "🐵🐸🐱🐶🐷🐰🐯🐻🐼🦁🐺🐨\n|||||||||||||||||||||||||||\n| | | | | | | | | | | | | | | | | | | | | | | |\nOOK HOP MEW WOOF OINK HOP ROAR GROWL CHOMP ROAR HOWL CHILL",
+        "🐨🐺🦁🐼🐻🐯🐰🐷🐶🐱🐸🐵\n|||||||||||||||||||||||||||\n| | | | | | | | | | | | | | | | | | | | | | | |\nCHILL HOWL ROAR CHOMP GROWL ROAR HOP OINK WOOF MEW HOP OOK",
+        "🐸🐵🐺🐨🦁🐼🐻🐯🐰🐷🐶🐱\n|||||||||||||||||||||||||||\n| | | | | | | | | | | | | | | | | | | | | | | |\nHOP OOK HOWL CHILL ROAR CHOMP GROWL ROAR HOP OINK WOOF MEW",
+        "🐱🐶🐷🐰🐯🐻🐼🦁🐺🐨🐵🐸\n|||||||||||||||||||||||||||\n| | | | | | | | | | | | | | | | | | | | | | | |\nMEW WOOF OINK HOP ROAR GROWL CHOMP ROAR HOWL CHILL OOK HOP"
     ],
     
     # رقصة الروبوت
@@ -206,12 +206,32 @@ ANIMATED_DANCE_FRAMES = {
         "🤖\n▌█▐\n███\nBZZT"
     ],
     
-    # مهرجان الألوان
+    # مهرجان الألوان المعقد والضخم
     "color_festival": [
-        "🌈🎨🌈\n COLOR \n SPLASH",
-        "🎭🌟🎭\n PAINT \n  DANCE",
-        "🎪💫🎪\n RAINBOW\n  PARTY",
-        "🎨🌈🎨\n BRIGHT \n  VIBES"
+        "🌈🎨🌈🎭🌟🎭🎪💫🎪🎨🌈🎨\n COLOR PAINT RAINBOW BRIGHT SPLASH DANCE PARTY VIBES \n🎉🎊🎉🎊🎉🎊🎉🎊🎉🎊🎉🎊",
+        "🎨🌈🎨🎪💫🎪🎭🌟🎭🌈🎨🌈\n BRIGHT RAINBOW PARTY COLOR VIBES DANCE PAINT SPLASH \n🎊🎉🎊🎉🎊🎉🎊🎉🎊🎉🎊🎉",
+        "🎪💫🎪🌈🎨🌈🎨🌈🎨🎭🌟🎭\n PARTY COLOR BRIGHT PAINT RAINBOW SPLASH VIBES DANCE \n🎉🎊🎉🎊🎉🎊🎉🎊🎉🎊🎉🎊",
+        "🎭🌟🎭🎨🌈🎨🎪💫🎪🌈🎨🌈\n DANCE BRIGHT VIBES PARTY COLOR SPLASH PAINT RAINBOW \n🎊🎉🎊🎉🎊🎉🎊🎉🎊🎉🎊🎉"
+    ],
+    
+    # رقصات جديدة معقدة ومضحكة
+    "super_complex_dance": [
+        "🤪😂🥳🤡😵‍💫🥴😜🤩🤯😋\n/|||\\<>|||/|||\\><|||/|||\\<>|||/|||\\><|||/|||\\\n| | || || | | || || | | || || | | || || | | ||\nWOOHOO CRAZY PARTY SILLY DIZZY WILD FUNNY COOL MEGA AWESOME",
+        "😋🤯🤩😜🥴😵‍💫🤡🥳😂🤪\n><|||/|||\\<>|||/|||\\><|||/|||\\<>|||/|||\\><|||/\n|| | | || || | | || || | | || || | | || || | |\nAWESOME MEGA COOL FUNNY WILD DIZZY SILLY PARTY CRAZY WOOHOO",
+        "🥳🤪😋🤯😜🤩😵‍💫🥴🤡😂\n|||\\><|||/|||\\<>|||/|||\\><|||/|||\\<>|||/|||\\><\n| || || | | || || | | || || | | || || | | || |\nPARTY WOOHOO AWESOME MEGA FUNNY COOL DIZZY WILD SILLY CRAZY",
+        "😂🤡🥴😵‍💫🤩😜🤯🤪🥳😋\n/|||\\<>|||/|||\\><|||/|||\\<>|||/|||\\><|||/|||\\\n|| | | || || | | || || | | || || | | || || | |\nCRAZY SILLY WILD DIZZY COOL FUNNY MEGA WOOHOO PARTY AWESOME"
+    ],
+    
+    "mega_dance_explosion": [
+        "🔥💥🎆🎉🎊🎉🎆💥🔥\n🕺💃🕺💃🕺💃🕺💃🕺\n<>||<>||<>||<>||<>||<>||<>||<>||<>\nEXPLOSION OF DANCE AND FUN!!!",
+        "🎆🔥💥🎉🎊🎉💥🔥🎆\n💃🕺💃🕺💃🕺💃🕺💃\n||<>||<>||<>||<>||<>||<>||<>||<>||\nMASSIVE PARTY EXPLOSION TIME!!!",
+        "💥🎆🔥🎊🎉🎊🔥🎆💥\n🕺💃🕺💃🕺💃🕺💃🕺\n<>||<>||<>||<>||<>||<>||<>||<>||<>\nULTRAA MEGA DANCE MADNESS!!!"
+    ],
+    
+    "royal_mega_procession": [
+        "👑🏰👑🏰👑🏰👑🏰👑\n⚜️✨⚜️✨⚜️✨⚜️✨⚜️\n👸🤴👸🤴👸🤴👸🤴👸\nROYAL MEGA ULTIMATE PROCESSION",
+        "🏰👑🏰👑🏰👑🏰👑🏰\n✨⚜️✨⚜️✨⚜️✨⚜️✨\n🤴👸🤴👸🤴👸🤴👸🤴\nULTIMATE ROYAL MEGA PROCESSION",
+        "👑🏰👑🏰👑🏰👑🏰👑\n⚜️✨⚜️✨⚜️✨⚜️✨⚜️\n👸🤴👸🤴👸🤴👸🤴👸\nMEGA ULTIMATE ROYAL PROCESSION"
     ]
 }
 
