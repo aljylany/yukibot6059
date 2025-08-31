@@ -5,6 +5,7 @@ Entertainment Module
 
 import logging
 import random
+import asyncio
 from datetime import datetime
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
@@ -95,6 +96,61 @@ WEDDING_DANCE_MESSAGES = [
     "🌟 *ترقص مع الأطفال رقصة مرحة*\n👶 ضحكات الأطفال تملأ المكان!",
     "🎨 *يرقص رقصة فنية معبرة*\n🖼️ كل حركة تحكي قصة جميلة!",
     "🎁 *ترقص وتوزع الحلوى على الحضور*\n🍬 فرحة مضاعفة للجميع!"
+]
+
+# إطارات الحركة للرسائل المتحركة 🎬
+ANIMATED_DANCE_FRAMES = {
+    "moving_dancer": [
+        "    🕺     ",
+        "   🕺      ",
+        "  🕺       ",
+        " 🕺        ",
+        "🕺         ",
+        " 🕺        ",
+        "  🕺       ",
+        "   🕺      ",
+        "    🕺     "
+    ],
+    "spinning_dancer": [
+        "🕺",
+        "🤸‍♂️",
+        "🕺",
+        "🤸‍♀️"
+    ],
+    "group_dance": [
+        "💃   🕺   💃",
+        " 💃 🕺 💃 ",
+        "  💃🕺💃  ",
+        " 💃 🕺 💃 ",
+        "💃   🕺   💃"
+    ],
+    "royal_procession": [
+        "👑     🏰     👑",
+        " 👑   🏰   👑 ",
+        "  👑 🏰 👑  ",
+        "   👑🏰👑   ",
+        "  👑 🏰 👑  ",
+        " 👑   🏰   👑 ",
+        "👑     🏰     👑"
+    ],
+    "celebration_wave": [
+        "🎉🎊🎉🎊🎉",
+        "🎊🎉🎊🎉🎊",
+        "🎉🎊🎉🎊🎉",
+        "🎊🎉🎊🎉🎊"
+    ]
+}
+
+# رسائل الاحتفال التلقائي للحاضرين 🎊
+AUTO_CELEBRATION_MESSAGES = [
+    "🎉 {name} ينضم للاحتفال!",
+    "💃 {name} يرقص بفرح شديد!",
+    "🕺 {name} يؤدي رقصة رائعة!",
+    "🎊 {name} يصفق ويهتف بحماس!",
+    "🌟 {name} يضيء الحفل بحضوره!",
+    "✨ {name} يشارك الفرحة العامة!",
+    "🎭 {name} يرقص كالمحترفين!",
+    "💫 {name} يرقص مع الجميع!"
 ]
 
 # رسائل مراسم العرس الملكي 👑
@@ -820,6 +876,18 @@ async def handle_marriage_response(message: Message, response_type: str):
             
             await message.reply(marriage_message)
             
+            # تفعيل الاحتفال التلقائي مع الرسائل المتحركة
+            try:
+                await asyncio.sleep(1)  # انتظار قصير قبل بدء الاحتفال
+                await start_wedding_celebration_with_animation(
+                    message.bot, 
+                    message.chat.id, 
+                    marriage_saved, 
+                    royal_wedding
+                )
+            except Exception as celebration_error:
+                logging.error(f"خطأ في الاحتفال التلقائي: {celebration_error}")
+            
             # إشعار القاضي إذا كان متاح
             if judge:
                 try:
@@ -1204,7 +1272,7 @@ async def has_admin_permission(user_id: int, chat_id: int) -> bool:
 
 
 async def wedding_dance(message: Message):
-    """الرقص في العرس"""
+    """الرقص في العرس مع رسائل متحركة حقيقية"""
     try:
         if not await is_entertainment_enabled(message.chat.id):
             await message.reply("❌ التسلية معطلة في هذه المجموعة")
@@ -1223,79 +1291,68 @@ async def wedding_dance(message: Message):
             await message.reply("❌ لا توجد أعراس في المجموعة للرقص فيها!")
             return
 
-        # رسائل الرقص مع نصوص متحركة
-        dance_messages = [
-            f"💃🎉🕺 {dancer_name} يرقص بحماس في العرس! 🕺🎉💃",
-            f"🕺✨💃 {dancer_name} يؤدي رقصة جميلة! 💃✨🕺",
-            f"🎭👏🎊 {dancer_name} يرقص والكل يصفق له! 🎊👏🎭",
-            f"💫🌟🎭 {dancer_name} يقدم عرض رقص رائع! 🎭🌟💫",
-            f"🌟🎉💃 {dancer_name} يرقص بفرح شديد! 💃🎉🌟",
-            f"✨🕺🎊 {dancer_name} يضيف البهجة للحفل برقصه! 🎊🕺✨",
-            f"🎉💃🔥 {dancer_name} يولع الحفل برقصه! 🔥💃🎉",
-            f"💃⚡🕺 {dancer_name} يرقص كالمحترفين! 🕺⚡💃",
-        ]
-        
-        # رسائل رقص ملكي خاصة مع نصوص متحركة
-        royal_dance_messages = [
-            f"👑✨💃 {dancer_name} يؤدي الرقصة الملكية المقدسة! 💃✨👑",
-            f"🏰🌟🕺 {dancer_name} يرقص رقصة النبلاء القديمة! 🕺🌟🏰",
-            f"⚜️💫👸 {dancer_name} يقدم عرضاً ملكياً مبهراً! 👸💫⚜️",
-            f"💎🎭🤴 {dancer_name} يرقص بأناقة الأمراء والأميرات! 🤴🎭💎",
-            f"🎭👑🌟 {dancer_name} يؤدي الرقصة الإمبراطورية النادرة! 🌟👑🎭",
-            f"✨💃🏰 {dancer_name} يرقص كملك الملوك! 🏰💃✨",
-            f"🌟🕺💎 {dancer_name} يشعل الحفل برقصة السلاطين! 💎🕺🌟",
-        ]
-        
         from config.hierarchy import is_royal
         
         # تحديد نوع الرقصة حسب الرتبة
         if is_royal(message.from_user.id):
-            dance_msg = random.choice(royal_dance_messages)
+            # رقصة ملكية متحركة
+            dance_frames = await create_custom_dance_animation(dancer_name, "royal")
             celebration = random.choice(ROYAL_WEDDING_CEREMONIES)
             
-            # إضافة تأثيرات بصرية متحركة للعائلة الملكية
-            dance_animation = [
-                "💫✨🌟✨💫",
-                "🎭👑🎭👑🎭",  
-                "💃🏰💃🏰💃",
-                "🕺💎🕺💎🕺",
-                "🌟⚜️🌟⚜️🌟"
-            ]
+            # إرسال الرقصة المتحركة الملكية
+            await animate_message(
+                message.bot,
+                message.chat.id,
+                dance_frames,
+                delay=0.5,
+                title=f"👑 الرقصة الملكية الفخمة 👑"
+            )
             
+            await asyncio.sleep(1)
             dance_response = (
-                f"👑✨ **رقصة ملكية فخمة أسطورية** ✨👑\n"
-                f"{random.choice(dance_animation)}\n\n"
-                f"{dance_msg}\n\n"
+                f"👑✨ **عرض ملكي أسطوري من {dancer_name}** ✨👑\n\n"
                 f"{celebration}\n\n"
                 f"🎊 **الحضور يصفق بحماس للعرض الملكي الخيالي!**\n"
                 f"👏 عاشت العائلة الملكية! عاش الحب!\n"
-                f"{random.choice(dance_animation)}\n"
                 f"🏰 **الرقصة الملكية تهز أركان القصر!** 🏰"
             )
         else:
-            dance_msg = random.choice(dance_messages)
+            # رقصة عادية متحركة
+            dance_frames = await create_custom_dance_animation(dancer_name, "normal")
             celebration = random.choice(WEDDING_CELEBRATION_MESSAGES)
             
-            # إضافة تأثيرات بصرية متحركة للأعضاء العاديين
-            dance_animation = [
-                "🎉💃🕺🎉",
-                "✨🎭✨🎭✨",
-                "🎊🌟🎊🌟🎊",
-                "💫🎉💫🎉💫",
-                "🔥💃🕺🔥"
-            ]
+            # إرسال الرقصة المتحركة العادية
+            await animate_message(
+                message.bot,
+                message.chat.id,
+                dance_frames,
+                delay=0.4,
+                title=f"💃🕺 رقصة {dancer_name} الرائعة 🕺💃"
+            )
             
+            await asyncio.sleep(1)
             dance_response = (
-                f"💃🕺 **رقصة عرس جميلة ومبهجة** 🕺💃\n"
-                f"{random.choice(dance_animation)}\n\n"
-                f"{dance_msg}\n\n"
+                f"💃🕺 **عرض رقص رائع من {dancer_name}** 🕺💃\n\n"
                 f"{celebration}\n\n"
                 f"🎉 **الجميع يشارك في الفرحة والمرح!**\n"
-                f"👏 يا هلا يا هلا! مبروك للعرسان!\n"
-                f"{random.choice(dance_animation)}"
+                f"👏 يا هلا يا هلا! مبروك للعرسان!"
             )
         
         await message.reply(dance_response)
+        
+        # إضافة رقص تلقائي للحاضرين
+        try:
+            await asyncio.sleep(2)
+            recent_users = await get_recent_active_users(message.chat.id, 3)
+            for user in recent_users:
+                if user['user_id'] != message.from_user.id:  # تجنب الراقص نفسه
+                    await asyncio.sleep(1)
+                    celebration_msg = random.choice(AUTO_CELEBRATION_MESSAGES).format(
+                        name=user.get('first_name', 'عضو')
+                    )
+                    await message.bot.send_message(message.chat.id, f"🎊 {celebration_msg}")
+        except Exception as auto_dance_error:
+            logging.error(f"خطأ في الرقص التلقائي للحاضرين: {auto_dance_error}")
         
         # إضافة XP للراقص
         try:
@@ -1388,3 +1445,190 @@ async def wedding_congratulation(message: Message):
     except Exception as e:
         logging.error(f"خطأ في تهنئة العرس: {e}")
         await message.reply("❌ حدث خطأ أثناء التهنئة")
+
+
+# وظائف الرسائل المتحركة والرقص التلقائي الجديدة 🎬
+
+async def animate_message(bot, chat_id, frames, delay=0.5, title=""):
+    """إنشاء رسالة متحركة بتحرير الرسالة"""
+    try:
+        if not frames:
+            return None
+            
+        # إرسال الإطار الأول
+        initial_text = f"```\n{title}\n{frames[0]}\n```" if title else f"```\n{frames[0]}\n```"
+        message = await bot.send_message(chat_id, initial_text, parse_mode='Markdown')
+        
+        # تحريك الإطارات المتبقية
+        for frame in frames[1:]:
+            await asyncio.sleep(delay)
+            try:
+                new_text = f"```\n{title}\n{frame}\n```" if title else f"```\n{frame}\n```"
+                await bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message.message_id,
+                    text=new_text,
+                    parse_mode='Markdown'
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تحرير الرسالة المتحركة: {edit_error}")
+                break
+                
+        return message
+        
+    except Exception as e:
+        logging.error(f"خطأ في الرسالة المتحركة: {e}")
+        return None
+
+
+async def trigger_automatic_wedding_celebration(bot, chat_id, marriage_data, royal_wedding=False):
+    """تفعيل الاحتفال التلقائي بالعرس مع رقص الحاضرين"""
+    try:
+        # الحصول على قائمة أعضاء المجموعة النشطين
+        recent_users = await get_recent_active_users(chat_id)
+        
+        if royal_wedding:
+            # احتفال ملكي فخم
+            await animate_message(
+                bot, chat_id, 
+                ANIMATED_DANCE_FRAMES["royal_procession"], 
+                delay=0.4,
+                title="🏰 الموكب الملكي الفخم 🏰"
+            )
+            await asyncio.sleep(2)
+            
+            # رقص الحاضرين للعرس الملكي
+            for user in recent_users[:5]:  # أول 5 أعضاء نشطين
+                await asyncio.sleep(1)
+                celebration_msg = random.choice(AUTO_CELEBRATION_MESSAGES).format(
+                    name=user.get('first_name', 'عضو')
+                )
+                await bot.send_message(
+                    chat_id, 
+                    f"👑 **احتفال ملكي:** {celebration_msg}\n"
+                    f"✨ يشارك في الفرحة الملكية العظيمة!"
+                )
+                
+            # رقصة جماعية ملكية
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["group_dance"],
+                delay=0.3,
+                title="💃👑 الرقصة الملكية الجماعية 👑🕺"
+            )
+            
+        else:
+            # احتفال عادي
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["celebration_wave"],
+                delay=0.3,
+                title="🎉 موجة الاحتفال 🎉"
+            )
+            await asyncio.sleep(1)
+            
+            # رقص الحاضرين للعرس العادي
+            for user in recent_users[:3]:  # أول 3 أعضاء نشطين
+                await asyncio.sleep(0.8)
+                celebration_msg = random.choice(AUTO_CELEBRATION_MESSAGES).format(
+                    name=user.get('first_name', 'عضو')
+                )
+                await bot.send_message(chat_id, f"🎊 {celebration_msg}")
+                
+            # رقصة جماعية عادية
+            await animate_message(
+                bot, chat_id,
+                ANIMATED_DANCE_FRAMES["moving_dancer"],
+                delay=0.4,
+                title="💃🕺 رقصة الفرح الجماعية 🕺💃"
+            )
+        
+        # رسالة ختامية للاحتفال
+        final_message = "🎉✨ انتهى الاحتفال! كل عام والجميع بخير! ✨🎉"
+        await bot.send_message(chat_id, final_message)
+        
+    except Exception as e:
+        logging.error(f"خطأ في الاحتفال التلقائي: {e}")
+
+
+async def get_recent_active_users(chat_id, limit=10):
+    """الحصول على المستخدمين النشطين مؤخراً في المجموعة"""
+    try:
+        # الحصول على المستخدمين الذين تفاعلوا مؤخراً
+        users = await execute_query(
+            """
+            SELECT DISTINCT user_id, first_name, username 
+            FROM users 
+            WHERE chat_id = ? 
+            ORDER BY last_seen DESC 
+            LIMIT ?
+            """,
+            (chat_id, limit),
+            fetch_all=True
+        )
+        
+        if users:
+            return [
+                {
+                    'user_id': user[0] if isinstance(user, tuple) else user['user_id'],
+                    'first_name': user[1] if isinstance(user, tuple) else user['first_name'],
+                    'username': user[2] if isinstance(user, tuple) else user.get('username')
+                }
+                for user in users
+            ]
+        
+        # إذا لم توجد بيانات، إرجاع قائمة فارغة
+        return []
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على المستخدمين النشطين: {e}")
+        return []
+
+
+async def start_wedding_celebration_with_animation(bot, chat_id, marriage_id, is_royal=False):
+    """بدء احتفال العرس مع الرسائل المتحركة التلقائية"""
+    try:
+        # رسالة إعلان بداية الاحتفال
+        if is_royal:
+            announcement = "👑🎉 **بدء الاحتفال الملكي الفخم!** 🎉👑\n🏰 الجميع مدعو للمشاركة في الفرحة الملكية!"
+        else:
+            announcement = "🎉💍 **بدء احتفال العرس!** 💍🎉\n💃 الجميع مدعو للرقص والاحتفال!"
+            
+        await bot.send_message(chat_id, announcement)
+        await asyncio.sleep(2)
+        
+        # تفعيل الاحتفال التلقائي
+        await trigger_automatic_wedding_celebration(bot, chat_id, marriage_id, is_royal)
+        
+        # رسالة تذكير للمجموعة
+        reminder = "✨ يمكن لأي عضو استخدام أوامر الرقص والتهنئة للمشاركة في الفرحة! ✨"
+        await bot.send_message(chat_id, reminder)
+        
+    except Exception as e:
+        logging.error(f"خطأ في بدء احتفال العرس المتحرك: {e}")
+
+
+async def create_custom_dance_animation(dancer_name, dance_type="normal"):
+    """إنشاء رقصة مخصصة متحركة"""
+    try:
+        if dance_type == "royal":
+            frames = [
+                f"      👑      \n   {dancer_name}   \n      🏰      ",
+                f"    👑   👑    \n   {dancer_name}   \n    🏰   🏰    ",
+                f"  👑   👑   👑  \n   {dancer_name}   \n  🏰   🏰   🏰  ",
+                f"👑   👑   👑   👑\n   {dancer_name}   \n🏰   🏰   🏰   🏰"
+            ]
+        else:
+            frames = [
+                f"   {dancer_name}   \n     💃     ",
+                f"   {dancer_name}   \n    💃🕺    ",
+                f"   {dancer_name}   \n   💃🕺💃   ",
+                f"   {dancer_name}   \n  💃🕺💃🕺  ",
+                f"   {dancer_name}   \n 💃🕺💃🕺💃 "
+            ]
+            
+        return frames
+        
+    except Exception as e:
+        logging.error(f"خطأ في إنشاء الرقصة المخصصة: {e}")
+        return [f"{dancer_name} يرقص! 💃🕺"]
