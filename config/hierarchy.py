@@ -24,7 +24,7 @@ MASTERS = [6524680126, 8278493069, 6629947448, 7988917983, 7155814194]
 
 # الملوك والملكات - أعلى مستوى في التسلسل الهرمي مع امتيازات خاصة
 ROYALTY = {
-    "KINGS": [],  # قائمة الملوك
+    "KINGS": [6524680126],  # قائمة الملوك - السيد الأعلى ملك دائم
     "QUEENS": []  # قائمة الملكات
 }
 
@@ -47,6 +47,17 @@ def get_user_admin_level(user_id: int, group_id: Optional[int] = None) -> AdminL
         مستوى الإدارة
     """
     try:
+        # السيد الأعلى الدائم - له صلاحيات مطلقة دائماً
+        if is_supreme_master(user_id):
+            # إذا كان ملك أيضاً، أعطه صلاحيات الملك
+            if user_id in ROYALTY["KINGS"]:
+                return AdminLevel.KING
+            # إذا كان ملكة أيضاً، أعطيها صلاحيات الملكة  
+            elif user_id in ROYALTY["QUEENS"]:
+                return AdminLevel.QUEEN
+            else:
+                return AdminLevel.MASTER
+        
         # فحص الملكات أولاً - أعلى مستوى
         if user_id in ROYALTY["QUEENS"]:
             return AdminLevel.QUEEN
@@ -80,6 +91,9 @@ def get_user_admin_level(user_id: int, group_id: Optional[int] = None) -> AdminL
 
 def is_master(user_id: int) -> bool:
     """التحقق من كون المستخدم سيد"""
+    # السيد الأعلى دائماً سيد مهما كانت رتبته
+    if is_supreme_master(user_id):
+        return True
     return user_id in MASTERS
 
 def is_king(user_id: int) -> bool:
@@ -369,7 +383,8 @@ def promote_to_king(user_id: int) -> bool:
             # إزالة من قوائم أخرى إذا كان موجود
             if user_id in ROYALTY["QUEENS"]:
                 ROYALTY["QUEENS"].remove(user_id)
-            if user_id in MASTERS:
+            # لا نزيل السيد الأعلى من قائمة الأسياد أبداً
+            if user_id in MASTERS and not is_supreme_master(user_id):
                 MASTERS.remove(user_id)
             
             logging.info(f"تم ترقية المستخدم {user_id} إلى ملك")
