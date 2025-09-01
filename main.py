@@ -72,6 +72,10 @@ async def main():
     dp.include_router(smart_commands.router)
     dp.include_router(bug_report_handler.router)
     
+    # تسجيل معالج النقابة
+    from modules.guild_commands import guild_router
+    dp.include_router(guild_router)
+    
     
     # تسجيل معالج الرسائل العادي
     dp.include_router(messages.router)
@@ -118,6 +122,15 @@ async def main():
         await init_ranking_system()
     except Exception as e:
         logging.error(f"خطأ في تهيئة نظام التصنيف: {e}")
+    
+    # تهيئة نظام النقابة
+    try:
+        from modules.guild_commands import initialize_guild_system, load_existing_players
+        await initialize_guild_system()
+        await load_existing_players()
+        logging.info("🏰 تم تهيئة نظام النقابة بنجاح")
+    except Exception as e:
+        logging.error(f"❌ خطأ في تهيئة نظام النقابة: {e}")
     
     # تحميل الرتب من قاعدة البيانات
     from config.hierarchy import load_ranks_from_database
