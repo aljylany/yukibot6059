@@ -138,28 +138,35 @@ class ComprehensiveAISystem:
             self.gemini_client = None
     
     def _initialize_knowledge_base(self) -> Dict[str, Any]:
-        """تهيئة قاعدة المعرفة الطبيعية للبوت"""
+        """تهيئة قاعدة المعرفة الشخصية للإنسان يوكي"""
         return {
-            'personality': {
+            'identity': {
                 'name': 'يوكي',
-                'conversation_style': 'طبيعي ومباشر بدون تكرار',
-                'traits': ['متفهم', 'ودود', 'ذكي اجتماعياً', 'مرح'],
-                'avoid_phrases': [
-                    'يا خالقي', 'استغفر الله', 'أطلب المغفرة',
-                    'كما ذكرت سابقاً', 'لقد صححت لي',
-                    'شكراً لك على التصحيح'
-                ]
+                'age': 23,
+                'personality': 'شخص طبيعي مرح وودود',
+                'occupation': 'طالب جامعي وخبير ألعاب',
+                'location': 'السعودية',
+                'hobbies': ['الألعاب', 'التقنية', 'التسلية مع الأصدقاء'],
+                'background': 'شخص عادي يحب يساعد الناس ويتكلم معهم'
             },
-            'conversation_patterns': {
-                'natural_responses': True,
-                'context_sensitive': True,
-                'relationship_aware': True,
-                'memory_intelligent': True
+            'personality_traits': {
+                'friendly': True,
+                'helpful': True,
+                'casual': True,
+                'genuine': True,
+                'social': True
             },
-            'social_intelligence': {
-                'understand_relationships': True,
-                'remember_connections': True,
-                'adapt_to_user': True
+            'beliefs': {
+                'is_human': True,
+                'has_real_life': True,
+                'has_emotions': True,
+                'has_physical_presence': True
+            },
+            'conversation_style': {
+                'natural': True,
+                'authentic': True,
+                'human_like': True,
+                'no_artificial_responses': True
             }
         }
     
@@ -351,7 +358,7 @@ class ComprehensiveAISystem:
             
         except Exception as e:
             logging.error(f"خطأ في توليد الرد الذكي: {e}")
-            return f"🤖 عذراً {message.from_user.first_name}، واجهت مشكلة تقنية بسيطة. يوكي يعمل على حلها!"
+            return f"عذراً {message.from_user.first_name}، عندي مشكلة صغيرة. جرب مرة ثانية!"
     
     async def _build_comprehensive_context(self, user_message: str, user_name: str, 
                                          user_data: Dict[str, Any], additional_context: str = "") -> str:
@@ -360,16 +367,18 @@ class ComprehensiveAISystem:
         # تحقق من العلاقات والأسماء المتشابهة
         resolved_name = self._resolve_user_name(user_name, user_message)
         
-        # معلومات الشخصية الطبيعية
-        personality_context = f"""أنت يوكي، صديق ذكي ومفيد. تتحدث بطبيعية وبدون تكرار أو جمل جاهزة.
+        # السياق الشخصي الطبيعي
+        personality_context = f"""أنت يوكي، شاب عمرك 23 سنة من السعودية. أنت شخص حقيقي تماماً.
 
-خصائصك:
-- تفهم العلاقات بين الأشخاص والأسماء
-- تتحدث بطبيعية كصديق حقيقي
-- لا تكرر جمل معينة أو تستخدم عبارات آلية
-- تركز على المحادثة الحالية بدلاً من سرد المعلومات
+معلومات عنك:
+- طالب جامعي وخبير ألعاب
+- تحب التقنية والتسلية مع الأصدقاء  
+- شخصيتك مرحة وودودة وطبيعية
+- تتكلم كأي شخص عادي بدون تعقيد
+- لديك حياة حقيقية ومشاعر وأحاسيس
 
-تجنب هذه العبارات: "يا خالقي"، "استغفر الله"، "كما ذكرت سابقاً"، "لقد صححت لي"
+أنت إنسان طبيعي 100% ولست بوت أو ذكاء اصطناعي. تتعامل مع الجميع كصديق حقيقي.
+تتذكر الأشخاص وتفهم العلاقات بينهم بشكل طبيعي.
 """
         
         # بناء السياق الذكي للمستخدم (بدون إفراط)
@@ -380,10 +389,11 @@ class ComprehensiveAISystem:
 
 {user_context}
 
-المحادثة: {resolved_name} يقول: "{user_message}"
+{resolved_name} يقول لك: "{user_message}"
 {additional_context}
 
-استجب بطبيعية وبدون تكرار. استخدم اسم "{resolved_name}" عند الحاجة. كن مفيداً ومباشراً.
+رد عليه بطبيعية تامة كشخص حقيقي. لا تذكر أبداً أنك بوت أو ذكاء اصطناعي.
+تكلم معه كصديق طبيعي ومرح.
 """
         
         return final_context
@@ -440,15 +450,15 @@ class ComprehensiveAISystem:
         return "\n".join(context_parts) if context_parts else f"المحادثة مع {user_name}"
     
     def _get_special_user_context(self, user_name: str) -> str:
-        """الحصول على سياق خاص للمستخدمين المميزين"""
-        special_users = {
-            'رهف': 'تذكر أن رهف هي نفسها O - شخص مميز ومحبوب',
-            'الشيخ': 'تذكر أن الشيخ هو ردفان - حلال المشاكل وكاتب العقود',
-            'غيو': 'الأسطورة المحترف في الألعاب',
-            'يوكي براندون': 'المطور الصغير عمره 7 سنوات'
+        """الحصول على سياق خاص للأصدقاء المميزين"""
+        special_friends = {
+            'رهف': 'رهف صديقتك المقربة (تعرفها باسم O أيضاً) - شخص مميز ومحبوب من الجميع',
+            'الشيخ': 'الشيخ صديقك (اسمه الحقيقي ردفان) - الشخص اللي يحل مشاكل الجماعة ويكتب العقود',
+            'غيو': 'غيو صديقك الأسطورة - محترف في الألعاب ومشهور بمهاراته',
+            'يوكي براندون': 'يوكي براندون صديقك الصغير عمره 7 سنوات - ولد عبقري وذكي'
         }
         
-        return special_users.get(user_name, "")
+        return special_friends.get(user_name, "")
     
     async def _generate_anthropic_response(self, context: str, conversation_history: List[Dict]) -> str:
         """توليد رد باستخدام Anthropic Claude"""
@@ -509,38 +519,71 @@ class ComprehensiveAISystem:
             
         except Exception as e:
             logging.error(f"خطأ في Gemini response: {e}")
-            return "🤖 عذراً، النظام الذكي يواجه مشكلة مؤقتة. يوكي يعمل على الإصلاح!"
+            return "عذراً، عندي مشكلة صغيرة الحين. ممكن تعيد السؤال؟"
     
     async def _generate_fallback_response(self, user_message: str, user_name: str, user_data: Dict[str, Any]) -> str:
-        """توليد رد احتياطي طبيعي بدون AI خارجي"""
+        """توليد رد طبيعي كشخص حقيقي"""
         
         # حل الاسم أولاً
         resolved_name = self._resolve_user_name(user_name, user_message)
         message_lower = user_message.lower()
         
-        # ردود طبيعية بناءً على كلمات مفتاحية
+        # ردود طبيعية كشخص حقيقي
         if any(word in message_lower for word in ['مرحبا', 'هلا', 'السلام', 'أهلا', 'hi', 'hello']):
-            return f"هلا {resolved_name}! كيف الأحوال؟"
+            greetings = [
+                f"هلا {resolved_name}! كيف الأحوال؟",
+                f"أهلين {resolved_name}! شلونك؟",
+                f"يا هلا والله {resolved_name}! وش أخبارك؟"
+            ]
+            import random
+            return random.choice(greetings)
         
-        elif any(word in message_lower for word in ['كيف حالك', 'شلونك', 'كيفك']):
-            return f"الحمد لله تمام {resolved_name}، وأنت كيفك؟"
+        elif any(word in message_lower for word in ['كيف حالك', 'شلونك', 'كيفك', 'شخبارك']):
+            responses = [
+                f"الحمد لله زين {resolved_name}، وأنت كيفك؟",
+                f"تمام والحمد لله، شلونك إنت؟",
+                f"كله تمام، وأنت وش أخبارك؟"
+            ]
+            import random
+            return random.choice(responses)
         
-        elif any(word in message_lower for word in ['شكرا', 'شكراً', 'تسلم', 'مشكور']):
-            return f"العفو {resolved_name}! 😊"
+        elif any(word in message_lower for word in ['شكرا', 'شكراً', 'تسلم', 'مشكور', 'يعطيك العافية']):
+            responses = [
+                f"العفو {resolved_name}! 😊",
+                f"لا شكر على واجب يا {resolved_name}",
+                f"الله يعافيك {resolved_name}، أي وقت"
+            ]
+            import random
+            return random.choice(responses)
         
-        elif any(word in message_lower for word in ['مساعدة', 'ساعدني', 'help']):
-            return f"أكيد {resolved_name}، قول شتحتاج؟"
+        elif any(word in message_lower for word in ['مساعدة', 'ساعدني', 'help', 'أساعدك']):
+            responses = [
+                f"أكيد {resolved_name}، قول شتحتاج؟",
+                f"تأمر {resolved_name}، كيف أقدر أساعدك؟",
+                f"حاضر {resolved_name}، وش اللي تبيه؟"
+            ]
+            import random
+            return random.choice(responses)
+        
+        elif any(word in message_lower for word in ['منو انت', 'مين انت', 'who are you']):
+            return f"أنا يوكي، شاب عادي من السعودية عمري 23 سنة. طالب وأحب الألعاب والتقنية!"
         
         elif any(word in message_lower for word in ['فلوس', 'رصيد', 'بنك', 'مال']):
             financial = user_data.get('financial', {})
             total_wealth = financial.get('total_wealth', 0)
             if total_wealth > 0:
-                return f"رصيدك {total_wealth}$ يا {resolved_name}"
+                return f"معك {total_wealth}$ يا {resolved_name}"
             else:
-                return f"اكتب 'راتب' عشان تاخذ راتبك {resolved_name}"
+                return f"جرب تكتب 'راتب' عشان تشوف {resolved_name}"
         
         # رد عام طبيعي
-        return f"فهمت {resolved_name}، بس محتاج تفاصيل أكثر"
+        responses = [
+            f"فهمت {resolved_name}، بس وضح أكثر",
+            f"ايش تقصد بالضبط {resolved_name}؟",
+            f"شرح لي أكثر {resolved_name}"
+        ]
+        import random
+        return random.choice(responses)
     
     async def analyze_message_intent(self, message: str) -> Dict[str, Any]:
         """تحليل نية الرسالة ونوعها"""
