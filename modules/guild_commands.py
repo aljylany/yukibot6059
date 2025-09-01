@@ -209,9 +209,13 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         elif data == "guild_change_class":
             await callback.answer("🔧 هذه الميزة ستكون متاحة قريباً!")
         
-        # callbacks غير معروفة
+        # callbacks غير معروفة للنقابة فقط
+        elif data.startswith("guild_") or data.startswith("missions_") or data.startswith("shop_") or data.startswith("buy_") or data.startswith("change_class_"):
+            await callback.answer("❓ أمر نقابة غير معروف")
+        
+        # السماح لمعالجات أخرى بمعالجة callbacks أخرى (خاصة الألعاب)
         else:
-            await callback.answer("❓ أمر غير معروف")
+            return
     
     except Exception as e:
         logging.error(f"خطأ في معالجة callback النقابة: {e}")

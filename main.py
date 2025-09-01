@@ -72,7 +72,7 @@ async def main():
     dp.include_router(smart_commands.router)
     dp.include_router(bug_report_handler.router)
     
-    # تسجيل معالج النقابة
+    # تسجيل معالج النقابة (بأولوية أقل من callbacks العامة)
     from modules.guild_commands import guild_router
     dp.include_router(guild_router)
     

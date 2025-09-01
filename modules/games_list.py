@@ -106,6 +106,14 @@ AVAILABLE_GAMES = {
         "players": "لاعب واحد ضد يوكي أو لاعبين",
         "duration": "3-5 دقائق",
         "status": "متاحة"
+    },
+    "guild_game": {
+        "name": "🏰 لعبة النقابة",
+        "description": "لعبة RPG شاملة - انضم لنقابة، قم بمهام، اشتري أسلحة، وارتقي بمستواك!",
+        "commands": ["نقابة", "لعبة النقابة", "guild"],
+        "players": "مفتوح للجميع",
+        "duration": "لعبة مستمرة",
+        "status": "متاحة"
     }
 }
 
@@ -290,8 +298,15 @@ async def handle_game_start_callback(callback_query, game_command: str):
             
         elif game_command in ["تحدي رياضي", "رياضيات", "math challenge"]:
             from modules.math_challenge_game import start_math_challenge_game
-            await start_math_challenge_game(fake_message, vs_ai=True, difficulty="easy")
+            await start_math_challenge_game(fake_message, vs_ai=True)
             await callback_query.answer("🧮 تم بدء التحدي الرياضي!")
+            
+        elif game_command in ["نقابة", "لعبة النقابة", "guild"]:
+            from modules.guild_commands import start_guild_registration
+            # إنشاء state فارغ
+            state = None
+            await start_guild_registration(fake_message, state)
+            await callback_query.answer("🏰 مرحباً في لعبة النقابة!")
             
         else:
             await callback_query.answer("❌ هذه اللعبة غير متاحة حالياً", show_alert=True)
