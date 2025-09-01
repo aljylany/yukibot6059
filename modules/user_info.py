@@ -282,3 +282,108 @@ async def show_my_level(message: Message):
     except Exception as e:
         logging.error(f"خطأ في عرض المستوى: {e}")
         await message.reply("❌ حدث خطأ أثناء عرض المستوى")
+
+
+async def show_comprehensive_account_info(message: Message):
+    """عرض معلومات الحساب الشاملة - بديل unified_level_system"""
+    try:
+        user_id = message.from_user.id
+        user = await get_user(user_id)
+        
+        if not user:
+            await message.reply(
+                "❌ **لم يتم العثور على حسابك**\n\n"
+                "💡 استخدم 'انشاء حساب بنكي' لإنشاء حساب جديد"
+            )
+            return
+        
+        # الحصول على معلومات المستوى
+        try:
+            from modules.leveling import get_user_level_info
+            level_info_raw = await get_user_level_info(user_id)
+        except:
+            level_info_raw = "❌ نظام المستويات غير متاح"
+        
+        # معلومات الرصيد
+        balance = user.get('balance', 0) if isinstance(user, dict) else 0
+        bank_balance = user.get('bank_balance', 0) if isinstance(user, dict) else 0
+        bank_type = user.get('bank_type', 'الأهلي') if isinstance(user, dict) else 'الأهلي'
+        total_wealth = balance + bank_balance
+        
+        # معلومات إضافية
+        total_earned = user.get('total_earned', 0) if isinstance(user, dict) else 0
+        total_spent = user.get('total_spent', 0) if isinstance(user, dict) else 0
+        
+        # الحصول على معلومات العقارات
+        try:
+            user_properties = await execute_query(
+                "SELECT property_type, quantity FROM user_properties WHERE user_id = ?",
+                (user_id,),
+                fetch_all=True
+            )
+            properties_count = sum(prop[1] if isinstance(prop, tuple) else prop.get('quantity', 0) for prop in user_properties) if user_properties else 0
+        except:
+            properties_count = 0
+        
+        # الحصول على معلومات الاستثمارات
+        try:
+            user_investments = await execute_query(
+                "SELECT COUNT(*), SUM(amount) FROM user_investments WHERE user_id = ? AND status = 'active'",
+                (user_id,),
+                fetch_one=True
+            )
+            investments_count = user_investments[0] if user_investments and user_investments[0] else 0
+            investments_total = user_investments[1] if user_investments and user_investments[1] else 0
+        except:
+            investments_count = 0
+            investments_total = 0
+        
+        # الحصول على معلومات المزرعة
+        try:
+            farm_crops = await execute_query(
+                "SELECT COUNT(*) FROM user_crops WHERE user_id = ?",
+                (user_id,),
+                fetch_one=True
+            )
+            crops_count = farm_crops[0] if farm_crops and farm_crops[0] else 0
+        except:
+            crops_count = 0
+        
+        # الحصول على معلومات القلعة
+        try:
+            castle_data = await execute_query(
+                "SELECT castle_level FROM user_castle WHERE user_id = ?",
+                (user_id,),
+                fetch_one=True
+            )
+            castle_level = castle_data[0] if castle_data and castle_data[0] else 0
+        except:
+            castle_level = 0
+        
+        # تنسيق رسالة شاملة
+        account_info = f"""
+👤 **معلومات حسابك الشاملة**
+
+💰 **الوضع المالي:**
+💵 النقد: {format_number(balance)}$
+🏦 البنك ({bank_type}): {format_number(bank_balance)}$
+💎 إجمالي الثروة: {format_number(total_wealth)}$
+
+📊 **الإحصائيات المالية:**
+📈 إجمالي الكسب: {format_number(total_earned)}$
+📉 إجمالي الإنفاق: {format_number(total_spent)}$
+
+🎮 **الأنشطة الاقتصادية:**
+🏠 العقارات: {properties_count} عقار
+📈 الاستثمارات: {investments_count} استثمار نشط ({format_number(investments_total)}$)
+🌾 المحاصيل: {crops_count} محصول
+🏰 مستوى القلعة: {castle_level}
+
+{level_info_raw if level_info_raw != "❌ نظام المستويات غير متاح" else ""}
+        """.strip()
+        
+        await message.reply(account_info)
+    
+    except Exception as e:
+        logging.error(f"خطأ في عرض معلومات الحساب الشاملة: {e}")
+        await message.reply("❌ حدث خطأ أثناء عرض معلومات الحساب")

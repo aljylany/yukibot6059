@@ -1714,8 +1714,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     if await check_for_custom_replies(message):
         # إضافة XP للمستخدم عند استخدام رد مخصص
         try:
-            from modules.enhanced_xp_handler import add_xp_for_activity
-            await add_xp_for_activity(message.from_user.id, "custom_reply")
+            from modules.leveling import add_xp
+            await add_xp(message.from_user.id, "custom_reply")
         except Exception as xp_error:
             logging.error(f"خطأ في إضافة XP: {xp_error}")
         return
@@ -1744,8 +1744,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_bank_account_creation(message, state)
         # إضافة XP للتسجيل
         try:
-            from modules.enhanced_xp_handler import add_xp_for_activity
-            await add_xp_for_activity(message.from_user.id, "banking")
+            from modules.leveling import add_xp
+            await add_xp(message.from_user.id, "banking")
         except:
             pass
         return
@@ -1756,8 +1756,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         if await handle_enhanced_investment_text(message):
             # إضافة XP للاستثمار
             try:
-                from modules.enhanced_xp_handler import add_xp_for_activity
-                await add_xp_for_activity(message.from_user.id, "investment")
+                from modules.leveling import add_xp
+                await add_xp(message.from_user.id, "investment")
             except:
                 pass
             return
@@ -1773,8 +1773,8 @@ async def handle_general_message(message: Message, state: FSMContext):
         any(word in text for word in bank_context_words)):
         # إضافة XP للعمليات المصرفية
         try:
-            from modules.enhanced_xp_handler import add_xp_for_activity
-            await add_xp_for_activity(message.from_user.id, "banking")
+            from modules.leveling import add_xp
+            await add_xp(message.from_user.id, "banking")
         except:
             pass
     
@@ -2480,40 +2480,16 @@ async def handle_general_message(message: Message, state: FSMContext):
         from modules import user_info
         await user_info.show_my_balance(message)
     elif text.strip() == 'حسابي':
-        # استخدام النظام الموحد لعرض الحساب
-        try:
-            from modules.unified_level_system import show_unified_user_info
-            info_text = await show_unified_user_info(message, message.from_user.id)
-            await message.reply(info_text)
-        except Exception as info_error:
-            logging.error(f"خطأ في النظام الموحد: {info_error}")
-            # الرجوع للنظام القديم في حالة الخطأ
-            from modules import user_info
-            await user_info.show_detailed_account_info(message)
+        # عرض معلومات الحساب الشاملة
+        from modules import user_info
+        await user_info.show_comprehensive_account_info(message)
     elif text == 'فلوسه' and message.reply_to_message:
         from modules import user_info
         await user_info.show_user_balance(message)
     elif text.strip() == "مستواي" or text.strip() == "تقدمي" or re.search(r'\b(مستوى)\b', text):
-        # استخدام النظام الموحد لعرض المستوى
-        try:
-            from modules.unified_level_system import get_unified_user_level
-            level_info = await get_unified_user_level(message.from_user.id)
-            
-            level_text = f"""🌟 **مستواك الحالي:**
-
-🌍 العالم: {level_info['world_name']}
-⭐ المستوى: {level_info['level']}
-🎭 الرتبة: {level_info['level_name']}
-✨ XP: {level_info['xp']}
-
-💡 كل نشاط يمنحك XP!"""
-            
-            await message.reply(level_text)
-        except Exception as level_error:
-            logging.error(f"خطأ في النظام الموحد للمستوى: {level_error}")
-            # الرجوع للنظام القديم في حالة الخطأ
-            from modules import user_info
-            await user_info.show_my_level(message)
+        # عرض معلومات المستوى
+        from modules import user_info
+        await user_info.show_my_level(message)
     elif text == 'مستواه' and message.reply_to_message:
         from modules import user_info
         await user_info.show_user_level(message)
@@ -2902,7 +2878,8 @@ async def handle_castle_message(message: Message, state: FSMContext, current_sta
     if current_state == CastleStates.entering_castle_name.state:
         await castle.handle_castle_name_input(message, state)
     elif current_state == CastleStates.waiting_upgrade_confirmation.state:
-        await castle.process_upgrade_confirmation(message, state)
+        # معالجة تأكيد الترقية مؤقتاً
+        await castle.upgrade_castle_command(message)
     elif current_state == CastleStates.waiting_delete_confirmation.state:
         # معالجة تأكيد أو إلغاء حذف القلعة
         text = message.text.strip()
