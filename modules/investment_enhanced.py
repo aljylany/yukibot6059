@@ -22,13 +22,13 @@ except ImportError:
             pass
 
 
-# أنواع الاستثمارات المحسنة - شركات عربية
+# أنواع الاستثمارات المحسنة - شركات عربية (أوقات سريعة!)
 ENHANCED_INVESTMENT_TYPES = {
     "ارامكو": {
         "name": "أسهم أرامكو السعودية",
         "min_amount": 1000,
-        "interest_rate": 0.02,  # 2% شهرياً
-        "duration_days": 30,
+        "interest_rate": 0.05,  # 5% للفترة
+        "duration_minutes": 5,  # 5 دقائق
         "risk": "منخفض",
         "emoji": "🛢️",
         "xp_reward": 10
@@ -36,8 +36,8 @@ ENHANCED_INVESTMENT_TYPES = {
     "الراجحي": {
         "name": "مصرف الراجحي",
         "min_amount": 5000,
-        "interest_rate": 0.05,  # 5% شهرياً
-        "duration_days": 60,
+        "interest_rate": 0.08,  # 8% للفترة
+        "duration_minutes": 10,  # 10 دقائق
         "risk": "منخفض",
         "emoji": "🏦",
         "xp_reward": 15
@@ -45,8 +45,8 @@ ENHANCED_INVESTMENT_TYPES = {
     "سابك": {
         "name": "الشركة السعودية للصناعات الأساسية",
         "min_amount": 10000,
-        "interest_rate": 0.08,  # 8% شهرياً
-        "duration_days": 90,
+        "interest_rate": 0.12,  # 12% للفترة
+        "duration_minutes": 15,  # 15 دقيقة
         "risk": "متوسط",
         "emoji": "🏭",
         "xp_reward": 20
@@ -54,8 +54,8 @@ ENHANCED_INVESTMENT_TYPES = {
     "اتصالات": {
         "name": "شركة الاتصالات السعودية",
         "min_amount": 50000,
-        "interest_rate": 0.12,  # 12% شهرياً
-        "duration_days": 180,
+        "interest_rate": 0.18,  # 18% للفترة
+        "duration_minutes": 20,  # 20 دقيقة
         "risk": "متوسط",
         "emoji": "📱",
         "xp_reward": 30
@@ -63,8 +63,8 @@ ENHANCED_INVESTMENT_TYPES = {
     "الكهرباء": {
         "name": "الشركة السعودية للكهرباء",
         "min_amount": 100000,
-        "interest_rate": 0.20,  # 20% شهرياً
-        "duration_days": 365,
+        "interest_rate": 0.25,  # 25% للفترة
+        "duration_minutes": 30,  # 30 دقيقة (نص ساعة)
         "risk": "عالي",
         "emoji": "⚡",
         "xp_reward": 50
@@ -108,8 +108,8 @@ async def show_enhanced_investment_menu(message: Message):
    🎯 ربح فوري من 0% إلى 30%
    ⏰ كل 5 دقائق | ⭐ مكافأة 50 XP
 
-🏢 **الاستثمار في الشركات (طويل المدى):**
-   💼 استثمار جديد - بدء استثمار طويل المدى
+🏢 **الاستثمار في الشركات (سريع ومجنون!):**
+   💼 استثمار جديد - بدء استثمار في الشركات
    📊 محفظة الاستثمارات - عرض استثماراتك
    💰 سحب استثمار - سحب استثمار مكتمل
    📈 تقرير الاستثمارات - إحصائيات شاملة
@@ -117,12 +117,12 @@ async def show_enhanced_investment_menu(message: Message):
 💡 **أمثلة الاستخدام:**
    • استثمار 1000 (استثمار سريع)
    • استثمار فلوسي (استثمار كامل الرصيد)
-   • استثمار جديد (استثمار في الشركات)
+   • استثمار ارامكو 5000 (استثمار في الشركات)
 
 ✨ **مميزات النظام:**
 • كسب XP مع كل استثمار
-• عوائد محسنة حسب المستوى
-• خيارات متنوعة للمدى القصير والطويل
+• عوائد سريعة من 5-30 دقيقة فقط!
+• أرباح عالية تصل إلى 25%
         """
         
         await message.reply(investment_text)
@@ -143,20 +143,21 @@ async def show_enhanced_investment_options(message: Message):
             await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
-        options_text = "💼 **خيارات الاستثمار المحسنة:**\n\n"
+        options_text = "💼 **خيارات الاستثمار المحسنة (سريع ومجنون!):**\n\n"
         
         for inv_type, inv_info in ENHANCED_INVESTMENT_TYPES.items():
             affordable = "✅" if user['balance'] >= inv_info['min_amount'] else "❌"
-            duration_months = inv_info['duration_days'] // 30
+            duration_minutes = inv_info['duration_minutes']
             
             options_text += f"{affordable} {inv_info['emoji']} **{inv_info['name']}**\n"
             options_text += f"   💰 الحد الأدنى: {format_number(inv_info['min_amount'])}$\n"
-            options_text += f"   📈 العائد: {inv_info['interest_rate']*100:.0f}% شهرياً\n"
-            options_text += f"   ⏰ المدة: {duration_months} شهر\n"
+            options_text += f"   📈 العائد: {inv_info['interest_rate']*100:.0f}% للفترة\n"
+            options_text += f"   ⏰ المدة: {duration_minutes} دقيقة فقط!\n"
             options_text += f"   ⚠️ المخاطر: {inv_info['risk']}\n"
             options_text += f"   ✨ XP مكافأة: +{inv_info['xp_reward']} XP\n\n"
         
         options_text += f"💰 رصيدك الحالي: {format_number(user['balance'])}$\n\n"
+        options_text += "⚡ **جنون السرعة!** من 5 دقائق إلى 30 دقيقة فقط!\n\n"
         options_text += "📝 **للاستثمار:** اكتب 'استثمار [النوع] [المبلغ]'\n"
         options_text += "مثال: استثمار ارامكو 5000"
         
@@ -196,7 +197,7 @@ async def process_enhanced_investment(message: Message, investment_type: str, am
             return
         
         # حساب تاريخ الاستحقاق والعائد
-        maturity_date = datetime.now() + timedelta(days=inv_info['duration_days'])
+        maturity_date = datetime.now() + timedelta(minutes=inv_info['duration_minutes'])
         expected_return = inv_info['interest_rate']
         
         # إنشاء الاستثمار
@@ -231,13 +232,14 @@ async def process_enhanced_investment(message: Message, investment_type: str, am
 💰 **المبلغ المستثمر:** {format_number(amount)}$
 📈 **العائد المتوقع:** {format_number(total_return)}$
 💎 **الربح المتوقع:** {format_number(profit)}$
-📅 **تاريخ الاستحقاق:** {maturity_date.strftime('%Y-%m-%d')}
+⏰ **مدة الاستثمار:** {inv_info['duration_minutes']} دقيقة فقط!
+📅 **وقت الاستحقاق:** {maturity_date.strftime('%H:%M:%S')}
 ⚠️ **المخاطر:** {inv_info['risk']}
 
 💵 **رصيدك الجديد:** {format_number(new_balance)}$
 ✨ **مكافأة XP:** +{inv_info['xp_reward']} XP
 
-🎯 **نصيحة:** كلما زاد مستواك، زادت عوائدك!
+🚀 **سرعة مجنونة! أرباحك جاهزة خلال دقائق!**
         """
         
         await message.reply(success_message)
@@ -342,7 +344,15 @@ async def show_enhanced_user_investments(message: Message):
                     maturity_date = datetime.fromisoformat(maturity_date_str)
                     is_mature = datetime.now() >= maturity_date
                     status_emoji = "✅" if is_mature else "⏳"
-                    date_display = maturity_date.strftime('%Y-%m-%d')
+                    time_display = maturity_date.strftime('%H:%M:%S')
+                    if is_mature:
+                        date_display = "جاهز للسحب!"
+                    else:
+                        remaining_minutes = int((maturity_date - datetime.now()).total_seconds() // 60)
+                        if remaining_minutes <= 0:
+                            date_display = "جاهز الآن!"
+                        else:
+                            date_display = f"متبقي {remaining_minutes} دقيقة"
                 else:
                     status_emoji = "❓"
                     date_display = "غير محدد"
@@ -351,7 +361,7 @@ async def show_enhanced_user_investments(message: Message):
                 investments_text += f"   {inv_info.get('emoji', '💼')} {inv_info.get('name', inv_type)}\n"
                 investments_text += f"   💰 المبلغ: {format_number(amount)}$\n"
                 investments_text += f"   📈 العائد المتوقع: {format_number(total_return)}$\n"
-                investments_text += f"   📅 الاستحقاق: {date_display}\n\n"
+                investments_text += f"   ⏰ الحالة: {date_display}\n\n"
         
         investments_text += "💡 **استثماراتك المكتملة جاهزة للسحب!**"
         
