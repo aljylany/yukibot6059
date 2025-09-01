@@ -244,7 +244,7 @@ async def show_user_level(message: Message):
         target_name = target_user.first_name or "المستخدم"
         
         # استخدام نظام المستويات الجديد
-        from modules.simple_level_display import get_user_level_info
+        from modules.leveling import get_user_level_info
         level_info = await get_user_level_info(target_user.id)
         
         if not level_info:
@@ -267,7 +267,7 @@ async def show_my_level(message: Message):
         user_id = message.from_user.id
         
         # استخدام نظام المستويات الجديد  
-        from modules.simple_level_display import get_user_level_info
+        from modules.leveling import get_user_level_info
         level_info = await get_user_level_info(user_id)
         
         if not level_info:

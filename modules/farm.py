@@ -971,8 +971,8 @@ async def handle_harvest_callback(callback):
         await update_user_balance(user_id, total_yield)
         
         # إضافة XP للمستخدم
-        from modules.simple_level_display import add_simple_xp
-        await add_simple_xp(user_id, harvested_count * 10)  # 10 XP لكل محصول
+        from modules.leveling import add_xp
+        await add_xp(user_id, harvested_count * 10)  # 10 XP لكل محصول
         
         await callback.answer(f"🎉 تم حصاد {harvested_count} محصول بقيمة {format_number(total_yield)}$!")
         

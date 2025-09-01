@@ -11,7 +11,7 @@ import re
 from database.operations import get_user, update_user_balance, execute_query
 from utils.states import PropertyStates  
 from utils.helpers import format_number, is_valid_amount
-from modules.enhanced_xp_handler import EnhancedXPSystem
+from modules.leveling import add_xp
 
 # قائمة العقارات المتاحة - محدثة مع 10 أنواع
 AVAILABLE_PROPERTIES = {
@@ -407,9 +407,8 @@ async def handle_buy_property_text(message: Message, property_name: str, quantit
             )
         
         # إضافة XP
-        xp_system = EnhancedXPSystem()
         for _ in range(quantity):
-            await xp_system.add_xp(message.from_user.id, "property_deal")
+            await add_xp(message.from_user.id, 25)
         
         await message.reply(
             f"🎉 **تم الشراء بنجاح!**\n\n"
@@ -492,9 +491,8 @@ async def handle_sell_property_text(message: Message, property_name: str, quanti
             )
         
         # إضافة XP أقل للبيع
-        xp_system = EnhancedXPSystem()
         for _ in range(quantity):
-            await xp_system.add_xp(message.from_user.id, "property_deal")
+            await add_xp(message.from_user.id, 25)
         
         lost_income = prop_info['income'] * quantity
         

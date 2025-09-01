@@ -289,8 +289,8 @@ async def handle_quiz_answer(message: Message, state: FSMContext):
             
             # إضافة XP
             try:
-                from modules.simple_level_display import add_simple_xp
-                await add_simple_xp(message.from_user.id, quiz_data.get('xp_reward', 10))
+                from modules.leveling import add_xp
+                await add_xp(message.from_user.id, quiz_data.get('xp_reward', 10))
             except Exception as xp_error:
                 logging.error(f"خطأ في إضافة XP: {xp_error}")
         else:
@@ -357,8 +357,8 @@ async def handle_story_choice(message: Message, state: FSMContext):
         result += "📚 اكتب 'قصة ذكية' لبدء مغامرة جديدة!"
         
         try:
-            from modules.simple_level_display import add_simple_xp
-            await add_simple_xp(message.from_user.id, xp_reward)
+            from modules.leveling import add_xp
+            await add_xp(message.from_user.id, xp_reward)
         except Exception as xp_error:
             logging.error(f"خطأ في إضافة XP: {xp_error}")
         
@@ -406,8 +406,8 @@ async def handle_battle_answer(message: Message, state: FSMContext):
             result += f"💎 مكافأة الانتصار: {battle_data.get('victory_reward', 25)} XP\n"
             
             try:
-                from modules.simple_level_display import add_simple_xp
-                await add_simple_xp(message.from_user.id, battle_data.get('victory_reward', 25))
+                from modules.leveling import add_xp
+                await add_xp(message.from_user.id, battle_data.get('victory_reward', 25))
             except Exception as xp_error:
                 logging.error(f"خطأ في إضافة XP: {xp_error}")
         else:
@@ -417,8 +417,8 @@ async def handle_battle_answer(message: Message, state: FSMContext):
             result += f"🎁 مكافأة المشاركة: {battle_data.get('participation_reward', 10)} XP\n"
             
             try:
-                from modules.simple_level_display import add_simple_xp
-                await add_simple_xp(message.from_user.id, battle_data.get('participation_reward', 10))
+                from modules.leveling import add_xp
+                await add_xp(message.from_user.id, battle_data.get('participation_reward', 10))
             except Exception as xp_error:
                 logging.error(f"خطأ في إضافة XP: {xp_error}")
                 
@@ -489,8 +489,8 @@ async def handle_challenge_answer(message: Message, state: FSMContext):
         
         # إضافة XP
         try:
-            from modules.simple_level_display import add_simple_xp
-            await add_simple_xp(message.from_user.id, xp_reward)
+            from modules.leveling import add_xp
+            await add_xp(message.from_user.id, xp_reward)
         except Exception as xp_error:
             logging.error(f"خطأ في إضافة XP: {xp_error}")
         
@@ -1465,8 +1465,8 @@ async def handle_general_message(message: Message, state: FSMContext):
     # تحديث نشاط المستخدم وإضافة XP للرسائل
     try:
         await update_user_activity(message.from_user.id)
-        from modules.simple_level_display import add_simple_xp
-        await add_simple_xp(message.from_user.id, 1)
+        from modules.simple_level_display import add_xp
+        await add_xp(message.from_user.id, 1)
     except Exception as activity_error:
         logging.error(f"خطأ في تحديث النشاط أو XP: {activity_error}")
     
@@ -1626,13 +1626,15 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     if is_level_command:
         try:
-            from modules.enhanced_xp_handler import handle_level_command
-            await handle_level_command(message)
-        except Exception as level_error:
-            logging.error(f"خطأ في نظام المستوى المحسن: {level_error}")
-            # استخدام النظام البديل
-            from modules.simple_level_display import show_simple_level
-            await show_simple_level(message)
+            from modules.leveling import get_user_level_info
+            level_info = await get_user_level_info(message.from_user.id)
+            if level_info:
+                await message.reply(level_info)
+            else:
+                await message.reply("❌ لم يتم العثور على مستواك")
+        except Exception as e:
+            logging.error(f"خطأ في عرض المستوى: {e}")
+            await message.reply("❌ حدث خطأ في عرض مستواك")
         return
     
     # أمر التقدم البسيط - تم نقله لأسفل لتجنب التضارب
@@ -3028,8 +3030,8 @@ async def handle_ai_comprehensive_response(message: Message):
             
             # إضافة XP إضافي للتفاعل مع الذكاء الاصطناعي
             try:
-                from modules.simple_level_display import add_simple_xp
-                await add_simple_xp(message.from_user.id, 5)  # 5 XP إضافي للتفاعل الذكي
+                from modules.leveling import add_xp
+                await add_xp(message.from_user.id, 5)  # 5 XP إضافي للتفاعل الذكي
             except Exception as xp_error:
                 logging.error(f"خطأ في إضافة XP للتفاعل الذكي: {xp_error}")
         

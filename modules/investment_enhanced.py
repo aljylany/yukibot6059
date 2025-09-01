@@ -16,8 +16,8 @@ except ImportError:
     async def add_xp_for_activity(user_id: int, activity_type: str):
         """دالة بديلة لإضافة XP"""
         try:
-            from modules.simple_level_display import add_simple_xp
-            await add_simple_xp(user_id, 5)
+            from modules.leveling import add_xp
+            await add_xp(user_id, 5)
         except:
             pass
 

@@ -264,3 +264,51 @@ class LevelingSystem:
 
 # إنشاء نسخة عامة من نظام التطوير
 leveling_system = LevelingSystem()
+
+
+async def get_user_level_info(user_id: int):
+    """الحصول على معلومات مستوى المستخدم كنص منسق"""
+    try:
+        user_level = await leveling_system.get_user_level_info(user_id)
+        
+        if not user_level:
+            return None
+        
+        current_xp = user_level.get('xp', 0)
+        level_name = user_level.get('level_name', 'نجم 1')
+        world_name = user_level.get('world_name', 'عالم النجوم')
+        
+        # حساب XP المطلوب للمستوى التالي (مبسط)
+        if "نجم" in level_name:
+            try:
+                star_num = int(level_name.split()[-1])
+                next_level_xp = 1000 * star_num  # حساب بسيط
+            except:
+                next_level_xp = 1000
+        else:
+            next_level_xp = 2000
+            
+        remaining_xp = max(0, next_level_xp - current_xp)
+        
+        level_display = f"""⭐ **مستواك:**
+
+🎯 المستوى: {level_name}
+✨ النقاط: {current_xp:,} XP
+🎪 للمستوى التالي: {remaining_xp:,} XP
+📊 التقدم: {current_xp:,} XP"""
+        
+        return level_display.strip()
+        
+    except Exception as e:
+        logging.error(f"خطأ في جلب معلومات المستوى: {e}")
+        return None
+
+
+async def add_xp(user_id: int, amount: int):
+    """إضافة XP مبسطة للمستخدم"""
+    try:
+        success, message = await leveling_system.add_xp(user_id, "generic")
+        return success
+    except Exception as e:
+        logging.error(f"خطأ في إضافة XP: {e}")
+        return False

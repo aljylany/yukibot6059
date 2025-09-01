@@ -133,8 +133,8 @@ async def perform_simple_investment(message: Message, amount: int):
         
         # إضافة XP للاستثمار
         try:
-            from modules.simple_level_display import add_simple_xp
-            await add_simple_xp(user_id, INVESTMENT_XP_REWARD)
+            from modules.leveling import add_xp
+            await add_xp(user_id, INVESTMENT_XP_REWARD)
         except Exception as xp_error:
             logging.error(f"خطأ في إضافة XP للاستثمار: {xp_error}")
         

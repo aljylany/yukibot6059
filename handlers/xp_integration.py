@@ -5,7 +5,7 @@ XP System Integration with Various Activities
 
 import logging
 from aiogram.types import Message
-from modules.xp_system import add_xp_for_activity
+from modules.leveling import add_xp
 from modules.leveling import leveling_system
 
 

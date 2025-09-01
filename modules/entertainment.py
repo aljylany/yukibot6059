@@ -1450,8 +1450,8 @@ async def wedding_dance(message: Message):
         
         # إضافة XP للراقص
         try:
-            from modules.simple_level_display import add_simple_xp
-            await add_simple_xp(message.from_user.id, 15)  # XP إضافي للرقص
+            from modules.leveling import add_xp
+            await add_xp(message.from_user.id, 15)  # XP إضافي للرقص
         except Exception as xp_error:
             logging.error(f"خطأ في إضافة XP للرقص: {xp_error}")
 
@@ -1531,8 +1531,8 @@ async def wedding_congratulation(message: Message):
         
         # إضافة XP للمهنئ
         try:
-            from modules.simple_level_display import add_simple_xp
-            await add_simple_xp(message.from_user.id, 10)  # XP للتهنئة
+            from modules.leveling import add_xp
+            await add_xp(message.from_user.id, 10)  # XP للتهنئة
         except Exception as xp_error:
             logging.error(f"خطأ في إضافة XP للتهنئة: {xp_error}")
 
