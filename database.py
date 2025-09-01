@@ -72,8 +72,8 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS levels (
         user_id INTEGER PRIMARY KEY,
         xp INTEGER DEFAULT 0,
-        current_level TEXT DEFAULT 'نجم 1',
-        current_world TEXT DEFAULT 'عالم النجوم',
+        level_name TEXT DEFAULT 'نجم 1',
+        world_name TEXT DEFAULT 'عالم النجوم',
         last_xp_gain TIMESTAMP DEFAULT 0
     )''')
     

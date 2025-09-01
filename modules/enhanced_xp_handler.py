@@ -39,7 +39,7 @@ class EnhancedXPSystem:
             "gaming": 10
         }
     
-    async def add_xp(self, user_id: int, activity_type: str, amount: int = None):
+    async def add_xp(self, user_id: int, activity_type: str, amount = None):
         """إضافة XP للمستخدم مع تحسينات"""
         try:
             # التأكد من وجود المستخدم
@@ -64,7 +64,7 @@ class EnhancedXPSystem:
             logging.error(f"خطأ في إضافة XP: {e}")
             return False, f"حدث خطأ: {str(e)}"
     
-    async def check_level_up_notification(self, user_id: int):
+    async def check_level_up_notification(self, user_id):
         """فحص وإشعار ترقية المستوى"""
         try:
             # يمكن إضافة لوجيك إشعار الترقية هنا
@@ -72,7 +72,7 @@ class EnhancedXPSystem:
         except Exception as e:
             logging.error(f"خطأ في فحص الترقية: {e}")
     
-    async def get_user_stats(self, user_id: int):
+    async def get_user_stats(self, user_id):
         """الحصول على إحصائيات المستخدم الشاملة"""
         try:
             level_info = await leveling_system.get_user_level_info(user_id)
@@ -211,18 +211,20 @@ async def get_user_level_display(user_id: int):
     return await enhanced_xp_system.format_user_level_display(user_id)
 
 
-async def handle_level_command(message: Message):
+async def handle_level_command(message):
     """معالج أمر عرض المستوى"""
     try:
         # التأكد من وجود المستخدم في قاعدة البيانات
-        await update_user_activity(message.from_user.id)
-        
-        level_display = await get_user_level_display(message.from_user.id)
-        await message.reply(level_display)
-        
-        # إضافة XP لاستخدام الأمر
-        await add_xp_for_activity(message.from_user.id, "command_usage")
+        if message and message.from_user:
+            await update_user_activity(message.from_user.id)
+            
+            level_display = await get_user_level_display(message.from_user.id)
+            await message.reply(level_display)
+            
+            # إضافة XP لاستخدام الأمر
+            await add_xp_for_activity(message.from_user.id, "command_usage")
         
     except Exception as e:
         logging.error(f"خطأ في عرض مستوى المستخدم: {e}")
-        await message.reply("❌ حدث خطأ في عرض معلومات المستوى")
+        if message:
+            await message.reply("❌ حدث خطأ في عرض معلومات المستوى")
