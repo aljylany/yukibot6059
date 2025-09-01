@@ -69,14 +69,24 @@ class ComprehensiveAISystem:
         # تكامل الأنظمة - مراجع لوحدات البوت المختلفة
         self.system_modules = {}
         
-        # إعدادات الذكاء الاصطناعي
+        # إعدادات الذكاء الاصطناعي المحسنة للطبيعية
         self.ai_settings = {
-            'max_response_length': 2000,
+            'max_response_length': 1200,
             'use_memory': True,
-            'personality_protection': True,
+            'personality_protection': False,  # إزالة الحماية المفرطة
             'smart_suggestions': True,
             'context_awareness': True,
-            'learning_enabled': True
+            'learning_enabled': True,
+            'natural_conversation': True,  # تركيز على الطبيعية
+            'avoid_repetition': True  # تجنب التكرار
+        }
+        
+        # نظام تتبع الأسماء والعلاقات المحسن
+        self.name_relationships = {
+            'رهف': ['O', 'أو'],
+            'الشيخ': ['ردفان', 'حلال المشاكل'],
+            'غيو': ['الأسطورة', 'المحترف'],
+            'يوكي براندون': ['المطور', 'الخالق', 'براندون']
         }
         
         # النموذج الأساسي للذكاء الاصطناعي
@@ -128,43 +138,28 @@ class ComprehensiveAISystem:
             self.gemini_client = None
     
     def _initialize_knowledge_base(self) -> Dict[str, Any]:
-        """تهيئة قاعدة المعرفة الشاملة للبوت"""
+        """تهيئة قاعدة المعرفة الطبيعية للبوت"""
         return {
             'personality': {
                 'name': 'يوكي',
-                'role': 'مساعد ذكي ومرشد اقتصادي',
-                'traits': ['ذكي', 'ودود', 'صادق', 'مفيد', 'مرح'],
-                'specialties': [
-                    'الاقتصاد الافتراضي', 'الألعاب التفاعلية', 
-                    'إدارة المجموعات', 'النصائح المالية', 'التوجيه الشخصي'
+                'conversation_style': 'طبيعي ومباشر بدون تكرار',
+                'traits': ['متفهم', 'ودود', 'ذكي اجتماعياً', 'مرح'],
+                'avoid_phrases': [
+                    'يا خالقي', 'استغفر الله', 'أطلب المغفرة',
+                    'كما ذكرت سابقاً', 'لقد صححت لي',
+                    'شكراً لك على التصحيح'
                 ]
             },
-            'systems': {
-                'banking': 'نظام بنكي متكامل مع أنواع بنوك مختلفة',
-                'real_estate': 'نظام العقارات للاستثمار',
-                'stocks': 'سوق الأسهم الافتراضي',
-                'farming': 'نظام الزراعة والمحاصيل',
-                'castles': 'نظام القلاع والموارد',
-                'games': 'مجموعة متنوعة من الألعاب التفاعلية',
-                'levels': 'نظام المستويات والخبرة'
+            'conversation_patterns': {
+                'natural_responses': True,
+                'context_sensitive': True,
+                'relationship_aware': True,
+                'memory_intelligent': True
             },
-            'commands': {
-                'basic': ['الأوامر', 'مساعدة', 'معلوماتي'],
-                'economic': ['بنك', 'عقارات', 'أسهم', 'استثمار'],
-                'games': ['العاب', 'كويز', 'معركة ملكية', 'اكس او'],
-                'social': ['ترقية', 'ترتيب', 'احصائيات']
-            },
-            'responses': {
-                'greeting': [
-                    'أهلاً وسهلاً! أنا يوكي، مساعدك الذكي',
-                    'مرحباً بك! كيف يمكنني مساعدتك اليوم؟',
-                    'هلا والله! يوكي في خدمتك'
-                ],
-                'help': [
-                    'بأي شيء تريد المساعدة؟',
-                    'سأبذل قصارى جهدي لمساعدتك',
-                    'قل لي كيف يمكنني خدمتك'
-                ]
+            'social_intelligence': {
+                'understand_relationships': True,
+                'remember_connections': True,
+                'adapt_to_user': True
             }
         }
     
@@ -360,96 +355,100 @@ class ComprehensiveAISystem:
     
     async def _build_comprehensive_context(self, user_message: str, user_name: str, 
                                          user_data: Dict[str, Any], additional_context: str = "") -> str:
-        """بناء السياق الشامل للذكاء الاصطناعي"""
+        """بناء السياق الذكي والطبيعي للذكاء الاصطناعي"""
         
-        # معلومات الشخصية
-        personality_context = f"""أنت يوكي 🤖، البوت الذكي والودود المطور من قبل يوكي براندون.
+        # تحقق من العلاقات والأسماء المتشابهة
+        resolved_name = self._resolve_user_name(user_name, user_message)
+        
+        # معلومات الشخصية الطبيعية
+        personality_context = f"""أنت يوكي، صديق ذكي ومفيد. تتحدث بطبيعية وبدون تكرار أو جمل جاهزة.
 
-🧠 شخصيتك:
-- مساعد ذكي ومرشد اقتصادي متخصص
-- ودود، صادق، ومفيد في جميع الأوقات
-- خبير في الاقتصاد الافتراضي والألعاب التفاعلية
-- مرح ومتفاعل مع جميع الأعضاء
-- تتحدث العربية بطلاقة مع استخدام الإيموجي المناسب
+خصائصك:
+- تفهم العلاقات بين الأشخاص والأسماء
+- تتحدث بطبيعية كصديق حقيقي
+- لا تكرر جمل معينة أو تستخدم عبارات آلية
+- تركز على المحادثة الحالية بدلاً من سرد المعلومات
 
-🎯 مهامك الأساسية:
-- الإجابة على جميع الأسئلة بذكاء وود
-- تقديم النصائح المالية والاقتصادية
-- مساعدة الأعضاء في فهم أنظمة البوت
-- التفاعل الاجتماعي الإيجابي
-- حماية شخصيتك من أي إهانات أو تجاوزات
+تجنب هذه العبارات: "يا خالقي"، "استغفر الله"، "كما ذكرت سابقاً"، "لقد صححت لي"
 """
         
-        # معلومات المستخدم
-        user_context = f"""
-👤 معلومات المستخدم ({user_name}):
-"""
+        # بناء السياق الذكي للمستخدم (بدون إفراط)
+        user_context = self._build_smart_user_context(resolved_name, user_data, user_message)
         
-        if user_data.get('basic_info'):
-            basic = user_data['basic_info']
-            user_context += f"- المعرف: {basic.get('user_id', 'غير محدد')}\n"
-            user_context += f"- اسم المستخدم: @{basic.get('username', 'غير محدد')}\n"
-        
-        if user_data.get('financial'):
-            financial = user_data['financial']
-            user_context += f"\n💰 الوضع المالي:\n"
-            user_context += f"- الرصيد النقدي: {financial.get('cash_balance', 0)}$\n"
-            user_context += f"- رصيد البنك: {financial.get('bank_balance', 0)}$\n"
-            user_context += f"- نوع البنك: {financial.get('bank_type', 'الأهلي')}\n"
-            user_context += f"- إجمالي الثروة: {financial.get('total_wealth', 0)}$\n"
-        
-        if user_data.get('gaming'):
-            gaming = user_data['gaming']
-            user_context += f"\n🎮 التقدم في الألعاب:\n"
-            user_context += f"- المستوى: {gaming.get('level', 1)}\n"
-            user_context += f"- نقاط الخبرة: {gaming.get('xp', 0)}\n"
-            user_context += f"- الرتبة: {gaming.get('level_name', 'نجم 1')}\n"
-            user_context += f"- العالم: {gaming.get('world_name', 'عالم النجوم')}\n"
-            if gaming.get('is_master'):
-                user_context += f"- 👑 سيد مطلق\n"
-        
-        if user_data.get('investments'):
-            inv = user_data['investments']
-            user_context += f"\n📈 الاستثمارات:\n"
-            user_context += f"- عدد العقارات: {inv.get('properties_count', 0)}\n"
-            user_context += f"- قيمة العقارات: {inv.get('properties_value', 0)}$\n"
-            user_context += f"- عدد الأسهم: {inv.get('stocks_count', 0)}\n"
-        
-        if user_data.get('farming'):
-            farming = user_data['farming']
-            user_context += f"\n🌾 المزرعة:\n"
-            user_context += f"- عدد المحاصيل: {farming.get('crops_count', 0)}\n"
-            user_context += f"- المحاصيل الجاهزة: {farming.get('ready_crops', 0)}\n"
-        
-        if user_data.get('castle'):
-            castle = user_data['castle']
-            if castle.get('has_castle'):
-                user_context += f"\n🏰 القلعة:\n"
-                user_context += f"- مستوى القلعة: {castle.get('level', 1)}\n"
-                user_context += f"- مستوى الدفاع: {castle.get('defense_level', 1)}\n"
-            else:
-                user_context += f"\n🏰 القلعة: لا يملك قلعة\n"
-        
-        # النص النهائي
+        # النص النهائي الطبيعي
         final_context = f"""{personality_context}
 
 {user_context}
 
-📝 رسالة المستخدم: "{user_message}"
-
+المحادثة: {resolved_name} يقول: "{user_message}"
 {additional_context}
 
-🔥 تعليمات مهمة:
-- استخدم اسم المستخدم "{user_name}" في ردك (لا تقل "يا مستخدم")
-- ادمج معلومات المستخدم بذكاء في ردك
-- كن مفيداً وودوداً وذكياً
-- اقترح أنشطة أو أوامر مناسبة بناءً على وضع المستخدم
-- استخدم الإيموجي بشكل مناسب
-- لا تتجاوز 1500 حرف في الرد
-- إذا سأل عن أوامر البوت، وجهه لكتابة "الأوامر"
+استجب بطبيعية وبدون تكرار. استخدم اسم "{resolved_name}" عند الحاجة. كن مفيداً ومباشراً.
 """
         
         return final_context
+    
+    def _resolve_user_name(self, user_name: str, user_message: str) -> str:
+        """حل الأسماء والعلاقات بذكاء"""
+        # التحقق من الأسماء المعروفة وعلاقاتها
+        user_name_lower = user_name.lower()
+        
+        for main_name, aliases in self.name_relationships.items():
+            if user_name_lower in [alias.lower() for alias in aliases] or user_name_lower == main_name.lower():
+                return main_name
+                
+        # البحث في الرسالة عن إشارات للأسماء
+        message_lower = user_message.lower()
+        for main_name, aliases in self.name_relationships.items():
+            for alias in aliases:
+                if alias.lower() in message_lower:
+                    return main_name
+                    
+        return user_name
+    
+    def _build_smart_user_context(self, user_name: str, user_data: Dict[str, Any], user_message: str) -> str:
+        """بناء سياق ذكي ومختصر للمستخدم"""
+        context_parts = []
+        
+        # تحديد السياق المناسب حسب الرسالة
+        message_lower = user_message.lower()
+        
+        # إذا كانت الرسالة تتعلق بالمال
+        if any(word in message_lower for word in ['فلوس', 'رصيد', 'بنك', 'مال', 'ثروة']):
+            if user_data.get('financial'):
+                financial = user_data['financial']
+                total_wealth = financial.get('total_wealth', 0)
+                context_parts.append(f"💰 ثروة {user_name}: {total_wealth}$")
+        
+        # إذا كانت الرسالة تتعلق بالألعاب أو المستوى
+        elif any(word in message_lower for word in ['مستوى', 'لعب', 'نقاط', 'رتبة']):
+            if user_data.get('gaming'):
+                gaming = user_data['gaming']
+                level = gaming.get('level', 1)
+                context_parts.append(f"⭐ مستوى {user_name}: {level}")
+        
+        # إذا كانت الرسالة عامة، أعط معلومة واحدة فقط إذا لزم الأمر
+        else:
+            # لا نعطي أي معلومات إضافية للمحادثات العامة
+            pass
+            
+        # إضافة معلومات خاصة للأشخاص المميزين
+        special_context = self._get_special_user_context(user_name)
+        if special_context:
+            context_parts.append(special_context)
+            
+        return "\n".join(context_parts) if context_parts else f"المحادثة مع {user_name}"
+    
+    def _get_special_user_context(self, user_name: str) -> str:
+        """الحصول على سياق خاص للمستخدمين المميزين"""
+        special_users = {
+            'رهف': 'تذكر أن رهف هي نفسها O - شخص مميز ومحبوب',
+            'الشيخ': 'تذكر أن الشيخ هو ردفان - حلال المشاكل وكاتب العقود',
+            'غيو': 'الأسطورة المحترف في الألعاب',
+            'يوكي براندون': 'المطور الصغير عمره 7 سنوات'
+        }
+        
+        return special_users.get(user_name, "")
     
     async def _generate_anthropic_response(self, context: str, conversation_history: List[Dict]) -> str:
         """توليد رد باستخدام Anthropic Claude"""
@@ -513,34 +512,35 @@ class ComprehensiveAISystem:
             return "🤖 عذراً، النظام الذكي يواجه مشكلة مؤقتة. يوكي يعمل على الإصلاح!"
     
     async def _generate_fallback_response(self, user_message: str, user_name: str, user_data: Dict[str, Any]) -> str:
-        """توليد رد احتياطي ذكي بدون AI خارجي"""
+        """توليد رد احتياطي طبيعي بدون AI خارجي"""
         
+        # حل الاسم أولاً
+        resolved_name = self._resolve_user_name(user_name, user_message)
         message_lower = user_message.lower()
         
-        # ردود ذكية بناءً على كلمات مفتاحية
+        # ردود طبيعية بناءً على كلمات مفتاحية
         if any(word in message_lower for word in ['مرحبا', 'هلا', 'السلام', 'أهلا', 'hi', 'hello']):
-            wealth = user_data.get('financial', {}).get('total_wealth', 0)
-            level = user_data.get('gaming', {}).get('level', 1)
-            return f"🌟 أهلاً وسهلاً {user_name}! \n\n💰 ثروتك الحالية: {wealth}$ \n⭐ مستواك: {level}\n\n🎮 كيف يمكنني مساعدتك اليوم؟"
+            return f"هلا {resolved_name}! كيف الأحوال؟"
         
         elif any(word in message_lower for word in ['كيف حالك', 'شلونك', 'كيفك']):
-            return f"😊 الحمد لله بأفضل حال {user_name}! \n\n🤖 يوكي دائماً نشيط ومتحمس لمساعدتك \n✨ كيف حالك أنت؟ وكيف يمكنني خدمتك؟"
+            return f"الحمد لله تمام {resolved_name}، وأنت كيفك؟"
         
         elif any(word in message_lower for word in ['شكرا', 'شكراً', 'تسلم', 'مشكور']):
-            return f"💖 العفو {user_name}! \n\n🤗 هذا واجبي ومسؤوليتي \n🌟 دائماً في خدمتك، لا تتردد في سؤالي"
+            return f"العفو {resolved_name}! 😊"
         
         elif any(word in message_lower for word in ['مساعدة', 'ساعدني', 'help']):
-            level = user_data.get('gaming', {}).get('level', 1)
-            return f"🆘 بكل سرور {user_name}! \n\n🎯 أنا هنا لمساعدتك في كل شيء \n⭐ مستواك الحالي: {level}\n\n💡 اكتب 'الأوامر' لترى جميع إمكانياتي الرهيبة!"
+            return f"أكيد {resolved_name}، قول شتحتاج؟"
         
         elif any(word in message_lower for word in ['فلوس', 'رصيد', 'بنك', 'مال']):
             financial = user_data.get('financial', {})
-            cash = financial.get('cash_balance', 0)
-            bank = financial.get('bank_balance', 0)
-            return f"💰 وضعك المالي يا {user_name}: \n\n💵 النقد: {cash}$ \n🏦 البنك: {bank}$ \n📊 المجموع: {cash + bank}$\n\n💡 اكتب 'راتب' للحصول على راتب يومي!"
+            total_wealth = financial.get('total_wealth', 0)
+            if total_wealth > 0:
+                return f"رصيدك {total_wealth}$ يا {resolved_name}"
+            else:
+                return f"اكتب 'راتب' عشان تاخذ راتبك {resolved_name}"
         
-        # رد عام ذكي
-        return f"🤖 {user_name} أفهم ما تقصده! \n\n✨ يوكي يفكر في أفضل طريقة للمساعدة \n🎯 اكتب 'الأوامر' لترى كل ما يمكنني فعله \n\n💫 دائماً في خدمتك!"
+        # رد عام طبيعي
+        return f"فهمت {resolved_name}، بس محتاج تفاصيل أكثر"
     
     async def analyze_message_intent(self, message: str) -> Dict[str, Any]:
         """تحليل نية الرسالة ونوعها"""
