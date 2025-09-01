@@ -122,7 +122,7 @@ async def handle_guild_text_commands(message: Message, state: FSMContext):
         logging.error(f"خطأ في معالجة أوامر النقابة النصية: {e}")
 
 # معالجة callbacks النقابة فقط
-@guild_router.callback_query(lambda c: c.data and (c.data.startswith("guild_") or c.data.startswith("missions_") or c.data.startswith("shop_") or c.data.startswith("buy_") or c.data.startswith("change_class_") or c.data.startswith("gender_select_") or c.data.startswith("class_select_")))
+@guild_router.callback_query(lambda c: c.data and (c.data.startswith("guild_") or c.data.startswith("missions_") or c.data.startswith("shop_") or c.data.startswith("buy_") or c.data.startswith("change_class_") or c.data.startswith("gender_select_") or c.data.startswith("class_select_") or c.data == "current_class"))
 async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
     """معالجة callbacks النقابة فقط"""
     try:
