@@ -1166,7 +1166,7 @@ async def purchase_item_command(message: Message):
             f"شراء {quantity} {item_info['name']} من متجر القلعة"
         )
         
-        await message.reply(
+        success_message = (
             f"✅ **تم الشراء بنجاح!**\n\n"
             f"🛒 **المشتريات:**\n"
             f"{item_info['emoji']} {quantity} {item_info['name']}\n\n"
@@ -1174,6 +1174,7 @@ async def purchase_item_command(message: Message):
             f"💰 **رصيدك الآن:** {format_number((await get_user(message.from_user.id))['balance'])}$\n\n"
             f"🎉 تم إضافة العناصر لمواردك!"
         )
+        await message.reply(success_message)
         
     except Exception as e:
         logging.error(f"خطأ في شراء العناصر: {e}")

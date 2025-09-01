@@ -13,9 +13,20 @@ class LevelingSystem:
         self.levels = LEVELS
 
     def get_world(self, world_name):
+        # إضافة logging للتشخيص
+        logging.info(f"البحث عن العالم: '{world_name}'")
+        logging.info(f"العوالم المتاحة: {[w['name'] for w in self.levels]}")
+        
         for world in self.levels:
             if world["name"] == world_name:
+                logging.info(f"تم العثور على العالم: {world['name']}")
                 return world
+        
+        logging.warning(f"لم يتم العثور على العالم: '{world_name}'")
+        # إرجاع العالم الأول كحل احتياطي
+        if self.levels:
+            logging.info(f"استخدام العالم الاحتياطي: {self.levels[0]['name']}")
+            return self.levels[0]
         return None
 
     async def add_xp(self, user_id, action_type="message"):
