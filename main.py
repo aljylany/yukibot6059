@@ -68,11 +68,13 @@ async def main():
     
     # تسجيل معالجات الأحداث (بترتيب الأولوية)
     dp.include_router(commands.router)
-    dp.include_router(callbacks.router)
     
-    # تسجيل معالج النقابة المتخصص (أولوية عالية للأوامر المحددة)
+    # تسجيل معالج النقابة المتخصص قبل المعالج العام للأزرار
     from handlers.guild_handler import guild_router
     dp.include_router(guild_router)
+    
+    # معالج الأزرار العام (بعد النقابة لتجنب التداخل)
+    dp.include_router(callbacks.router)
     
     dp.include_router(smart_commands.router)
     dp.include_router(bug_report_handler.router)

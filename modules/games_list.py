@@ -302,7 +302,7 @@ async def handle_game_start_callback(callback_query, game_command: str):
             await callback_query.answer("🧮 تم بدء التحدي الرياضي!")
             
         elif game_command in ["نقابة", "لعبة النقابة", "guild"]:
-            from modules.guild_commands import start_guild_registration
+            from modules.guild_game import start_guild_registration
             # إنشاء state فارغ
             state = None
             await start_guild_registration(fake_message, state)
