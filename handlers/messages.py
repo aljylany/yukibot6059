@@ -1763,7 +1763,12 @@ async def handle_general_message(message: Message, state: FSMContext):
         logging.error(f"خطأ في نظام الاستثمار المحسن: {inv_error}")
     
     # فحص أوامر العمليات المصرفية
-    if any(keyword in text for keyword in ["البنك", "بنك", "حسابي", "محفظتي", "المحفظة", "ايداع", "إيداع", "سحب"]):
+    # قاموس كلمات البنك - تحتاج لتكون مفردات فقط
+    bank_standalone_words = ['البنك', 'بنك', 'بنكي', 'المحفظة', 'محفظتي']
+    bank_context_words = ['ايداع', 'إيداع', 'سحب']  # هذه يمكن أن تكون في سياق
+    
+    if (text.strip() in bank_standalone_words or 
+        any(word in text for word in bank_context_words)):
         # إضافة XP للعمليات المصرفية
         try:
             from modules.enhanced_xp_handler import add_xp_for_activity
@@ -2119,11 +2124,11 @@ async def handle_general_message(message: Message, state: FSMContext):
         await farm.show_farm_status(message)
     elif text == 'شراء بذور':
         await farm.show_seeds_shop(message)
-    elif any(word in words for word in ['مزرعة']):
+    elif text.strip() in ['مزرعة', 'مزرعتي', 'المزرعة'] or (len(words) == 1 and words[0] in ['مزرعة', 'مزرعتي', 'المزرعة']):
         await farm.show_farm_menu(message)
     elif any(phrase in text for phrase in ['انشاء قلعة', 'إنشاء قلعة', 'انشئ قلعة']):
         await castle.create_castle_command(message, state)
-    elif text.strip() == 'قلعة':
+    elif text.strip() in ['قلعة', 'قلعتي', 'القلعة']:
         await castle.show_castle_menu(message)
     elif any(phrase in text for phrase in ['بحث عن كنز', 'بحث كنز', 'ابحث كنز']):
         await castle.treasure_hunt_command(message)
