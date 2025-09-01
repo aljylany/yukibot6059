@@ -22,10 +22,12 @@ from modules.guild_game import (
 from modules.guild_database import init_guild_database, load_guild_player
 from modules.guild_missions import (
     show_missions_menu, show_normal_missions, show_collect_missions,
+    show_medium_missions, show_legendary_missions,
     start_mission, show_active_mission_status, handle_locked_mission
 )
 from modules.guild_shop import (
     show_shop_menu, show_weapons_shop, show_badges_shop, show_titles_shop,
+    show_potions_shop, show_rings_shop, show_animals_shop,
     buy_item, show_inventory, handle_cant_buy
 )
 from modules.guild_upgrade import (
@@ -218,6 +220,12 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         elif data == "missions_collect":
             await show_collect_missions(callback)
         
+        elif data == "missions_medium":
+            await show_medium_missions(callback)
+        
+        elif data == "missions_legendary":
+            await show_legendary_missions(callback)
+        
         elif data.startswith("start_mission_"):
             await start_mission(callback)
         
@@ -239,6 +247,15 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         
         elif data == "shop_titles":
             await show_titles_shop(callback)
+        
+        elif data == "shop_potions":
+            await show_potions_shop(callback)
+        
+        elif data == "shop_rings":
+            await show_rings_shop(callback)
+        
+        elif data == "shop_animals":
+            await show_animals_shop(callback)
         
         elif data == "shop_inventory":
             await show_inventory(callback)

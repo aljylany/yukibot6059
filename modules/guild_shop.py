@@ -142,6 +142,150 @@ async def show_badges_shop(callback: CallbackQuery):
         logging.error(f"خطأ في عرض متجر الأوسمة: {e}")
         await callback.answer("❌ حدث خطأ")
 
+async def show_potions_shop(callback: CallbackQuery):
+    """عرض متجر الجرعات"""
+    try:
+        user_id = callback.from_user.id
+        player = GUILD_PLAYERS[user_id]
+        user_data = await get_or_create_user(user_id, player.username, player.name)
+        balance = user_data.get('balance', 0) if user_data else 0
+        
+        keyboard = []
+        shop_text = f"🧪 **متجر الجرعات السحرية**\n\n💰 **رصيدك:** {format_number(balance)}$\n\n"
+        
+        # جرعات مؤقتة للنظام
+        potions = {
+            "health_potion": {"name": "🍯 جرعة الشفاء الكبرى", "price": 15000, "power_bonus": 500, "description": "تستعيد صحتك بالكامل وتزيد قوتك مؤقتاً"},
+            "strength_potion": {"name": "💪 جرعة القوة الأسطورية", "price": 25000, "power_bonus": 800, "description": "تضاعف قوتك القتالية لفترة محدودة"},
+            "speed_potion": {"name": "⚡ جرعة السرعة البرقية", "price": 18000, "power_bonus": 600, "description": "تزيد من سرعة تنفيذ المهام والمعارك"}
+        }
+        
+        for potion_id, potion_data in potions.items():
+            can_afford = balance >= potion_data["price"]
+            button_text = f"{'✅' if can_afford else '❌'} {potion_data['name']} - {format_number(potion_data['price'])}$"
+            
+            keyboard.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"buy_potion_{potion_id}" if can_afford else f"cant_buy_{potion_id}"
+            )])
+            
+            shop_text += (
+                f"{potion_data['name']}\n"
+                f"📝 {potion_data['description']}\n"
+                f"⚔️ قوة إضافية: +{potion_data['power_bonus']}\n"
+                f"💰 السعر: {format_number(potion_data['price'])}$\n"
+                f"{'✅ متاح' if can_afford else '❌ رصيد غير كافي'}\n\n"
+            )
+        
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
+        
+        await callback.message.edit_text(
+            shop_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض متجر الجرعات: {e}")
+        await callback.answer("❌ حدث خطأ")
+
+async def show_rings_shop(callback: CallbackQuery):
+    """عرض متجر الخواتم"""
+    try:
+        user_id = callback.from_user.id
+        player = GUILD_PLAYERS[user_id]
+        user_data = await get_or_create_user(user_id, player.username, player.name)
+        balance = user_data.get('balance', 0) if user_data else 0
+        
+        keyboard = []
+        shop_text = f"💍 **متجر الخواتم الأسطورية**\n\n💰 **رصيدك:** {format_number(balance)}$\n\n"
+        
+        # خواتم مؤقتة للنظام
+        rings = {
+            "power_ring": {"name": "💍 خاتم القوة الأزلية", "price": 35000, "power_bonus": 1200, "description": "خاتم أسطوري يضاعف قوتك القتالية"},
+            "wisdom_ring": {"name": "🔮 خاتم الحكمة القديمة", "price": 28000, "power_bonus": 900, "description": "يزيد من خبرتك المكتسبة من المهام"},
+            "fortune_ring": {"name": "🍀 خاتم الحظ الذهبي", "price": 32000, "power_bonus": 1000, "description": "يزيد من الأموال المكتسبة من المهام"}
+        }
+        
+        for ring_id, ring_data in rings.items():
+            can_afford = balance >= ring_data["price"]
+            button_text = f"{'✅' if can_afford else '❌'} {ring_data['name']} - {format_number(ring_data['price'])}$"
+            
+            keyboard.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"buy_ring_{ring_id}" if can_afford else f"cant_buy_{ring_id}"
+            )])
+            
+            shop_text += (
+                f"{ring_data['name']}\n"
+                f"📝 {ring_data['description']}\n"
+                f"⚔️ قوة إضافية: +{ring_data['power_bonus']}\n"
+                f"💰 السعر: {format_number(ring_data['price'])}$\n"
+                f"{'✅ متاح' if can_afford else '❌ رصيد غير كافي'}\n\n"
+            )
+        
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
+        
+        await callback.message.edit_text(
+            shop_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض متجر الخواتم: {e}")
+        await callback.answer("❌ حدث خطأ")
+
+async def show_animals_shop(callback: CallbackQuery):
+    """عرض متجر الحيوانات"""
+    try:
+        user_id = callback.from_user.id
+        player = GUILD_PLAYERS[user_id]
+        user_data = await get_or_create_user(user_id, player.username, player.name)
+        balance = user_data.get('balance', 0) if user_data else 0
+        
+        keyboard = []
+        shop_text = f"🐾 **متجر الحيوانات الأسطورية**\n\n💰 **رصيدك:** {format_number(balance)}$\n\n"
+        
+        # حيوانات مؤقتة للنظام
+        animals = {
+            "dragon": {"name": "🐉 التنين الأحمر", "price": 50000, "power_bonus": 2000, "description": "تنين قوي يحارب بجانبك في المعارك"},
+            "phoenix": {"name": "🔥 طائر العنقاء", "price": 42000, "power_bonus": 1600, "description": "طائر أسطوري يعيد إحياءك عند الهزيمة"},
+            "wolf": {"name": "🐺 الذئب الفضي", "price": 25000, "power_bonus": 1000, "description": "ذئب سريع وقوي يساعدك في الصيد"}
+        }
+        
+        for animal_id, animal_data in animals.items():
+            can_afford = balance >= animal_data["price"]
+            button_text = f"{'✅' if can_afford else '❌'} {animal_data['name']} - {format_number(animal_data['price'])}$"
+            
+            keyboard.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"buy_animal_{animal_id}" if can_afford else f"cant_buy_{animal_id}"
+            )])
+            
+            shop_text += (
+                f"{animal_data['name']}\n"
+                f"📝 {animal_data['description']}\n"
+                f"⚔️ قوة إضافية: +{animal_data['power_bonus']}\n"
+                f"💰 السعر: {format_number(animal_data['price'])}$\n"
+                f"{'✅ متاح' if can_afford else '❌ رصيد غير كافي'}\n\n"
+            )
+        
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
+        
+        await callback.message.edit_text(
+            shop_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض متجر الحيوانات: {e}")
+        await callback.answer("❌ حدث خطأ")
+
 async def show_titles_shop(callback: CallbackQuery):
     """عرض متجر الألقاب"""
     try:
@@ -382,6 +526,9 @@ __all__ = [
     'show_weapons_shop',
     'show_badges_shop',
     'show_titles_shop',
+    'show_potions_shop',
+    'show_rings_shop', 
+    'show_animals_shop',
     'buy_item',
     'show_inventory',
     'handle_cant_buy'

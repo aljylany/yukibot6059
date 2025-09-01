@@ -259,6 +259,100 @@ MISSIONS = {
             "required_level": 3,
             "power_requirement": 25000
         }
+    },
+    "medium": {
+        "orc_battle": {
+            "name": "⚔️ معركة الأوركس",
+            "description": "قاتل قبيلة الأوركس الشرسة في جبال الشمال",
+            "duration": 40,
+            "experience": 35000,
+            "money": 25000,
+            "required_level": 15,
+            "power_requirement": 50000
+        },
+        "cursed_tomb": {
+            "name": "🏺 المقبرة الملعونة", 
+            "description": "طهر المقبرة الملعونة من الأرواح الشريرة",
+            "duration": 50,
+            "experience": 45000,
+            "money": 35000,
+            "required_level": 20,
+            "power_requirement": 75000
+        },
+        "troll_king": {
+            "name": "👑 ملك العفاريت",
+            "description": "واجه ملك العفاريت في قلعته المظلمة",
+            "duration": 60,
+            "experience": 60000,
+            "money": 50000,
+            "required_level": 25,
+            "power_requirement": 100000
+        },
+        "demon_gate": {
+            "name": "🚪 بوابة الشياطين",
+            "description": "أغلق بوابة الشياطين قبل أن يغزوا العالم",
+            "duration": 80,
+            "experience": 80000,
+            "money": 70000,
+            "required_level": 30,
+            "power_requirement": 150000
+        },
+        "shadow_lord": {
+            "name": "👤 سيد الظلال",
+            "description": "هزم سيد الظلال في مملكة الظلام",
+            "duration": 100,
+            "experience": 100000,
+            "money": 100000,
+            "required_level": 35,
+            "power_requirement": 200000
+        }
+    },
+    "legendary": {
+        "red_dragon": {
+            "name": "🐲 التنين الأحمر الأعظم",
+            "description": "واجه التنين الأحمر الأعظم في عرينه الناري",
+            "duration": 120,
+            "experience": 200000,
+            "money": 200000,
+            "required_level": 40,
+            "power_requirement": 300000
+        },
+        "dark_sorcerer": {
+            "name": "🧙‍♂️ الساحر الأعظم المظلم",
+            "description": "اكسر لعنة الساحر الأعظم وأنقذ المملكة",
+            "duration": 150,
+            "experience": 300000,
+            "money": 300000,
+            "required_level": 45,
+            "power_requirement": 400000
+        },
+        "chaos_demon": {
+            "name": "😈 شيطان الفوضى",
+            "description": "امحق شيطان الفوضى قبل أن يدمر العالم",
+            "duration": 180,
+            "experience": 500000,
+            "money": 500000,
+            "required_level": 50,
+            "power_requirement": 600000
+        },
+        "cosmic_entity": {
+            "name": "🌌 الكائن الكوني",
+            "description": "واجه الكائن الكوني في أعماق الفضاء",
+            "duration": 240,
+            "experience": 800000,
+            "money": 800000,
+            "required_level": 60,
+            "power_requirement": 1000000
+        },
+        "god_slayer": {
+            "name": "⚡ قاتل الآلهة",
+            "description": "المعركة الأخيرة ضد إله الدمار نفسه",
+            "duration": 300,
+            "experience": 1500000,
+            "money": 1500000,
+            "required_level": 70,
+            "power_requirement": 2000000
+        }
     }
 }
 

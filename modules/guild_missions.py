@@ -59,6 +59,8 @@ async def show_missions_menu(callback: CallbackQuery):
         keyboard = [
             [InlineKeyboardButton(text="⭐ عادية", callback_data="missions_normal")],
             [InlineKeyboardButton(text="💎 جمع", callback_data="missions_collect")],
+            [InlineKeyboardButton(text="⚔️ متوسطة", callback_data="missions_medium")],
+            [InlineKeyboardButton(text="🔥 أسطورية", callback_data="missions_legendary")],
             [InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")]
         ]
         
@@ -69,8 +71,8 @@ async def show_missions_menu(callback: CallbackQuery):
             f"⚔️ **القوة:** {format_number(player.power)}\n\n"
             f"⭐ **عادية** - مهام بسيطة ومربحة\n"
             f"💎 **جمع** - مهام جمع الموارد الثمينة\n"
-            f"⚔️ **متوسطة** - مهام أكثر صعوبة (قريباً)\n"
-            f"🔥 **متقدمة** - مهام للمحترفين (قريباً)",
+            f"⚔️ **متوسطة** - مهام أكثر صعوبة وخطراً\n"
+            f"🔥 **أسطورية** - مهام للمحاربين الأقوياء",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
         
@@ -182,6 +184,120 @@ async def show_collect_missions(callback: CallbackQuery):
         
     except Exception as e:
         logging.error(f"خطأ في عرض مهام الجمع: {e}")
+        await callback.answer("❌ حدث خطأ")
+
+async def show_medium_missions(callback: CallbackQuery):
+    """عرض المهام المتوسطة"""
+    try:
+        user_id = callback.from_user.id
+        player = GUILD_PLAYERS[user_id]
+        
+        keyboard = []
+        missions_text = "⚔️ **المهام المتوسطة:**\n\n"
+        
+        for mission_id, mission_data in MISSIONS["medium"].items():
+            # فحص متطلبات المستوى والقوة
+            level_met = player.level >= mission_data["required_level"]
+            power_met = player.power >= mission_data["power_requirement"]
+            available = level_met and power_met
+            
+            if available:
+                button_text = f"✅ {mission_data['name']}"
+                callback_data = f"start_mission_medium_{mission_id}"
+            else:
+                button_text = f"🔒 {mission_data['name']}"
+                callback_data = f"locked_mission_{mission_id}"
+            
+            keyboard.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=callback_data
+            )])
+            
+            # إضافة معلومات المهمة
+            if available:
+                status = "✅ متاح"
+            elif not level_met:
+                status = f"🔒 يحتاج مستوى {mission_data['required_level']}"
+            else:
+                status = f"🔒 يحتاج قوة {format_number(mission_data['power_requirement'])}"
+                
+            missions_text += (
+                f"{mission_data['name']}\n"
+                f"📝 {mission_data['description']}\n"
+                f"⏱️ المدة: {mission_data['duration']} دقيقة\n"
+                f"⭐ الخبرة: {format_number(mission_data['experience'])}\n"
+                f"💰 المال: {format_number(mission_data['money'])}$\n"
+                f"🎯 الحالة: {status}\n\n"
+            )
+        
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
+        
+        await callback.message.edit_text(
+            missions_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض المهام المتوسطة: {e}")
+        await callback.answer("❌ حدث خطأ")
+
+async def show_legendary_missions(callback: CallbackQuery):
+    """عرض المهام الأسطورية"""
+    try:
+        user_id = callback.from_user.id
+        player = GUILD_PLAYERS[user_id]
+        
+        keyboard = []
+        missions_text = "🔥 **المهام الأسطورية:**\n\n"
+        
+        for mission_id, mission_data in MISSIONS["legendary"].items():
+            # فحص متطلبات المستوى والقوة
+            level_met = player.level >= mission_data["required_level"]
+            power_met = player.power >= mission_data["power_requirement"]
+            available = level_met and power_met
+            
+            if available:
+                button_text = f"✅ {mission_data['name']}"
+                callback_data = f"start_mission_legendary_{mission_id}"
+            else:
+                button_text = f"🔒 {mission_data['name']}"
+                callback_data = f"locked_mission_{mission_id}"
+            
+            keyboard.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=callback_data
+            )])
+            
+            # إضافة معلومات المهمة
+            if available:
+                status = "✅ متاح"
+            elif not level_met:
+                status = f"🔒 يحتاج مستوى {mission_data['required_level']}"
+            else:
+                status = f"🔒 يحتاج قوة {format_number(mission_data['power_requirement'])}"
+                
+            missions_text += (
+                f"{mission_data['name']}\n"
+                f"📝 {mission_data['description']}\n"
+                f"⏱️ المدة: {mission_data['duration']} دقيقة\n"
+                f"⭐ الخبرة: {format_number(mission_data['experience'])}\n"
+                f"💰 المال: {format_number(mission_data['money'])}$\n"
+                f"🎯 الحالة: {status}\n\n"
+            )
+        
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
+        
+        await callback.message.edit_text(
+            missions_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض المهام الأسطورية: {e}")
         await callback.answer("❌ حدث خطأ")
 
 async def start_mission(callback: CallbackQuery):
