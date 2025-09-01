@@ -46,6 +46,34 @@ async def get_group_admins_info(bot: Bot, chat_id: int):
         return ["❌ لا يمكن جلب معلومات المشرفين"]
 
 
+async def initialize_new_group_data(chat_id: int, group_info: dict):
+    """تهيئة بيانات المجموعة الجديدة في جميع الأنظمة"""
+    try:
+        # تهيئة نظام الذاكرة المشتركة للمجموعة الجديدة
+        from modules.shared_memory_sqlite import shared_group_memory_sqlite
+        await shared_group_memory_sqlite.init_shared_memory_db()
+        
+        # حفظ معلومات المجموعة في قاعدة البيانات
+        from database.operations import execute_query
+        await execute_query("""
+            INSERT OR REPLACE INTO group_info 
+            (chat_id, title, type, username, members_count, initialized_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            chat_id,
+            group_info.get('title', ''),
+            group_info.get('type', ''),
+            group_info.get('username', ''),
+            group_info.get('members_count', 0),
+            datetime.now().isoformat()
+        ))
+        
+        logging.info(f"✅ تم تهيئة بيانات المجموعة الجديدة: {group_info.get('title')} ({chat_id})")
+        
+    except Exception as e:
+        logging.error(f"خطأ في تهيئة بيانات المجموعة الجديدة {chat_id}: {e}")
+
+
 async def get_group_info(bot: Bot, chat_id: int):
     """جلب معلومات المجموعة"""
     try:

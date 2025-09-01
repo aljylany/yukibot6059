@@ -334,3 +334,102 @@ async def get_all_group_members(group_id: int) -> list:
     except Exception as e:
         logging.error(f"خطأ في الحصول على أعضاء المجموعة {group_id}: {e}")
         return []
+
+
+async def get_group_members_count(chat_id: int) -> int:
+    """الحصول على عدد الأعضاء المسجلين في المجموعة"""
+    try:
+        result = await execute_query(
+            """
+            SELECT COUNT(DISTINCT user_id) as count
+            FROM user_message_count 
+            WHERE chat_id = ?
+            """,
+            (chat_id,),
+            fetch_one=True
+        )
+        return result.get('count', 0) if result else 0
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على عدد أعضاء المجموعة {chat_id}: {e}")
+        return 0
+
+
+async def get_registered_users_count(chat_id: int) -> int:
+    """الحصول على عدد المستخدمين المسجلين في البوت من هذه المجموعة"""
+    try:
+        result = await execute_query(
+            """
+            SELECT COUNT(DISTINCT u.user_id) as count
+            FROM users u
+            INNER JOIN user_message_count umc ON u.user_id = umc.user_id
+            WHERE umc.chat_id = ? AND u.balance >= 0
+            """,
+            (chat_id,),
+            fetch_one=True
+        )
+        return result.get('count', 0) if result else 0
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على عدد المستخدمين المسجلين في المجموعة {chat_id}: {e}")
+        return 0
+
+
+async def init_group_info_table():
+    """تهيئة جدول معلومات المجموعات"""
+    try:
+        await execute_query("""
+            CREATE TABLE IF NOT EXISTS group_info (
+                chat_id INTEGER PRIMARY KEY,
+                title TEXT,
+                type TEXT,
+                username TEXT,
+                members_count INTEGER,
+                initialized_at TEXT,
+                last_updated TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        logging.info("✅ تم تهيئة جدول معلومات المجموعات")
+    except Exception as e:
+        logging.error(f"خطأ في تهيئة جدول المجموعات: {e}")
+
+
+async def get_stored_group_info(chat_id: int) -> Optional[Dict[str, Any]]:
+    """الحصول على معلومات المجموعة المحفوظة"""
+    try:
+        result = await execute_query(
+            "SELECT * FROM group_info WHERE chat_id = ?",
+            (chat_id,),
+            fetch_one=True
+        )
+        return result if result else None
+    except Exception as e:
+        logging.error(f"خطأ في جلب معلومات المجموعة {chat_id}: {e}")
+        return None
+
+
+async def get_group_economic_stats(chat_id: int) -> Dict[str, Any]:
+    """الحصول على إحصائيات اقتصادية للمجموعة"""
+    try:
+        # إجمالي الثروة
+        wealth_result = await execute_query(
+            """
+            SELECT 
+                COALESCE(SUM(u.balance + u.bank_balance), 0) as total_wealth,
+                COALESCE(AVG(u.balance + u.bank_balance), 0) as average_wealth,
+                COUNT(*) as active_investors
+            FROM users u
+            INNER JOIN user_message_count umc ON u.user_id = umc.user_id
+            WHERE umc.chat_id = ? AND (u.balance > 1000 OR u.bank_balance > 0)
+            """,
+            (chat_id,),
+            fetch_one=True
+        )
+        
+        return {
+            'total_wealth': wealth_result.get('total_wealth', 0) if wealth_result else 0,
+            'average_wealth': wealth_result.get('average_wealth', 0) if wealth_result else 0,
+            'active_investors': wealth_result.get('active_investors', 0) if wealth_result else 0
+        }
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على الإحصائيات الاقتصادية للمجموعة {chat_id}: {e}")
+        return {'total_wealth': 0, 'average_wealth': 0, 'active_investors': 0}

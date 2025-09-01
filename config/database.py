@@ -492,6 +492,19 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول معلومات المجموعات لدعم التعدد
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS group_info (
+                    chat_id INTEGER PRIMARY KEY,
+                    title TEXT,
+                    type TEXT,
+                    username TEXT,
+                    members_count INTEGER,
+                    initialized_at TEXT,
+                    last_updated TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             # إنشاء جدول الكلمات المحظورة (تحديث اسم الجدول)
             await db.execute('''
                 CREATE TABLE IF NOT EXISTS banned_words (

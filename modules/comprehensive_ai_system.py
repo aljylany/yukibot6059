@@ -125,8 +125,13 @@ class ComprehensiveAISystem:
                 logging.warning("GEMINI_API_KEY not found in environment variables")
                 return
                 
-            genai.configure(api_key=api_key)
-            self.gemini_client = genai.GenerativeModel('gemini-pro')
+            try:
+                genai.configure(api_key=api_key)
+                self.gemini_client = genai.GenerativeModel('gemini-pro')
+            except AttributeError:
+                logging.error("Google Generative AI configuration failed")
+                self.gemini_client = None
+                return
             
             # إذا لم يكن Anthropic متاح، استخدم Gemini
             if not self.anthropic_client:
@@ -206,14 +211,15 @@ class ComprehensiveAISystem:
         
         try:
             # معلومات المستوى والخبرة
-            from modules.unified_level_system import get_unified_user_level
-            level_info = await get_unified_user_level(user_id)
+            from modules.ranking_system import get_user_rank_info
+            level_info = await get_user_rank_info(user_id)
             user_data['gaming'] = {
-                'level': level_info.get('level', 1),
-                'xp': level_info.get('xp', 0),
-                'level_name': level_info.get('level_name', 'نجم 1'),
-                'world_name': level_info.get('world_name', 'عالم النجوم'),
-                'is_master': level_info.get('is_master', False)
+                'level': 1,
+                'xp': 0,
+                'level_name': 'نجم 1',
+                'world_name': 'عالم النجوم',
+                'gold_points': level_info.get('gold_points', 0) if isinstance(level_info, dict) else 0,
+                'rank': level_info.get('rank', 'غير مصنف') if isinstance(level_info, dict) else 'غير مصنف'
             }
             
         except Exception as e:
@@ -221,49 +227,64 @@ class ComprehensiveAISystem:
         
         try:
             # معلومات العقارات والاستثمارات
-            from modules.real_estate import get_user_properties
-            properties = await get_user_properties(user_id)
-            user_data['investments'] = {
-                'properties_count': len(properties) if properties else 0,
-                'properties_value': sum([p.get('price', 0) for p in properties]) if properties else 0
-            }
+            try:
+                from modules.real_estate import get_user_properties
+                properties = await get_user_properties(user_id)
+                properties_list = properties if isinstance(properties, list) else []
+                user_data['investments'] = {
+                    'properties_count': len(properties_list),
+                    'properties_value': sum([p.get('price', 0) for p in properties_list if isinstance(p, dict)])
+                }
+            except ImportError:
+                user_data['investments'] = {'properties_count': 0, 'properties_value': 0}
             
         except Exception as e:
             logging.error(f"خطأ في جلب معلومات العقارات: {e}")
         
         try:
             # معلومات الأسهم
-            from modules.stocks import get_user_stocks
-            stocks = await get_user_stocks(user_id)
-            user_data['investments']['stocks_count'] = len(stocks) if stocks else 0
+            try:
+                from modules.stocks import get_user_stocks
+                stocks = await get_user_stocks(user_id)
+                stocks_list = stocks if isinstance(stocks, list) else []
+                user_data['investments']['stocks_count'] = len(stocks_list)
+            except (ImportError, AttributeError):
+                user_data['investments']['stocks_count'] = 0
             
         except Exception as e:
             logging.error(f"خطأ في جلب معلومات الأسهم: {e}")
         
         try:
             # معلومات المزرعة
-            from modules.farm import get_user_crops
-            crops = await get_user_crops(user_id)
-            user_data['farming'] = {
-                'crops_count': len(crops) if crops else 0,
-                'ready_crops': len([c for c in crops if c.get('is_ready', False)]) if crops else 0
-            }
+            try:
+                from modules.farm import get_user_crops
+                crops = await get_user_crops(user_id)
+                crops_list = crops if isinstance(crops, list) else []
+                user_data['farming'] = {
+                    'crops_count': len(crops_list),
+                    'ready_crops': len([c for c in crops_list if isinstance(c, dict) and c.get('is_ready', False)])
+                }
+            except (ImportError, AttributeError):
+                user_data['farming'] = {'crops_count': 0, 'ready_crops': 0}
             
         except Exception as e:
             logging.error(f"خطأ في جلب معلومات المزرعة: {e}")
         
         try:
             # معلومات القلعة
-            from modules.castle import get_user_castle
-            castle = await get_user_castle(user_id)
-            if castle:
-                user_data['castle'] = {
-                    'has_castle': True,
-                    'level': castle.get('level', 1),
-                    'resources': castle.get('resources', {}),
-                    'defense_level': castle.get('defense_level', 1)
-                }
-            else:
+            try:
+                from modules.castle import get_user_castle
+                castle = await get_user_castle(user_id)
+                if castle and isinstance(castle, dict):
+                    user_data['castle'] = {
+                        'has_castle': True,
+                        'level': castle.get('level', 1),
+                        'resources': castle.get('resources', {}),
+                        'defense_level': castle.get('defense_level', 1)
+                    }
+                else:
+                    user_data['castle'] = {'has_castle': False}
+            except (ImportError, AttributeError):
                 user_data['castle'] = {'has_castle': False}
                 
         except Exception as e:
@@ -313,10 +334,10 @@ class ComprehensiveAISystem:
         
         try:
             # أفضل اللاعبين
-            from modules.ranking_system import get_top_players
+            from modules.ranking_system import get_ranking_list
             
-            top_players = await get_top_players(chat_id, limit=5)
-            analytics['top_players'] = top_players if top_players else []
+            top_players = await get_ranking_list(limit=5)
+            analytics['top_players'] = top_players if isinstance(top_players, list) else []
             
         except Exception as e:
             logging.error(f"خطأ في جلب أفضل اللاعبين: {e}")
@@ -326,17 +347,23 @@ class ComprehensiveAISystem:
     async def generate_smart_response(self, message: Message, user_data: Dict[str, Any] = None, context: str = "") -> str:
         """توليد رد ذكي باستخدام الذكاء الاصطناعي"""
         try:
+            if not message.from_user:
+                return "عذراً، لا أستطيع التعرف على المستخدم."
+                
             user_id = message.from_user.id
             user_name = message.from_user.first_name or "صديقي"
-            user_message = message.text
+            user_message = message.text or ""
             
             # إذا لم تُمرر بيانات المستخدم، اجلبها
             if not user_data:
                 user_data = await self.get_comprehensive_user_data(user_id, message.chat.id)
             
+            # جلب معلومات المجموعة الحالية
+            group_context = await self._get_current_group_context(message)
+            
             # بناء السياق الشامل
             full_context = await self._build_comprehensive_context(
-                user_message, user_name, user_data, context
+                user_message, user_name, user_data, context, group_context
             )
             
             # جلب ذاكرة المحادثة
@@ -358,10 +385,12 @@ class ComprehensiveAISystem:
             
         except Exception as e:
             logging.error(f"خطأ في توليد الرد الذكي: {e}")
-            return f"عذراً {message.from_user.first_name}، عندي مشكلة صغيرة. جرب مرة ثانية!"
+            user_name = message.from_user.first_name if message.from_user else "صديقي"
+            return f"عذراً {user_name}، عندي مشكلة صغيرة. جرب مرة ثانية!"
     
     async def _build_comprehensive_context(self, user_message: str, user_name: str, 
-                                         user_data: Dict[str, Any], additional_context: str = "") -> str:
+                                         user_data: Dict[str, Any], additional_context: str = "", 
+                                         group_context: Dict[str, Any] = None) -> str:
         """بناء السياق الذكي والطبيعي للذكاء الاصطناعي"""
         
         # تحقق من العلاقات والأسماء المتشابهة
@@ -387,10 +416,22 @@ class ComprehensiveAISystem:
         # بناء السياق الذكي للمستخدم (بدون إفراط)
         user_context = self._build_smart_user_context(resolved_name, user_data, user_message)
         
+        # إضافة سياق المجموعة إذا كان متاحاً
+        group_info = ""
+        if group_context:
+            group_info = f"""
+
+📍 معلومات المجموعة الحالية:
+• اسم المجموعة: {group_context.get('title', 'غير معروف')}
+• عدد الأعضاء: {group_context.get('members_count', 'غير معروف')}
+• نوع المجموعة: {group_context.get('type', 'مجموعة عادية')}
+"""
+        
         # النص النهائي الطبيعي
         final_context = f"""{personality_context}
 
 {user_context}
+{group_info}
 
 {resolved_name} يقول لك: "{user_message}"
 {additional_context}
@@ -464,6 +505,47 @@ class ComprehensiveAISystem:
         
         return special_friends.get(user_name, "")
     
+    async def _get_current_group_context(self, message: Message) -> Dict[str, Any]:
+        """الحصول على معلومات المجموعة الحالية"""
+        try:
+            if not message.chat:
+                return {}
+                
+            chat = message.chat
+            group_context = {
+                'chat_id': chat.id,
+                'title': chat.title or 'مجموعة بدون اسم',
+                'type': 'مجموعة عادية' if chat.type == 'group' else 'مجموعة عملاقة',
+                'username': f"@{chat.username}" if chat.username else 'لا يوجد معرف'
+            }
+            
+            # محاولة الحصول على معلومات محفوظة أولاً
+            try:
+                from database.operations import get_stored_group_info
+                stored_info = await get_stored_group_info(chat.id)
+                if stored_info and isinstance(stored_info, dict):
+                    group_context.update(stored_info)
+            except Exception as e:
+                logging.warning(f"لا يمكن الحصول على معلومات المجموعة المحفوظة {chat.id}: {e}")
+            
+            # محاولة الحصول على عدد الأعضاء المباشر
+            try:
+                if hasattr(message, 'bot') and message.bot:
+                    members_count = await message.bot.get_chat_member_count(chat.id)
+                    group_context['members_count'] = members_count
+                elif 'members_count' not in group_context:
+                    group_context['members_count'] = 'غير معروف'
+            except Exception as e:
+                logging.warning(f"لا يمكن الحصول على عدد أعضاء المجموعة {chat.id}: {e}")
+                if 'members_count' not in group_context:
+                    group_context['members_count'] = 'غير معروف'
+            
+            return group_context
+            
+        except Exception as e:
+            logging.error(f"خطأ في الحصول على سياق المجموعة: {e}")
+            return {}
+    
     async def _generate_anthropic_response(self, context: str, conversation_history: List[Dict]) -> str:
         """توليد رد باستخدام Anthropic Claude"""
         try:
@@ -495,7 +577,12 @@ class ComprehensiveAISystem:
                 messages=messages
             )
             
-            return response.content[0].text.strip()
+            if hasattr(response, 'content') and response.content:
+                if hasattr(response.content[0], 'text'):
+                    return response.content[0].text.strip()
+                else:
+                    return str(response.content[0]).strip()
+            return "عذراً، لم أتمكن من فهم الرد."
             
         except Exception as e:
             logging.error(f"خطأ في Anthropic response: {e}")
