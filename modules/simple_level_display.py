@@ -10,6 +10,49 @@ from utils.helpers import format_number
 from config.hierarchy import MASTERS
 
 
+async def get_user_level_info(user_id: int):
+    """الحصول على معلومات مستوى المستخدم كنص"""
+    try:
+        current_xp = 0
+        current_level = 'نجم 1'
+        current_world = 'عالم النجوم'
+        
+        # الحصول على بيانات المستخدم
+        level_data = await execute_query(
+            "SELECT xp, level_name, world_name FROM levels WHERE user_id = ?",
+            (user_id,),
+            fetch_one=True
+        )
+        
+        if level_data:
+            if isinstance(level_data, dict):
+                current_xp = level_data.get('xp', 0)
+                current_level = level_data.get('level_name', 'نجم 1')
+                current_world = level_data.get('world_name', 'عالم النجوم')
+            elif isinstance(level_data, (list, tuple)) and level_data:
+                current_xp = level_data[0] if len(level_data) > 0 else 0
+                current_level = level_data[1] if len(level_data) > 1 else 'نجم 1'
+                current_world = level_data[2] if len(level_data) > 2 else 'عالم النجوم'
+        
+        # حساب XP المطلوب للمستوى التالي
+        next_level_xp = calculate_next_xp(current_world, current_level, current_xp)
+        remaining_xp = max(0, next_level_xp - current_xp)  # التأكد من عدم وجود قيم سالبة
+        
+        # عرض المستوى بشكل مبسط
+        level_display = f"""⭐ **مستواك:**
+
+🎯 المستوى: {current_level}
+✨ النقاط: {format_number(current_xp)} XP
+🎪 للمستوى التالي: {format_number(remaining_xp)} XP
+📊 التقدم: {format_number(current_xp)} XP"""
+        
+        return level_display.strip()
+        
+    except Exception as e:
+        logging.error(f"خطأ في جلب معلومات المستوى: {e}")
+        return None
+
+
 async def show_simple_level(message: Message):
     """عرض مبسط للمستوى فقط"""
     try:

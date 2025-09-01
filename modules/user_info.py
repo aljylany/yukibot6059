@@ -241,29 +241,20 @@ async def show_user_level(message: Message):
             return
         
         target_user = message.reply_to_message.from_user
-        user = await get_user(target_user.id)
         target_name = target_user.first_name or "المستخدم"
         
-        if not user:
+        # استخدام نظام المستويات الجديد
+        from modules.simple_level_display import get_user_level_info
+        level_info = await get_user_level_info(target_user.id)
+        
+        if not level_info:
             await message.reply(
                 f"❌ **{target_name} ليس مسجل في النظام**\n\n"
-                "💡 يحتاج لإنشاء حساب بنكي أولاً"
+                "💡 يحتاج لإرسال رسالة أولاً لإنشاء حساب"
             )
             return
         
-        level = user.get('level', 1) if isinstance(user, dict) else 1
-        xp = user.get('xp', 0) if isinstance(user, dict) else 0
-        # حساب XP المطلوب للمستوى التالي
-        next_level_xp = level * 1000
-        remaining_xp = next_level_xp - xp
-        
-        await message.reply(
-            f"⭐ **مستوى {target_name}:**\n\n"
-            f"🎯 المستوى: {level}\n"
-            f"✨ النقاط: {format_number(xp)} XP\n"
-            f"🎪 للمستوى التالي: {format_number(remaining_xp)} XP\n"
-            f"📊 التقدم: {format_number(next_level_xp)} XP"
-        )
+        await message.reply(level_info.replace("**مستواك:**", f"**مستوى {target_name}:**"))
     
     except Exception as e:
         logging.error(f"خطأ في عرض مستوى المستخدم: {e}")
@@ -274,30 +265,19 @@ async def show_my_level(message: Message):
     """عرض مستوى المستخدم الحالي"""
     try:
         user_id = message.from_user.id
-        user = await get_user(user_id)
         
-        if not user:
+        # استخدام نظام المستويات الجديد  
+        from modules.simple_level_display import get_user_level_info
+        level_info = await get_user_level_info(user_id)
+        
+        if not level_info:
             await message.reply(
                 "❌ **لم يتم العثور على حسابك**\n\n"
-                "💡 استخدم الأوامر التالية لإنشاء حساب:\n"
-                "• `حساب بنكي`\n"
-                "• `انشاء حساب`"
+                "💡 ارسل أي رسالة لإنشاء حساب جديد"
             )
             return
         
-        level = user.get('level', 1) if isinstance(user, dict) else 1
-        xp = user.get('xp', 0) if isinstance(user, dict) else 0
-        # حساب XP المطلوب للمستوى التالي
-        next_level_xp = level * 1000
-        remaining_xp = next_level_xp - xp
-        
-        await message.reply(
-            f"⭐ **مستواك:**\n\n"
-            f"🎯 المستوى: {level}\n"
-            f"✨ النقاط: {format_number(xp)} XP\n"
-            f"🎪 للمستوى التالي: {format_number(remaining_xp)} XP\n"
-            f"📊 التقدم: {format_number(next_level_xp)} XP"
-        )
+        await message.reply(level_info)
     
     except Exception as e:
         logging.error(f"خطأ في عرض المستوى: {e}")
