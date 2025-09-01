@@ -30,6 +30,9 @@ async def show_shop_menu(callback: CallbackQuery):
             [InlineKeyboardButton(text="⚔️ متجر الأسلحة", callback_data="shop_weapons")],
             [InlineKeyboardButton(text="🏅 متجر الأوسمة", callback_data="shop_badges")],
             [InlineKeyboardButton(text="🏷️ متجر الألقاب", callback_data="shop_titles")],
+            [InlineKeyboardButton(text="🧪 متجر الجرعات", callback_data="shop_potions")],
+            [InlineKeyboardButton(text="💍 متجر الخواتم", callback_data="shop_rings")],
+            [InlineKeyboardButton(text="🐾 متجر الحيوانات", callback_data="shop_animals")],
             [InlineKeyboardButton(text="🎒 مخزوني", callback_data="shop_inventory")],
             [InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")]
         ]
@@ -43,6 +46,9 @@ async def show_shop_menu(callback: CallbackQuery):
             f"⚔️ **الأسلحة** - أدوات القتال الفتاكة\n"
             f"🏅 **الأوسمة** - رموز الشرف والقوة\n"
             f"🏷️ **الألقاب** - أسماء تُخلد في التاريخ\n"
+            f"🧪 **الجرعات** - إكسيرات القوة السحرية\n"
+            f"💍 **الخواتم** - خواتم القدر الأسطورية\n"
+            f"🐾 **الحيوانات** - رفاق المعركة الأوفياء\n"
             f"🎒 **مخزوني** - عناصرك المملوكة",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )

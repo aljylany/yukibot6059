@@ -18,6 +18,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from database.operations import get_or_create_user, update_user_balance, add_transaction
 from utils.helpers import format_number
+from modules.guild_database import save_guild_player, load_guild_player
 
 # حالات FSM للعبة النقابة
 class GuildStates(StatesGroup):
@@ -87,6 +88,29 @@ class GuildPlayer:
         self.level += 1
         self.power += 50  # زيادة القوة مع كل مستوى
         return True
+    
+    async def save_to_database(self):
+        """حفظ بيانات اللاعب في قاعدة البيانات"""
+        player_dict = {
+            'user_id': self.user_id,
+            'username': self.username,
+            'name': self.name,
+            'guild': self.guild,
+            'gender': self.gender,
+            'character_class': self.character_class,
+            'advanced_class': self.advanced_class,
+            'level': self.level,
+            'power': self.power,
+            'experience': self.experience,
+            'weapon': self.weapon,
+            'badge': self.badge,
+            'title': self.title,
+            'potion': self.potion,
+            'ring': self.ring,
+            'animal': self.animal,
+            'personal_code': self.personal_code
+        }
+        await save_guild_player(player_dict)
 
 @dataclass  
 class ActiveMission:
@@ -299,6 +323,66 @@ SHOP_ITEMS = {
             "power_bonus": 40,
             "description": "لقب يحكم عنصر النار"
         }
+    },
+    "potions": {
+        "rage_elixir": {
+            "name": "🧪 إكسير الغضب",
+            "price": 1500,
+            "power_bonus": 100,
+            "description": "جرعة تضاعف قوتك مؤقتاً"
+        },
+        "poison_drop": {
+            "name": "☠️ قطر السم السحري",
+            "price": 600,
+            "power_bonus": 50,
+            "description": "جرعة سامة تضعف الأعداء"
+        },
+        "healing_potion": {
+            "name": "💚 جرعة الشفاء الكبرى",
+            "price": 800,
+            "power_bonus": 60,
+            "description": "تشفي الجروح وتقوي الجسد"
+        }
+    },
+    "rings": {
+        "broken_time": {
+            "name": "⏰ خاتم الزمن المكسور",
+            "price": 300,
+            "power_bonus": 20,
+            "description": "يتلاعب بالزمن ببطء"
+        },
+        "frost_ring": {
+            "name": "🧊 خاتم الصقيع",
+            "price": 900,
+            "power_bonus": 70,
+            "description": "يجمد أعداءك في مكانهم"
+        },
+        "destiny_ring": {
+            "name": "✨ خاتم القدر",
+            "price": 40000,
+            "power_bonus": 500,
+            "description": "خاتم أسطوري يغير المصير"
+        }
+    },
+    "animals": {
+        "dragondo": {
+            "name": "🐉 دراجوندو",
+            "price": 200,
+            "power_bonus": 30,
+            "description": "تنين صغير أليف وقوي"
+        },
+        "akila": {
+            "name": "🦅 أكيلا",
+            "price": 600,
+            "power_bonus": 45,
+            "description": "نسر ذهبي سريع ومخلص"
+        },
+        "ikoria": {
+            "name": "🦄 إيكوريا",
+            "price": 1200,
+            "power_bonus": 80,
+            "description": "وحيد القرن الأسطوري"
+        }
     }
 }
 
@@ -309,8 +393,37 @@ async def start_guild_registration(message: Message, state: FSMContext):
         username = message.from_user.username or ""
         name = message.from_user.first_name or "اللاعب"
         
-        # فحص إذا كان اللاعب مسجل بالفعل
+        # فحص إذا كان اللاعب مسجل بالفعل في الذاكرة
         if user_id in GUILD_PLAYERS:
+            await show_guild_main_menu(message, state)
+            return
+        
+        # فحص إذا كان اللاعب مسجل في قاعدة البيانات
+        player_data = await load_guild_player(user_id)
+        if player_data:
+            # تحميل البيانات إلى الذاكرة
+            player = GuildPlayer(
+                user_id=player_data['user_id'],
+                username=player_data['username'],
+                name=player_data['name'],
+                guild=player_data['guild'],
+                gender=player_data['gender'],
+                character_class=player_data['character_class'],
+                advanced_class=player_data['advanced_class'],
+                level=player_data['level'],
+                power=player_data['power'],
+                experience=player_data['experience'],
+                experience_needed=player_data['level'] * 600,
+                weapon=player_data['weapon'],
+                badge=player_data['badge'],
+                title=player_data['title'],
+                potion=player_data['potion'],
+                ring=player_data['ring'],
+                animal=player_data['animal'],
+                personal_code=player_data['personal_code'],
+                created_at=datetime.fromisoformat(player_data['created_at'])
+            )
+            GUILD_PLAYERS[user_id] = player
             await show_guild_main_menu(message, state)
             return
         
@@ -429,8 +542,30 @@ async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
             created_at=datetime.now()
         )
         
-        # حفظ اللاعب
+        # حفظ اللاعب في الذاكرة وقاعدة البيانات
         GUILD_PLAYERS[user_id] = player
+        
+        # حفظ في قاعدة البيانات
+        player_dict = {
+            'user_id': player.user_id,
+            'username': player.username,
+            'name': player.name,
+            'guild': player.guild,
+            'gender': player.gender,
+            'character_class': player.character_class,
+            'advanced_class': player.advanced_class,
+            'level': player.level,
+            'power': player.power,
+            'experience': player.experience,
+            'weapon': player.weapon,
+            'badge': player.badge,
+            'title': player.title,
+            'potion': player.potion,
+            'ring': player.ring,
+            'animal': player.animal,
+            'personal_code': player.personal_code
+        }
+        await save_guild_player(player_dict)
         
         # رسالة الترحيب
         guild_name = GUILDS[data['guild']]
@@ -481,6 +616,7 @@ async def show_guild_main_menu(message: Message, state: FSMContext):
         keyboard = [
             [InlineKeyboardButton(text="🎯 مهام", callback_data="guild_missions")],
             [InlineKeyboardButton(text="🛒 متجر", callback_data="guild_shop")],
+            [InlineKeyboardButton(text="🏰 متاهات", callback_data="guild_mazes")],
             [InlineKeyboardButton(text="📊 ترقية", callback_data="guild_upgrade")],
             [InlineKeyboardButton(text="🆔 رمزي", callback_data="guild_code")],
             [InlineKeyboardButton(text="⚡ تغيير فئة", callback_data="guild_change_class")]

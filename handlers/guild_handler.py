@@ -32,6 +32,10 @@ from modules.guild_upgrade import (
     show_upgrade_menu, level_up_player, show_advanced_classes,
     change_advanced_class, handle_current_class
 )
+from modules.guild_mazes import (
+    show_mazes_menu, show_single_mazes, show_maze_floors, show_maze_info,
+    start_maze, show_active_maze_status, handle_locked_maze
+)
 from utils.decorators import user_required
 
 # إنشاء router متخصص للنقابة
@@ -159,7 +163,13 @@ async def guild_info_command(message: Message, state: FSMContext):
     c.data.startswith("change_class_") or 
     c.data.startswith("gender_select_") or 
     c.data.startswith("class_select_") or 
-    c.data == "current_class"
+    c.data.startswith("mazes_") or
+    c.data.startswith("maze_") or
+    c.data.startswith("enter_maze_") or
+    c.data.startswith("start_maze_") or
+    c.data.startswith("locked_maze_") or
+    c.data == "current_class" or
+    c.data == "maze_status"
 ))
 async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
     """معالجة callbacks النقابة المتخصصة"""
@@ -238,6 +248,40 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         
         elif data.startswith("cant_buy_"):
             await handle_cant_buy(callback)
+        
+        # نظام المتاهات
+        elif data == "guild_mazes":
+            await show_mazes_menu(callback)
+        
+        elif data == "mazes_single":
+            await show_single_mazes(callback)
+        
+        elif data.startswith("maze_single_"):
+            maze_id = data.split("_")[2]
+            await show_maze_floors(callback, "single", maze_id)
+        
+        elif data.startswith("enter_maze_"):
+            parts = data.split("_")
+            maze_type = parts[2]
+            maze_id = parts[3]
+            floor = int(parts[4])
+            await show_maze_info(callback, maze_type, maze_id, floor)
+        
+        elif data.startswith("start_maze_"):
+            parts = data.split("_")
+            maze_type = parts[2]
+            maze_id = parts[3]
+            floor = int(parts[4])
+            await start_maze(callback, maze_type, maze_id, floor)
+        
+        elif data == "maze_status":
+            await show_active_maze_status(callback)
+        
+        elif data.startswith("locked_maze_"):
+            parts = data.split("_")
+            floor = int(parts[2])
+            required_power = int(parts[3])
+            await handle_locked_maze(callback, floor, required_power)
         
         # نظام الترقية
         elif data == "guild_upgrade":
