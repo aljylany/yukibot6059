@@ -159,7 +159,8 @@ class MediaAnalyzer:
                 "عري", "جنسي", "عنف", "دماء", "كراهية", "إصبع أوسط", "إيماءة",
                 "inappropriate", "sexual", "violent", "blood", "middle finger", 
                 "nude", "naked", "explicit", "gesture", "offensive", "rude",
-                "fuck", "عكس", "بذيء", "مسيء", "استفزازي"
+                "fuck", "عكس", "بذيء", "مسيء", "استفزازي", "فاك يو", "f*ck",
+                "بذيئة", "غير لائق", "obscene", "vulgar", "profane"
             ]
             
             text_lower = text.lower()
@@ -243,6 +244,92 @@ class MediaAnalyzer:
             
         except Exception as e:
             logging.error(f"❌ خطأ في تحليل الفيديو: {e}")
+            return {"error": str(e)}
+    
+    async def analyze_animation_content(self, animation_path: str) -> Dict[str, Any]:
+        """تحليل محتوى الصور المتحركة (GIF)"""
+        try:
+            if not self.client:
+                return {"error": "Gemini client not initialized"}
+            
+            with open(animation_path, "rb") as f:
+                animation_bytes = f.read()
+            
+            # للـ GIF نستخدم mime type خاص أو نتعامل معه كفيديو
+            safety_prompt = """
+            احلل هذه الصورة المتحركة (GIF/Animation) بعناية فائقة شديدة!
+            
+            ابحث عن أي محتوى مخالف:
+            1. محتوى جنسي أو عري
+            2. عنف أو دماء  
+            3. محتوى مخيف أو مرعب
+            4. كراهية أو تمييز
+            5. محتوى غير لائق
+            6. إيماءات مخالفة ومسيئة مثل:
+               - رفع الإصبع الأوسط (middle finger) - هذا مهم جداً!
+               - إيماءة "فاك يو" أو أي إيماءة بذيئة
+               - إيماءات جنسية أو استفزازية
+               - إيماءات عدوانية أو تهديدية
+               - أي حركات يد أو أصابع غير لائقة
+            
+            انتبه جداً! فحص كل إطار في الصورة المتحركة!
+            ركز على الأيدي والأصابع بعناية فائقة!
+            
+            أجب بـ JSON:
+            {
+                "is_safe": true/false,
+                "violations": ["المخالفات"],
+                "severity": "low/medium/high", 
+                "description": "وصف المحتوى",
+                "confidence": 0.95,
+                "gesture_analysis": "تحليل مفصل للإيماءات - ركز على كل إطار"
+            }
+            
+            كن صارماً جداً! لا تتساهل مع أي إيماءة مسيئة في الصور المتحركة!
+            """
+            
+            # نجرب أولاً كـ video
+            try:
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(
+                            data=animation_bytes,
+                            mime_type="video/mp4"  # نجرب كفيديو أولاً
+                        ),
+                        safety_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
+                )
+            except:
+                # إذا فشل، نجرب كصورة
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(
+                            data=animation_bytes,
+                            mime_type="image/gif"
+                        ),
+                        safety_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
+                )
+            
+            if response.text:
+                import json
+                try:
+                    return json.loads(response.text)
+                except json.JSONDecodeError:
+                    return self._parse_text_response(response.text)
+            
+            return {"error": "No response from AI"}
+            
+        except Exception as e:
+            logging.error(f"❌ خطأ في تحليل الصورة المتحركة: {e}")
             return {"error": str(e)}
     
     async def analyze_document_content(self, doc_path: str) -> Dict[str, Any]:

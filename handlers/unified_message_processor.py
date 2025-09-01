@@ -47,8 +47,8 @@ class UnifiedMessageProcessor:
                 
                 logging.info(f"📝 رسالة {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # تحليل المحتوى إذا كان صورة أو فيديو
-                if message.photo or message.video or message.document:
+                # تحليل المحتوى إذا كان صورة أو فيديو أو صورة متحركة
+                if message.photo or message.video or message.document or message.animation:
                     return await self._analyze_media_content(message)
                 
                 # لباقي الرسائل - السماح بجميع الرسائل
@@ -102,6 +102,10 @@ class UnifiedMessageProcessor:
                 file_id = message.video.file_id
                 file_name = f"video_{message.message_id}.mp4"
                 media_type = "video"
+            elif message.animation:
+                file_id = message.animation.file_id
+                file_name = f"animation_{message.message_id}.gif"
+                media_type = "animation"
             elif message.document:
                 file_id = message.document.file_id
                 file_name = message.document.file_name or f"document_{message.message_id}"
@@ -127,6 +131,8 @@ class UnifiedMessageProcessor:
                 analysis_result = await media_analyzer.analyze_image_content(file_path)
             elif media_type == "video":
                 analysis_result = await media_analyzer.analyze_video_content(file_path)
+            elif media_type == "animation":
+                analysis_result = await media_analyzer.analyze_animation_content(file_path)
             elif media_type == "document":
                 analysis_result = await media_analyzer.analyze_document_content(file_path)
             
