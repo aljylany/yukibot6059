@@ -270,6 +270,118 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 await callback.answer("✅ تم")
             return
         
+        # معالجة callbacks النقابة
+        if (data.startswith("guild_") or 
+            data.startswith("missions_") or 
+            data.startswith("shop_") or 
+            data.startswith("buy_") or 
+            data.startswith("change_class_") or 
+            data.startswith("gender_select_") or 
+            data.startswith("class_select_") or 
+            data == "current_class"):
+            from modules.guild_game import (
+                handle_guild_selection, handle_gender_selection, handle_class_selection,
+                show_guild_main_menu, show_personal_code
+            )
+            from modules.guild_missions import (
+                show_missions_menu, show_normal_missions, show_collect_missions,
+                start_mission, show_active_mission_status, handle_locked_mission
+            )
+            from modules.guild_shop import (
+                show_shop_menu, show_weapons_shop, show_badges_shop, show_titles_shop,
+                buy_item, show_inventory, handle_cant_buy
+            )
+            from modules.guild_upgrade import (
+                show_upgrade_menu, level_up_player, show_advanced_classes,
+                change_advanced_class, handle_current_class
+            )
+            
+            # معالجة اختيار النقابة
+            if data.startswith("guild_select_"):
+                await handle_guild_selection(callback, state)
+            
+            # معالجة اختيار الجنس
+            elif data.startswith("gender_select_"):
+                await handle_gender_selection(callback, state)
+            
+            # معالجة اختيار الفئة
+            elif data.startswith("class_select_"):
+                await handle_class_selection(callback, state)
+            
+            # القوائم الرئيسية
+            elif data == "guild_main_menu":
+                if callback.message:
+                    await show_guild_main_menu(callback.message, state)
+            
+            elif data == "guild_code":
+                await show_personal_code(callback)
+            
+            # نظام المهام
+            elif data == "guild_missions":
+                await show_missions_menu(callback)
+            
+            elif data == "missions_normal":
+                await show_normal_missions(callback)
+            
+            elif data == "missions_collect":
+                await show_collect_missions(callback)
+            
+            elif data.startswith("start_mission_"):
+                await start_mission(callback)
+            
+            elif data == "mission_status":
+                await show_active_mission_status(callback)
+            
+            elif data.startswith("locked_mission_"):
+                await handle_locked_mission(callback)
+            
+            # نظام المتجر
+            elif data == "guild_shop":
+                await show_shop_menu(callback)
+            
+            elif data == "shop_weapons":
+                await show_weapons_shop(callback)
+            
+            elif data == "shop_badges":
+                await show_badges_shop(callback)
+            
+            elif data == "shop_titles":
+                await show_titles_shop(callback)
+            
+            elif data == "shop_inventory":
+                await show_inventory(callback)
+            
+            elif data.startswith("buy_"):
+                await buy_item(callback)
+            
+            elif data.startswith("cant_buy_"):
+                await handle_cant_buy(callback)
+            
+            # نظام الترقية
+            elif data == "guild_upgrade":
+                await show_upgrade_menu(callback)
+            
+            elif data == "guild_level_up":
+                await level_up_player(callback)
+            
+            elif data == "guild_advanced_class":
+                await show_advanced_classes(callback)
+            
+            elif data.startswith("change_class_"):
+                await change_advanced_class(callback)
+            
+            elif data == "current_class":
+                await handle_current_class(callback)
+            
+            # تغيير الفئة العادية
+            elif data == "guild_change_class":
+                await callback.answer("🔧 هذه الميزة ستكون متاحة قريباً!")
+            
+            else:
+                await callback.answer("❓ أمر نقابة غير معروف")
+            
+            return
+        
         # معالجة callbacks أخرى
         await callback.answer("⚠️ هذا الزر غير نشط حالياً")
         
