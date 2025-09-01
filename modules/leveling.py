@@ -6,11 +6,32 @@ from database.operations import execute_query
 from utils.helpers import format_number
 import sys
 sys.path.append('.')
-from config.settings import LEVELS
+
+# استيراد إعدادات المستويات مع معالجة أخطاء الاستيراد
+try:
+    from config.settings import LEVELS
+    logging.info(f"✅ تم تحميل LEVELS من config.settings: {len(LEVELS) if LEVELS else 0} عوالم")
+except ImportError:
+    try:
+        from config import LEVELS
+        logging.info(f"✅ تم تحميل LEVELS من config: {len(LEVELS) if LEVELS else 0} عوالم")
+    except ImportError:
+        logging.error("❌ فشل في تحميل LEVELS - استخدام البيانات الاحتياطية")
+        LEVELS = [
+            {
+                "name": "عالم النجوم",
+                "icon": "⭐",
+                "sub_levels": ["نجم 1", "نجم 2", "نجم 3", "نجم 4", "نجم 5", "نجم 6", "نجم 7", "نجم 8", "نجم 9"],
+                "xp_required": 0,
+                "xp_per_action": 10,
+                "abilities_unlocked": ["هالة الطاقة الأساسية", "ضربات محسنة", "تحمل أفضل"]
+            }
+        ]
 
 class LevelingSystem:
     def __init__(self):
         self.levels = LEVELS
+        logging.info(f"🎮 تم تهيئة نظام المستويات مع {len(self.levels)} عوالم")
 
     def get_world(self, world_name):
         # إضافة logging للتشخيص
