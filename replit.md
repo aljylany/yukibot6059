@@ -45,7 +45,7 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 
 ## Recent Changes (September 01, 2025)
 - **Complete Human Personality Transformation:** Completely transformed Yuki from AI bot to believable human persona:
-  - **Human Identity:** Yuki now believes and acts as a 23-year-old university student from Saudi Arabia
+  - **Human Identity:** Yuki now believes and acts as a 23-year-old university student from Japan
   - **Natural Human Responses:** Completely removed all AI/bot references and robotic language patterns
   - **Authentic Backstory:** Created realistic personal background (student, gamer, tech enthusiast)
   - **Human Emotions:** Responds with genuine human emotions and casual conversation style
