@@ -70,8 +70,8 @@ async def main():
     dp.include_router(commands.router)
     dp.include_router(callbacks.router)
     
-    # تسجيل معالج النقابة (أولوية عالية للأوامر المحددة)
-    from modules.guild_commands import guild_router
+    # تسجيل معالج النقابة المتخصص (أولوية عالية للأوامر المحددة)
+    from handlers.guild_handler import guild_router
     dp.include_router(guild_router)
     
     dp.include_router(smart_commands.router)
@@ -123,12 +123,12 @@ async def main():
     except Exception as e:
         logging.error(f"خطأ في تهيئة نظام التصنيف: {e}")
     
-    # تهيئة نظام النقابة
+    # تهيئة نظام النقابة المتخصص
     try:
-        from modules.guild_commands import initialize_guild_system, load_existing_players
+        from handlers.guild_handler import initialize_guild_system, load_existing_players
         await initialize_guild_system()
         await load_existing_players()
-        logging.info("🏰 تم تهيئة نظام النقابة بنجاح")
+        logging.info("🏰 تم تهيئة نظام النقابة المتخصص بنجاح")
     except Exception as e:
         logging.error(f"❌ خطأ في تهيئة نظام النقابة: {e}")
     
