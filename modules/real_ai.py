@@ -10,6 +10,7 @@ import random
 from typing import Dict, Any, Optional
 from aiogram.types import Message
 from datetime import datetime
+from modules.name_tracker import name_tracker
 
 try:
     import google.genai as genai
@@ -470,27 +471,28 @@ class RealYukiAI:
                     # جلب الذاكرة المشتركة فقط إذا كان السؤال فعلاً يحتاجها
                     needs_memory = any(trigger in user_message.lower() for trigger in memory_triggers)
                     
-                    if needs_memory:
-                        # البحث عن أسماء المستخدمين المميزين في الرسالة
-                        special_user_ids = {
-                            'رهف': 8278493069,
-                            'rahaf': 8278493069,
-                            'الشيخ': 7155814194,
-                            'شيخ': 7155814194,
-                            'غيو': 6629947448,
-                            'geo': 6629947448,
-                            'براندون': 6524680126,
-                            'brandon': 6524680126,
-                            'يوكي براندون': 6524680126,
-                            'عبيد': 6524680126,  # عبيد هو اسم براندون الآخر
-                            'عبيدة': 6524680126
-                        }
+                    # البحث عن أسماء المستخدمين المميزين في الرسالة
+                    special_user_ids = {
+                        'رهف': 8278493069,
+                        'rahaf': 8278493069,
+                        'الشيخ': 7155814194,
+                        'شيخ': 7155814194,
+                        'ردفان': 7155814194,  # الاسم الحقيقي للشيخ
+                        'غيو': 6629947448,
+                        'geo': 6629947448,
+                        'براندون': 6524680126,
+                        'brandon': 6524680126,
+                        'يوكي براندون': 6524680126,
+                        'عبيد': 6524680126,  # عبيد هو اسم براندون الآخر
+                        'عبيدة': 6524680126
+                    }
                     
                     target_user_id = None
-                    for name, uid in special_user_ids.items():
-                        if name in user_message.lower():
-                            target_user_id = uid
-                            break
+                    if needs_memory:
+                        for name, uid in special_user_ids.items():
+                            if name in user_message.lower():
+                                target_user_id = uid
+                                break
                     
                     if any(phrase in user_message.lower() for phrase in memory_triggers) or target_user_id:
                         # استخدام chat_id الصحيح للمحادثة الحالية

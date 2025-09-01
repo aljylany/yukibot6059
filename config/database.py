@@ -503,6 +503,20 @@ async def init_database():
                 )
             ''')
             
+            # إنشاء جدول تتبع الأسماء المتغيرة
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS user_name_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    first_name TEXT,
+                    username TEXT,
+                    last_name TEXT,
+                    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id)
+                )
+            ''')
+            
             # إنشاء فهارس لتحسين الأداء
             await db.execute('CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)')
@@ -519,6 +533,7 @@ async def init_database():
             await db.execute('CREATE INDEX IF NOT EXISTS idx_team_members_code ON team_members(team_code)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_custom_replies_chat ON custom_replies(chat_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_banned_words_chat ON banned_words(chat_id)')
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_user_name_history_user_chat ON user_name_history(user_id, chat_id)')
             
             # إنشاء جداول التحليلات والإحصائيات للوحة التحكم
             await db.execute('''
