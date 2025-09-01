@@ -66,18 +66,18 @@ async def main():
     # إنشاء موزع الأحداث
     dp = Dispatcher()
     
-    # تسجيل معالجات الأحداث
+    # تسجيل معالجات الأحداث (بترتيب الأولوية)
     dp.include_router(commands.router)
     dp.include_router(callbacks.router)
-    dp.include_router(smart_commands.router)
-    dp.include_router(bug_report_handler.router)
     
-    # تسجيل معالج النقابة (بأولوية أقل من callbacks العامة)
+    # تسجيل معالج النقابة (أولوية عالية للأوامر المحددة)
     from modules.guild_commands import guild_router
     dp.include_router(guild_router)
     
+    dp.include_router(smart_commands.router)
+    dp.include_router(bug_report_handler.router)
     
-    # تسجيل معالج الرسائل العادي
+    # تسجيل معالج الرسائل العادي (أولوية أقل)
     dp.include_router(messages.router)
     
     # تسجيل المعالج الموحد للرسائل (أولوية أقل - للفحص فقط)

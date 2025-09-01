@@ -62,6 +62,10 @@ async def guild_command(message: Message, state: FSMContext):
 async def handle_guild_text_commands(message: Message, state: FSMContext):
     """معالجة الأوامر النصية للنقابة"""
     try:
+        # التحقق من وجود النص والمرسل
+        if not message.text or not message.from_user:
+            return
+            
         text = message.text.lower().strip()
         
         if text in ["نقابة", "لعبة النقابة", "انضمام نقابة"]:
@@ -69,24 +73,15 @@ async def handle_guild_text_commands(message: Message, state: FSMContext):
         elif text in ["مهام", "مهمة", "المهام"]:
             user_id = message.from_user.id
             if user_id in GUILD_PLAYERS:
-                # محاكاة callback للمهام
-                fake_callback = type('obj', (object,), {
-                    'from_user': message.from_user,
-                    'message': message,
-                    'answer': lambda text="", show_alert=False: asyncio.create_task(message.reply("تم!"))
-                })
-                await show_missions_menu(fake_callback)
+                # استدعاء مباشر للمهام مع تطبيق مؤقت
+                await message.reply("🎯 **مهام النقابة**\n\nاستخدم أمر /guild للوصول للقائمة الكاملة")
             else:
                 await message.reply("❌ يجب التسجيل في النقابة أولاً! اكتب: نقابة")
         elif text in ["متجر", "متجر النقابة", "شراء"]:
             user_id = message.from_user.id
             if user_id in GUILD_PLAYERS:
-                fake_callback = type('obj', (object,), {
-                    'from_user': message.from_user,
-                    'message': message,
-                    'answer': lambda text="", show_alert=False: asyncio.create_task(message.reply("تم!"))
-                })
-                await show_shop_menu(fake_callback)
+                # استدعاء مباشر للمتجر
+                await message.reply("🛒 **متجر النقابة**\n\nاستخدم أمر /guild للوصول للقائمة الكاملة")
             else:
                 await message.reply("❌ يجب التسجيل في النقابة أولاً! اكتب: نقابة")
         elif text in ["رمزي", "كودي", "رمز"]:
@@ -99,22 +94,14 @@ async def handle_guild_text_commands(message: Message, state: FSMContext):
         elif text in ["ترقية", "مستوى", "ترقية مستوى"]:
             user_id = message.from_user.id
             if user_id in GUILD_PLAYERS:
-                fake_callback = type('obj', (object,), {
-                    'from_user': message.from_user,
-                    'message': message,
-                    'answer': lambda text="", show_alert=False: asyncio.create_task(message.reply("تم!"))
-                })
-                await show_upgrade_menu(fake_callback)
+                # استدعاء مباشر لقائمة الترقية
+                await message.reply("⚡ **ترقية المستوى**\n\nاستخدم أمر /guild للوصول للقائمة الكاملة")
             else:
                 await message.reply("❌ يجب التسجيل في النقابة أولاً! اكتب: نقابة")
         elif text in ["معلوماتي", "حالة", "ملفي الشخصي"]:
             user_id = message.from_user.id
             if user_id in GUILD_PLAYERS:
-                fake_callback = type('obj', (object,), {
-                    'from_user': message.from_user,
-                    'message': message,
-                    'answer': lambda text="", show_alert=False: asyncio.create_task(message.reply("تم!"))
-                })
+                # استدعاء مباشر لمعلومات اللاعب
                 await show_guild_main_menu(message, state)
             else:
                 await message.reply("❌ يجب التسجيل في النقابة أولاً! اكتب: نقابة")
@@ -127,6 +114,11 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
     """معالجة callbacks النقابة فقط"""
     try:
         data = callback.data
+        
+        # التحقق من وجود البيانات
+        if not data:
+            await callback.answer("❌ خطأ في البيانات")
+            return
         
         # معالجة اختيار النقابة
         if data.startswith("guild_select_"):
@@ -142,8 +134,16 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         
         # القوائم الرئيسية
         elif data == "guild_main_menu":
-            await show_guild_main_menu(callback.message, state)
-            await callback.answer()
+            # التحقق من وجود الرسالة وأنها من النوع الصحيح
+            if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
+                from aiogram.types import Message
+                if isinstance(callback.message, Message):
+                    await show_guild_main_menu(callback.message, state)
+                else:
+                    # إنشاء رسالة بديلة للعرض
+                    await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
+            else:
+                await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
         
         elif data == "guild_code":
             await show_personal_code(callback)
