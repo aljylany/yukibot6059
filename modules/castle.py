@@ -1095,11 +1095,11 @@ async def purchase_item_command(message: Message):
         
         if len(parts) < 3:
             await message.reply(
-                "❌ **صيغة الأمر خاطئة!**\\n\\n"
-                "📝 **الصيغة الصحيحة:**\\n"
-                "• شراء ذهب [الكمية]\\n"
-                "• شراء حجارة [الكمية] أو شراء حجار [الكمية]\\n"
-                "• شراء عمال [الكمية]\\n\\n"
+                "❌ **صيغة الأمر خاطئة!**\n\n"
+                "📝 **الصيغة الصحيحة:**\n"
+                "• شراء ذهب [الكمية]\n"
+                "• شراء حجارة [الكمية] أو شراء حجار [الكمية]\n"
+                "• شراء عمال [الكمية]\n\n"
                 "💡 مثال: شراء حجار 2000"
             )
             return
@@ -1125,10 +1125,10 @@ async def purchase_item_command(message: Message):
             item_key = "workers"
         else:
             await message.reply(
-                "❌ **عنصر غير متوفر!**\\n\\n"
-                "📦 **العناصر المتاحة:**\\n"
-                "• ذهب\\n"
-                "• حجارة (أو حجار)\\n"
+                "❌ **عنصر غير متوفر!**\n\n"
+                "📦 **العناصر المتاحة:**\n"
+                "• ذهب\n"
+                "• حجارة (أو حجار)\n"
                 "• عمال"
             )
             return
@@ -1138,8 +1138,8 @@ async def purchase_item_command(message: Message):
         # التحقق من الحد الأقصى
         if quantity > item_info['max_purchase']:
             await message.reply(
-                f"❌ **الكمية كبيرة جداً!**\\n\\n"
-                f"📦 الحد الأقصى لـ{item_info['name']}: {item_info['max_purchase']} وحدة\\n"
+                f"❌ **الكمية كبيرة جداً!**\n\n"
+                f"📦 الحد الأقصى لـ{item_info['name']}: {item_info['max_purchase']} وحدة\n"
                 f"🛒 الكمية المطلوبة: {quantity} وحدة"
             )
             return
@@ -1148,9 +1148,9 @@ async def purchase_item_command(message: Message):
         
         if user['balance'] < total_cost:
             await message.reply(
-                f"❌ **الرصيد غير كافي!**\\n\\n"
-                f"💰 رصيدك: {format_number(user['balance'])}$\\n"
-                f"💸 التكلفة: {format_number(total_cost)}$\\n"
+                f"❌ **الرصيد غير كافي!**\n\n"
+                f"💰 رصيدك: {format_number(user['balance'])}$\n"
+                f"💸 التكلفة: {format_number(total_cost)}$\n"
                 f"💡 تحتاج: {format_number(total_cost - user['balance'])}$ إضافية"
             )
             return
@@ -1167,11 +1167,11 @@ async def purchase_item_command(message: Message):
         )
         
         await message.reply(
-            f"✅ **تم الشراء بنجاح!**\\n\\n"
-            f"🛒 **المشتريات:**\\n"
-            f"{item_info['emoji']} {quantity} {item_info['name']}\\n\\n"
-            f"💸 **التكلفة:** {format_number(total_cost)}$\\n"
-            f"💰 **رصيدك الآن:** {format_number((await get_user(message.from_user.id))['balance'])}$\\n\\n"
+            f"✅ **تم الشراء بنجاح!**\n\n"
+            f"🛒 **المشتريات:**\n"
+            f"{item_info['emoji']} {quantity} {item_info['name']}\n\n"
+            f"💸 **التكلفة:** {format_number(total_cost)}$\n"
+            f"💰 **رصيدك الآن:** {format_number((await get_user(message.from_user.id))['balance'])}$\n\n"
             f"🎉 تم إضافة العناصر لمواردك!"
         )
         
@@ -1222,7 +1222,7 @@ async def show_player_profile(message: Message):
         if user['total_earned'] >= 500000:
             achievements.append("📈 ربح أكثر من 500,000$")
         
-        achievements_text = "\\n".join(achievements) if achievements else "🔄 لا توجد إنجازات بعد"
+        achievements_text = "\n".join(achievements) if achievements else "🔄 لا توجد إنجازات بعد"
         
         user_name = user['first_name'] or user['username'] or 'اللاعب'
         user_username = user['username'] or 'غير محدد'
