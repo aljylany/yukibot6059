@@ -7,6 +7,8 @@ import logging
 from aiogram import Router, F
 from aiogram.types import Message
 from utils.decorators import group_only
+from modules.media_analyzer import media_analyzer
+from modules.content_moderation import ContentModerator
 
 router = Router()
 
@@ -15,6 +17,7 @@ class UnifiedMessageProcessor:
     
     def __init__(self):
         self.processing_lock = {}  # لمنع المعالجة المتكررة
+        self.content_moderator = ContentModerator()
         
     async def process_any_message(self, message: Message) -> bool:
         """
@@ -44,7 +47,11 @@ class UnifiedMessageProcessor:
                 
                 logging.info(f"📝 رسالة {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # لا يوجد فحص - السماح بجميع الرسائل
+                # تحليل المحتوى إذا كان صورة أو فيديو
+                if message.photo or message.video or message.document:
+                    return await self._analyze_media_content(message)
+                
+                # لباقي الرسائل - السماح بجميع الرسائل
                 return False
                 
             finally:
@@ -75,6 +82,115 @@ class UnifiedMessageProcessor:
             return "فيديو دائري"
         else:
             return "محتوى غير معروف"
+    
+    async def _analyze_media_content(self, message: Message) -> bool:
+        """تحليل محتوى الوسائط"""
+        try:
+            # إرسال رسالة انتظار
+            loading_message = await message.reply("🔍 **جاري تحليل الملف...**")
+            
+            # تحديد نوع الملف وتحميله
+            file_id = None
+            file_name = "unknown"
+            media_type = None
+            
+            if message.photo:
+                file_id = message.photo[-1].file_id
+                file_name = f"photo_{message.message_id}.jpg"
+                media_type = "photo"
+            elif message.video:
+                file_id = message.video.file_id
+                file_name = f"video_{message.message_id}.mp4"
+                media_type = "video"
+            elif message.document:
+                file_id = message.document.file_id
+                file_name = message.document.file_name or f"document_{message.message_id}"
+                media_type = "document"
+            
+            if not file_id:
+                await loading_message.delete()
+                return False
+            
+            # تحميل الملف
+            file_path = await media_analyzer.download_media_file(
+                message.bot, file_id, file_name
+            )
+            
+            if not file_path:
+                await loading_message.edit_text("❌ فشل في تحميل الملف")
+                return False
+            
+            # تحليل المحتوى
+            analysis_result = None
+            
+            if media_type == "photo":
+                analysis_result = await media_analyzer.analyze_image_content(file_path)
+            elif media_type == "video":
+                analysis_result = await media_analyzer.analyze_video_content(file_path)
+            elif media_type == "document":
+                analysis_result = await media_analyzer.analyze_document_content(file_path)
+            
+            # حذف الملف المؤقت
+            await media_analyzer.cleanup_temp_file(file_path)
+            
+            # معالجة نتيجة التحليل
+            if analysis_result and not analysis_result.get("error"):
+                is_safe = analysis_result.get("is_safe", True)
+                
+                if not is_safe:
+                    # محتوى مخالف - حذف الملف وإرسال تحذير
+                    violations = analysis_result.get("violations", [])
+                    severity = analysis_result.get("severity", "medium")
+                    
+                    # حذف الرسالة المخالفة
+                    try:
+                        await message.delete()
+                    except:
+                        pass
+                    
+                    # رسالة تحذير
+                    warning_msg = f"⚠️ **تم اكتشاف محتوى مخالف!**\n\n"
+                    warning_msg += f"👤 **المستخدم:** {message.from_user.first_name}\n"
+                    warning_msg += f"📋 **نوع المخالفة:** {', '.join(violations)}\n"
+                    warning_msg += f"⚖️ **درجة الخطورة:** {severity}\n"
+                    warning_msg += f"🗑️ **تم حذف الملف تلقائياً**"
+                    
+                    await loading_message.edit_text(warning_msg)
+                    
+                    # إشعار المشرفين
+                    await self.content_moderator.notify_authorities(message, analysis_result)
+                    
+                    # تسجيل المخالفة
+                    await self.content_moderator.log_violation(message, analysis_result)
+                    
+                    return True  # تم حذف المحتوى
+                else:
+                    # محتوى آمن - عرض الوصف
+                    description = analysis_result.get("description", "محتوى آمن")
+                    confidence = analysis_result.get("confidence", 0.8)
+                    gesture_analysis = analysis_result.get("gesture_analysis", "")
+                    
+                    safe_msg = f"✅ **تحليل المحتوى:**\n\n"
+                    safe_msg += f"📝 **الوصف:** {description}\n"
+                    if gesture_analysis:
+                        safe_msg += f"🤲 **تحليل الإيماءات:** {gesture_analysis}\n"
+                    safe_msg += f"🎯 **درجة الثقة:** {confidence:.0%}\n"
+                    safe_msg += f"✅ **النتيجة:** محتوى آمن"
+                    
+                    await loading_message.edit_text(safe_msg)
+                    
+                    return False  # محتوى آمن
+            else:
+                await loading_message.edit_text("❌ فشل في تحليل المحتوى")
+                return False
+                
+        except Exception as e:
+            logging.error(f"❌ خطأ في تحليل المحتوى: {e}")
+            try:
+                await loading_message.edit_text("❌ حدث خطأ أثناء تحليل المحتوى")
+            except:
+                pass
+            return False
 
 # إنشاء المعالج الموحد
 unified_processor = UnifiedMessageProcessor()
