@@ -121,10 +121,10 @@ async def handle_guild_text_commands(message: Message, state: FSMContext):
     except Exception as e:
         logging.error(f"خطأ في معالجة أوامر النقابة النصية: {e}")
 
-# معالجة callbacks النقابة
-@guild_router.callback_query()
+# معالجة callbacks النقابة فقط
+@guild_router.callback_query(lambda c: c.data and (c.data.startswith("guild_") or c.data.startswith("missions_") or c.data.startswith("shop_") or c.data.startswith("buy_") or c.data.startswith("change_class_") or c.data.startswith("gender_select_") or c.data.startswith("class_select_")))
 async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
-    """معالجة جميع callbacks النقابة"""
+    """معالجة callbacks النقابة فقط"""
     try:
         data = callback.data
         
@@ -210,12 +210,8 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
             await callback.answer("🔧 هذه الميزة ستكون متاحة قريباً!")
         
         # callbacks غير معروفة للنقابة فقط
-        elif data.startswith("guild_") or data.startswith("missions_") or data.startswith("shop_") or data.startswith("buy_") or data.startswith("change_class_"):
-            await callback.answer("❓ أمر نقابة غير معروف")
-        
-        # السماح لمعالجات أخرى بمعالجة callbacks أخرى (خاصة الألعاب)
         else:
-            return
+            await callback.answer("❓ أمر نقابة غير معروف")
     
     except Exception as e:
         logging.error(f"خطأ في معالجة callback النقابة: {e}")
