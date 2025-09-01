@@ -1,11 +1,11 @@
 modules = ["python-3.11", "postgresql-16"]
 [agent]
 expertMode = true
-integrations = ["python_database==1.0.0"]
+integrations = ["python_gemini==1.0.0", "python_database==1.0.0==1.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["curl", "ffmpeg-full", "freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pkg-config", "postgresql", "tcl", "tk", "zlib", "sqlite"]
+packages = ["curl", "ffmpeg-full", "freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pkg-config", "postgresql", "sqlite", "tcl", "tk", "zlib"]
 
 [workflows]
 runButton = "Project"

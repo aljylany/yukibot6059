@@ -104,6 +104,14 @@ async def main():
     except Exception as e:
         logging.error(f"❌ خطأ في تهيئة نظام التقرير الملكي: {e}")
     
+    # تهيئة نظام فحص المحتوى
+    try:
+        from modules.content_moderation import content_moderator
+        await content_moderator.init_violations_database()
+        logging.info("✅ تم تهيئة نظام فحص المحتوى والمخالفات")
+    except Exception as e:
+        logging.error(f"❌ خطأ في تهيئة نظام فحص المحتوى: {e}")
+    
     # تهيئة نظام التصنيف
     try:
         from modules.ranking_system import init_ranking_system

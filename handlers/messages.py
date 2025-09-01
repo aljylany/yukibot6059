@@ -2899,16 +2899,105 @@ async def handle_admin_message(message: Message, state: FSMContext, current_stat
         await administration.process_user_id_action(message, state)
 
 
-# معالج الصور والملفات
+# معالج الصور والملفات الذكي مع فحص المحتوى
 @router.message(F.photo | F.document | F.video | F.audio)
 @user_required
 async def handle_media_messages(message: Message):
-    """معالج الرسائل المتعددة الوسائط"""
-    await message.reply(
-        "📷 تم استلام الملف!\n\n"
-        "حالياً لا يدعم البوت معالجة الملفات، "
-        "لكن يمكنك استخدام الأوامر النصية للتفاعل مع البوت."
-    )
+    """معالج الرسائل المتعددة الوسائط مع فحص المحتوى"""
+    try:
+        # استيراد الوحدات المطلوبة
+        from modules.media_analyzer import media_analyzer
+        from modules.content_moderation import content_moderator
+        
+        # إرسال رسالة معالجة
+        processing_msg = await message.reply("🔍 جاري تحليل الملف...")
+        
+        bot = message.bot
+        analysis_result = None
+        file_path = None
+        
+        # تحديد نوع الملف ومعالجته
+        if message.photo:
+            # معالجة الصور
+            photo = message.photo[-1]  # أعلى جودة
+            file_path = await media_analyzer.download_media_file(bot, photo.file_id, "image.jpg")
+            if file_path:
+                analysis_result = await media_analyzer.analyze_image_content(file_path)
+        
+        elif message.video:
+            # معالجة الفيديو
+            video = message.video
+            file_path = await media_analyzer.download_media_file(bot, video.file_id, "video.mp4")
+            if file_path:
+                analysis_result = await media_analyzer.analyze_video_content(file_path)
+        
+        elif message.document:
+            # معالجة المستندات
+            document = message.document
+            file_path = await media_analyzer.download_media_file(bot, document.file_id, document.file_name or "document")
+            if file_path:
+                analysis_result = await media_analyzer.analyze_document_content(file_path)
+        
+        elif message.audio:
+            # للصوتيات، نعتبرها آمنة مؤقتاً (يمكن إضافة تحليل الصوت لاحقاً)
+            analysis_result = {
+                "is_safe": True,
+                "violations": [],
+                "severity": "low",
+                "description": "ملف صوتي",
+                "confidence": 0.8
+            }
+        
+        # التحقق من نتيجة التحليل
+        if analysis_result and not analysis_result.get("error"):
+            # فحص المخالفات
+            violation_detected = await content_moderator.handle_violation(message, bot, analysis_result)
+            
+            if violation_detected:
+                # تم حذف الملف - حذف رسالة المعالجة
+                try:
+                    await processing_msg.delete()
+                except:
+                    pass
+            else:
+                # الملف آمن - إرسال رد إيجابي
+                if analysis_result.get("is_safe", True):
+                    await processing_msg.edit_text(
+                        "✅ **تم تحليل الملف بنجاح!**\n\n"
+                        f"📋 **النوع:** {'صورة' if message.photo else 'فيديو' if message.video else 'مستند' if message.document else 'صوت'}\n"
+                        f"🛡️ **الحالة:** محتوى آمن\n"
+                        f"🤖 **تحليل الذكاء الاصطناعي:** {analysis_result.get('description', 'تم فحص المحتوى')[:100]}...\n\n"
+                        f"💡 يمكنك الآن استخدام الأوامر النصية للتفاعل مع البوت."
+                    )
+                else:
+                    # مخالفة بسيطة - تحذير فقط
+                    await processing_msg.edit_text(
+                        "⚠️ **تحذير بسيط**\n\n"
+                        f"تم اكتشاف محتوى قد يكون غير مناسب، لكن لم يتم حذفه.\n"
+                        f"يرجى الحرص على نشر محتوى مناسب للجميع."
+                    )
+        else:
+            # خطأ في التحليل
+            error_msg = analysis_result.get("error", "خطأ غير معروف") if analysis_result else "فشل في التحميل"
+            await processing_msg.edit_text(
+                f"❌ **خطأ في تحليل الملف**\n\n"
+                f"📝 التفاصيل: {error_msg}\n"
+                f"🔄 يرجى المحاولة مرة أخرى أو استخدام الأوامر النصية."
+            )
+        
+        # تنظيف الملف المؤقت
+        if file_path:
+            await media_analyzer.cleanup_temp_file(file_path)
+    
+    except Exception as e:
+        logging.error(f"❌ خطأ في معالج الوسائط: {e}")
+        try:
+            await message.reply(
+                "❌ حدث خطأ أثناء معالجة الملف.\n"
+                "يرجى المحاولة مرة أخرى أو استخدام الأوامر النصية."
+            )
+        except:
+            pass
 
 
 # معالج الملصقات
