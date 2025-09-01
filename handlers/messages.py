@@ -1604,18 +1604,18 @@ async def handle_general_message(message: Message, state: FSMContext):
         await show_leaderboard(message)
         return
     
-    if text in ['ترتيبي', 'مركزي', 'ترتيبي الشخصي', 'مرتبتي']:
+    if text.strip() in ['ترتيبي', 'مركزي']:
         from modules.ranking import show_user_ranking
         await show_user_ranking(message)
         return
     
     # فحص أوامر المستوى بدقة - مستواي كلمة مفردة فقط
     import re
-    level_commands = ["مستوايا", "مستوى", "level", "xp", "تقدمي"]
+    level_commands = ["مستوايا", "مستوى", "level", "xp"]
     is_level_command = False
     
-    # فحص "مستواي" كلمة مفردة فقط (مع السماح للمسافات في البداية والنهاية)
-    if text.strip() == "مستواي":
+    # فحص "مستواي" و "تقدمي" كلمات مفردة فقط (مع السماح للمسافات في البداية والنهاية)
+    if text.strip() == "مستواي" or text.strip() == "تقدمي":
         is_level_command = True
     else:
         # فحص الأوامر الأخرى بالطريقة العادية
@@ -2140,7 +2140,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif any(phrase in text for phrase in ['حذف قلعتي', 'احذف قلعتي']):
         await castle.delete_castle_command(message, state)
     # تم نقل معالجة تأكيد/إلغاء حذف القلعة إلى نظام الحالات
-    elif any(phrase in text for phrase in ['حسابي', 'حساب اللاعب', 'معلوماتي', 'تفاصيلي']):
+    elif text.strip() in ['حساب اللاعب', 'تفاصيلي'] or 'حساب اللاعب' in text or 'تفاصيلي' in text:
         await castle.show_player_profile(message)
     elif any(phrase in text for phrase in ['اخفاء قلعتي', 'إخفاء قلعتي', 'اخفي قلعتي']):
         await castle.hide_castle_command(message)
@@ -2244,7 +2244,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'المكتومين':
         from modules.group_management import show_muted_users
         await show_muted_users(message)
-    elif text == 'معلوماتي':
+    elif text.strip() == 'معلوماتي':
         from modules.group_management import show_my_info
         await show_my_info(message)
     elif text == 'الحمايه' or text == 'الحماية':
@@ -2436,16 +2436,16 @@ async def handle_general_message(message: Message, state: FSMContext):
         await utility_commands.show_target_user_messages(message)
     elif text in ['تفاعله', 'نشاطه'] and message.reply_to_message:
         await utility_commands.show_target_user_activity(message)
-    elif text == 'رتبتي':
+    elif text.strip() == 'رتبتي':
         from modules import user_info
         await user_info.show_my_rank(message)
     elif text == 'رتبته' and message.reply_to_message:
         from modules import user_info
         await user_info.show_user_rank(message)
-    elif text == 'فلوسي':
+    elif text.strip() == 'فلوسي':
         from modules import user_info
         await user_info.show_my_balance(message)
-    elif text == 'حسابي':
+    elif text.strip() == 'حسابي':
         # استخدام النظام الموحد لعرض الحساب
         try:
             from modules.unified_level_system import show_unified_user_info
@@ -2459,7 +2459,7 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'فلوسه' and message.reply_to_message:
         from modules import user_info
         await user_info.show_user_balance(message)
-    elif text.strip() == "مستواي" or re.search(r'\b(تقدمي|مستوى)\b', text):
+    elif text.strip() == "مستواي" or text.strip() == "تقدمي" or re.search(r'\b(مستوى)\b', text):
         # استخدام النظام الموحد لعرض المستوى
         try:
             from modules.unified_level_system import get_unified_user_level
