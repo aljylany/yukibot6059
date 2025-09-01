@@ -109,7 +109,12 @@ class UnifiedMessageProcessor:
             elif message.document:
                 file_id = message.document.file_id
                 file_name = message.document.file_name or f"document_{message.message_id}"
-                media_type = "document"
+                # فحص إذا كان المستند صورة متحركة
+                if file_name and (file_name.lower().endswith(('.gif', '.webp')) or 'gif' in file_name.lower()):
+                    media_type = "animation"
+                    file_name = f"animation_{message.message_id}.gif"
+                else:
+                    media_type = "document"
             
             if not file_id:
                 await loading_message.delete()

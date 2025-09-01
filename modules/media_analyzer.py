@@ -335,6 +335,11 @@ class MediaAnalyzer:
     async def analyze_document_content(self, doc_path: str) -> Dict[str, Any]:
         """تحليل محتوى المستند"""
         try:
+            # فحص إذا كان الملف صورة متحركة (GIF) مرسلة كمستند
+            if doc_path.lower().endswith(('.gif', '.webp')) or 'gif' in doc_path.lower():
+                logging.info(f"🎬 اكتشاف صورة متحركة مرسلة كمستند: {doc_path}")
+                return await self.analyze_animation_content(doc_path)
+            
             # للمستندات النصية، نقرأ المحتوى ونحلله
             content = ""
             
