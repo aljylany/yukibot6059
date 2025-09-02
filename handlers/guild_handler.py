@@ -84,10 +84,42 @@ async def guild_missions_command(message: Message, state: FSMContext):
             return
             
         user_id = message.from_user.id
-        if user_id in GUILD_PLAYERS:
-            await message.reply("🎯 **مهام النقابة**\n\nاستخدم أمر /guild للوصول للقائمة الكاملة")
-        else:
-            await message.reply("❌ يجب التسجيل في النقابة أولاً! اكتب: نقابة")
+        
+        # إذا لم يكن مسجلاً في النقابة، قم بالتسجيل
+        if user_id not in GUILD_PLAYERS:
+            # تحميل البيانات أو إنشاء لاعب جديد
+            player = await load_guild_player(user_id)
+            if not player:
+                # إنشاء لاعب جديد
+                from modules.guild_game import create_new_player
+                await create_new_player(user_id, message.from_user.first_name or "لاعب")
+        
+        # عرض قائمة المهام مباشرة
+        from modules.guild_missions import format_number
+        
+        # إضافة قيد التفاعل - فقط هذا المستخدم يمكنه التفاعل
+        USER_INTERACTIONS[user_id] = user_id
+        
+        keyboard = [
+            [InlineKeyboardButton(text="⭐ عادية", callback_data=f"missions_normal:{user_id}")],
+            [InlineKeyboardButton(text="💎 جمع", callback_data=f"missions_collect:{user_id}")],
+            [InlineKeyboardButton(text="⚔️ متوسطة", callback_data=f"missions_medium:{user_id}")],
+            [InlineKeyboardButton(text="🔥 أسطورية", callback_data=f"missions_legendary:{user_id}")],
+            [InlineKeyboardButton(text="🎮 القائمة الرئيسية", callback_data=f"guild_main_menu:{user_id}")]
+        ]
+        
+        player = GUILD_PLAYERS[user_id]
+        await message.reply(
+            f"📋 **اختر فئة المهمة:**\n\n"
+            f"👤 **اللاعب:** {player.name}\n"
+            f"🏅 **المستوى:** {player.level}\n"
+            f"⚔️ **القوة:** {format_number(player.power)}\n\n"
+            f"⭐ **عادية** - مهام بسيطة ومربحة\n"
+            f"💎 **جمع** - مهام جمع الموارد الثمينة\n"
+            f"⚔️ **متوسطة** - مهام أكثر صعوبة وخطراً\n"
+            f"🔥 **أسطورية** - مهام للمحاربين الأقوياء",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
     except Exception as e:
         logging.error(f"خطأ في أمر المهام: {e}")
 
@@ -100,10 +132,40 @@ async def guild_shop_command(message: Message, state: FSMContext):
             return
             
         user_id = message.from_user.id
-        if user_id in GUILD_PLAYERS:
-            await message.reply("🛒 **متجر النقابة**\n\nاستخدم أمر /guild للوصول للقائمة الكاملة")
-        else:
-            await message.reply("❌ يجب التسجيل في النقابة أولاً! اكتب: نقابة")
+        
+        # إذا لم يكن مسجلاً في النقابة، قم بالتسجيل
+        if user_id not in GUILD_PLAYERS:
+            player = await load_guild_player(user_id)
+            if not player:
+                from modules.guild_game import create_new_player
+                await create_new_player(user_id, message.from_user.first_name or "لاعب")
+        
+        # عرض قائمة المتجر مباشرة
+        from modules.guild_missions import format_number
+        
+        # إضافة قيد التفاعل
+        USER_INTERACTIONS[user_id] = user_id
+        
+        keyboard = [
+            [InlineKeyboardButton(text="⚔️ أسلحة", callback_data=f"shop_weapons:{user_id}")],
+            [InlineKeyboardButton(text="🏅 أوسمة", callback_data=f"shop_badges:{user_id}")],
+            [InlineKeyboardButton(text="👑 ألقاب", callback_data=f"shop_titles:{user_id}")],
+            [InlineKeyboardButton(text="🧪 جرعات", callback_data=f"shop_potions:{user_id}")],
+            [InlineKeyboardButton(text="💍 خواتم", callback_data=f"shop_rings:{user_id}")],
+            [InlineKeyboardButton(text="🐾 حيوانات", callback_data=f"shop_animals:{user_id}")],
+            [InlineKeyboardButton(text="🎒 حقيبتي", callback_data=f"inventory:{user_id}")],
+            [InlineKeyboardButton(text="🎮 القائمة الرئيسية", callback_data=f"guild_main_menu:{user_id}")]
+        ]
+        
+        player = GUILD_PLAYERS[user_id]
+        await message.reply(
+            f"🛒 **متجر النقابة**\n\n"
+            f"👤 **اللاعب:** {player.name}\n"
+            f"💰 **المال:** {format_number(player.money)}$\n"
+            f"⚔️ **القوة:** {format_number(player.power)}\n\n"
+            f"🛍️ **فئات المتجر:**",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
     except Exception as e:
         logging.error(f"خطأ في أمر المتجر: {e}")
 
