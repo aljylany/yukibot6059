@@ -43,8 +43,7 @@ from utils.decorators import user_required
 # إنشاء router متخصص للنقابة
 guild_router = Router()
 
-# نظام التحقق من المستخدم - فقط من استدعى اللعبة يمكنه اللعب
-USER_INTERACTIONS: Dict[int, int] = {}
+# إزالة نظام التحقق من المستخدم للسماح للجميع بالتفاعل
 
 async def initialize_guild_system():
     """تهيئة نظام النقابة"""
@@ -100,17 +99,14 @@ async def guild_missions_command(message: Message, state: FSMContext):
         # عرض قائمة المهام مباشرة
         from modules.guild_missions import format_number
         
-        # إضافة قيد التفاعل - فقط هذا المستخدم يمكنه التفاعل
-        USER_INTERACTIONS[user_id] = user_id
-        
         keyboard = [
-            [InlineKeyboardButton(text="⭐ عادية", callback_data=f"missions_normal:{user_id}")],
-            [InlineKeyboardButton(text="⚔️ متوسطة", callback_data=f"missions_medium:{user_id}")],
-            [InlineKeyboardButton(text="🔮 متقدمة", callback_data=f"missions_advanced:{user_id}")],
-            [InlineKeyboardButton(text="🔥 أسطورية", callback_data=f"missions_legendary:{user_id}")],
-            [InlineKeyboardButton(text="💎 جمع", callback_data=f"missions_collect:{user_id}")],
-            [InlineKeyboardButton(text="👹 قتل وحوش", callback_data=f"missions_kill:{user_id}")],
-            [InlineKeyboardButton(text="🎮 القائمة الرئيسية", callback_data=f"guild_main_menu:{user_id}")]
+            [InlineKeyboardButton(text="⭐ عادية", callback_data="missions_normal")],
+            [InlineKeyboardButton(text="⚔️ متوسطة", callback_data="missions_medium")],
+            [InlineKeyboardButton(text="🔮 متقدمة", callback_data="missions_advanced")],
+            [InlineKeyboardButton(text="🔥 أسطورية", callback_data="missions_legendary")],
+            [InlineKeyboardButton(text="💎 جمع", callback_data="missions_collect")],
+            [InlineKeyboardButton(text="👹 قتل وحوش", callback_data="missions_kill")],
+            [InlineKeyboardButton(text="🎮 القائمة الرئيسية", callback_data="guild_main_menu")]
         ]
         
         player = GUILD_PLAYERS[user_id]
@@ -150,18 +146,15 @@ async def guild_shop_command(message: Message, state: FSMContext):
         # عرض قائمة المتجر مباشرة
         from modules.guild_missions import format_number
         
-        # إضافة قيد التفاعل
-        USER_INTERACTIONS[user_id] = user_id
-        
         keyboard = [
-            [InlineKeyboardButton(text="⚔️ أسلحة", callback_data=f"shop_weapons:{user_id}")],
-            [InlineKeyboardButton(text="🏅 أوسمة", callback_data=f"shop_badges:{user_id}")],
-            [InlineKeyboardButton(text="👑 ألقاب", callback_data=f"shop_titles:{user_id}")],
-            [InlineKeyboardButton(text="🧪 جرعات", callback_data=f"shop_potions:{user_id}")],
-            [InlineKeyboardButton(text="💍 خواتم", callback_data=f"shop_rings:{user_id}")],
-            [InlineKeyboardButton(text="🐾 حيوانات", callback_data=f"shop_animals:{user_id}")],
-            [InlineKeyboardButton(text="🎒 حقيبتي", callback_data=f"inventory:{user_id}")],
-            [InlineKeyboardButton(text="🎮 القائمة الرئيسية", callback_data=f"guild_main_menu:{user_id}")]
+            [InlineKeyboardButton(text="⚔️ أسلحة", callback_data="shop_weapons")],
+            [InlineKeyboardButton(text="🏅 أوسمة", callback_data="shop_badges")],
+            [InlineKeyboardButton(text="👑 ألقاب", callback_data="shop_titles")],
+            [InlineKeyboardButton(text="🧪 جرعات", callback_data="shop_potions")],
+            [InlineKeyboardButton(text="💍 خواتم", callback_data="shop_rings")],
+            [InlineKeyboardButton(text="🐾 حيوانات", callback_data="shop_animals")],
+            [InlineKeyboardButton(text="🎒 حقيبتي", callback_data="shop_inventory")],
+            [InlineKeyboardButton(text="🎮 القائمة الرئيسية", callback_data="guild_main_menu")]
         ]
         
         player = GUILD_PLAYERS[user_id]
@@ -239,8 +232,11 @@ async def guild_info_command(message: Message, state: FSMContext):
     c.data.startswith("enter_maze_") or
     c.data.startswith("start_maze_") or
     c.data.startswith("locked_maze_") or
+    c.data.startswith("inventory") or
+    c.data.startswith("cant_buy_") or
     c.data == "current_class" or
-    c.data == "maze_status"
+    c.data == "maze_status" or
+    c.data == "mission_status"
 ))
 async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
     """معالجة callbacks النقابة المتخصصة"""
@@ -267,17 +263,14 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         # القوائم الرئيسية
         elif data.startswith("guild_main_menu:"):
             user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
-                    from aiogram.types import Message
-                    if isinstance(callback.message, Message):
-                        await show_guild_main_menu(callback.message, state)
-                    else:
-                        await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
+            if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
+                from aiogram.types import Message
+                if isinstance(callback.message, Message):
+                    await show_guild_main_menu(callback.message, state)
                 else:
                     await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
             else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+                await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
         
         elif data == "guild_main_menu":
             # معالجة زر الرجوع بدون user_id
@@ -293,27 +286,27 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         elif data == "guild_code":
             await show_personal_code(callback)
         
-        # نظام المهام
+        # نظام المهام - مع دعم callbacks بـ user_id وبدونه
         elif data == "guild_missions":
             await show_missions_menu(callback)
         
-        elif data == "missions_normal":
+        elif data == "missions_normal" or data.startswith("missions_normal:"):
             await show_normal_missions(callback)
         
-        elif data == "missions_collect":
+        elif data == "missions_collect" or data.startswith("missions_collect:"):
             await show_collect_missions(callback)
         
-        elif data == "missions_medium":
+        elif data == "missions_medium" or data.startswith("missions_medium:"):
             await show_medium_missions(callback)
         
-        elif data == "missions_advanced":
+        elif data == "missions_advanced" or data.startswith("missions_advanced:"):
             from modules.guild_missions import show_advanced_missions
             await show_advanced_missions(callback)
         
-        elif data == "missions_legendary":
+        elif data == "missions_legendary" or data.startswith("missions_legendary:"):
             await show_legendary_missions(callback)
         
-        elif data == "missions_kill":
+        elif data == "missions_kill" or data.startswith("missions_kill:"):
             from modules.guild_missions import show_kill_missions
             await show_kill_missions(callback)
         
@@ -326,29 +319,29 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         elif data.startswith("locked_mission_"):
             await handle_locked_mission(callback)
         
-        # نظام المتجر
+        # نظام المتجر - مع دعم callbacks بـ user_id وبدونه
         elif data == "guild_shop":
             await show_shop_menu(callback)
         
-        elif data == "shop_weapons":
+        elif data == "shop_weapons" or data.startswith("shop_weapons:"):
             await show_weapons_shop(callback)
         
-        elif data == "shop_badges":
+        elif data == "shop_badges" or data.startswith("shop_badges:"):
             await show_badges_shop(callback)
         
-        elif data == "shop_titles":
+        elif data == "shop_titles" or data.startswith("shop_titles:"):
             await show_titles_shop(callback)
         
-        elif data == "shop_potions":
+        elif data == "shop_potions" or data.startswith("shop_potions:"):
             await show_potions_shop(callback)
         
-        elif data == "shop_rings":
+        elif data == "shop_rings" or data.startswith("shop_rings:"):
             await show_rings_shop(callback)
         
-        elif data == "shop_animals":
+        elif data == "shop_animals" or data.startswith("shop_animals:"):
             await show_animals_shop(callback)
         
-        elif data == "inventory":
+        elif data == "shop_inventory" or data.startswith("inventory"):
             await show_inventory(callback)
         
         elif data.startswith("buy_"):
@@ -410,6 +403,18 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         # تغيير الفئة العادية
         elif data == "guild_change_class":
             await callback.answer("🔧 هذه الميزة ستكون متاحة قريباً!")
+        
+        # معالجة callbacks قديمة بـ user_id (توافق للخلف)
+        elif ":" in data:
+            # استخراج الأمر الأساسي
+            base_data = data.split(":")[0]
+            # إعادة المعالجة بدون user_id بتغيير data مؤقتاً
+            original_data = callback.data
+            callback.data = base_data
+            # معالجة recursive لنفس الدالة
+            await handle_guild_callback(callback, state)
+            callback.data = original_data  # إرجاع القيمة الأصلية
+            return
         
         # callbacks غير معروفة للنقابة فقط
         else:

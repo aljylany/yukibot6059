@@ -479,7 +479,7 @@ async def complete_active_mission(user_id: int, message: Message):
         if user_data:
             new_balance = user_data.get('balance', 0) + mission.money_reward
             await update_user_balance(user_id, new_balance)
-            await add_transaction(user_id, mission.money_reward, "مهمة النقابة", f"مكافأة مهمة: {mission.mission_name}")
+            await add_transaction(user_id, mission.money_reward, "مكافأة مهمة", f"مكافأة مهمة: {mission.mission_name}")
         
         # حفظ بيانات اللاعب المحدثة
         await save_guild_player({

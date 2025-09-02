@@ -153,14 +153,7 @@ async def show_potions_shop(callback: CallbackQuery):
         keyboard = []
         shop_text = f"🧪 **متجر الجرعات السحرية**\n\n💰 **رصيدك:** {format_number(balance)}$\n\n"
         
-        # جرعات مؤقتة للنظام
-        potions = {
-            "health_potion": {"name": "🍯 جرعة الشفاء الكبرى", "price": 15000, "power_bonus": 500, "description": "تستعيد صحتك بالكامل وتزيد قوتك مؤقتاً"},
-            "strength_potion": {"name": "💪 جرعة القوة الأسطورية", "price": 25000, "power_bonus": 800, "description": "تضاعف قوتك القتالية لفترة محدودة"},
-            "speed_potion": {"name": "⚡ جرعة السرعة البرقية", "price": 18000, "power_bonus": 600, "description": "تزيد من سرعة تنفيذ المهام والمعارك"}
-        }
-        
-        for potion_id, potion_data in potions.items():
+        for potion_id, potion_data in SHOP_ITEMS["potions"].items():
             can_afford = balance >= potion_data["price"]
             button_text = f"{'✅' if can_afford else '❌'} {potion_data['name']} - {format_number(potion_data['price'])}$"
             
@@ -201,14 +194,7 @@ async def show_rings_shop(callback: CallbackQuery):
         keyboard = []
         shop_text = f"💍 **متجر الخواتم الأسطورية**\n\n💰 **رصيدك:** {format_number(balance)}$\n\n"
         
-        # خواتم مؤقتة للنظام
-        rings = {
-            "power_ring": {"name": "💍 خاتم القوة الأزلية", "price": 35000, "power_bonus": 1200, "description": "خاتم أسطوري يضاعف قوتك القتالية"},
-            "wisdom_ring": {"name": "🔮 خاتم الحكمة القديمة", "price": 28000, "power_bonus": 900, "description": "يزيد من خبرتك المكتسبة من المهام"},
-            "fortune_ring": {"name": "🍀 خاتم الحظ الذهبي", "price": 32000, "power_bonus": 1000, "description": "يزيد من الأموال المكتسبة من المهام"}
-        }
-        
-        for ring_id, ring_data in rings.items():
+        for ring_id, ring_data in SHOP_ITEMS["rings"].items():
             can_afford = balance >= ring_data["price"]
             button_text = f"{'✅' if can_afford else '❌'} {ring_data['name']} - {format_number(ring_data['price'])}$"
             
@@ -249,14 +235,7 @@ async def show_animals_shop(callback: CallbackQuery):
         keyboard = []
         shop_text = f"🐾 **متجر الحيوانات الأسطورية**\n\n💰 **رصيدك:** {format_number(balance)}$\n\n"
         
-        # حيوانات مؤقتة للنظام
-        animals = {
-            "dragon": {"name": "🐉 التنين الأحمر", "price": 50000, "power_bonus": 2000, "description": "تنين قوي يحارب بجانبك في المعارك"},
-            "phoenix": {"name": "🔥 طائر العنقاء", "price": 42000, "power_bonus": 1600, "description": "طائر أسطوري يعيد إحياءك عند الهزيمة"},
-            "wolf": {"name": "🐺 الذئب الفضي", "price": 25000, "power_bonus": 1000, "description": "ذئب سريع وقوي يساعدك في الصيد"}
-        }
-        
-        for animal_id, animal_data in animals.items():
+        for animal_id, animal_data in SHOP_ITEMS["animals"].items():
             can_afford = balance >= animal_data["price"]
             button_text = f"{'✅' if can_afford else '❌'} {animal_data['name']} - {format_number(animal_data['price'])}$"
             
@@ -350,6 +329,12 @@ async def buy_item(callback: CallbackQuery):
             category = "badges"
         elif item_type == "title":
             category = "titles"
+        elif item_type == "potion":
+            category = "potions"
+        elif item_type == "ring":
+            category = "rings"
+        elif item_type == "animal":
+            category = "animals"
         else:
             await callback.answer("❌ نوع عنصر غير صحيح!")
             return
@@ -379,7 +364,7 @@ async def buy_item(callback: CallbackQuery):
             return
         
         # إضافة المعاملة
-        await add_transaction(user_id, -item_data["price"], "شراء عنصر نقابة", f"شراء {item_data['name']}")
+        await add_transaction(user_id, -item_data["price"], "شراء عنصر", f"شراء {item_data['name']}")
         
         # إضافة العنصر للمخزون
         await add_inventory_item(user_id, item_type, item_id, item_data["name"])
@@ -397,6 +382,12 @@ async def buy_item(callback: CallbackQuery):
             player.badge = item_data["name"]
         elif item_type == "title":
             player.title = item_data["name"]
+        elif item_type == "potion":
+            player.potion = item_data["name"]
+        elif item_type == "ring":
+            player.ring = item_data["name"]
+        elif item_type == "animal":
+            player.animal = item_data["name"]
         
         # حفظ بيانات اللاعب المحدثة
         await save_guild_player({
