@@ -412,7 +412,7 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
             original_data = callback.data
             callback.data = base_data
             # معالجة recursive لنفس الدالة
-            await handle_guild_callback(callback, state)
+            await handle_guild_callbacks(callback, state)
             callback.data = original_data  # إرجاع القيمة الأصلية
             return
         

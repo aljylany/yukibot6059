@@ -18,6 +18,21 @@ from modules.guild_database import save_active_mission, complete_mission, get_ac
 from database.operations import get_or_create_user, update_user_balance, add_transaction
 from utils.helpers import format_number
 
+# دالة مساعدة للتعامل مع callback.message بأمان
+async def safe_edit_text(callback: CallbackQuery, text: str, reply_markup=None):
+    """تعديل النص بشكل آمن مع التحقق من callback.message"""
+    try:
+        if (callback.message and 
+            hasattr(callback.message, 'edit_text') and 
+            callback.message.__class__.__name__ == 'Message'):
+            await callback.message.edit_text(text, reply_markup=reply_markup)
+        else:
+            # إذا لم يكن edit_text متاحاً، استخدم answer مع رسالة جديدة
+            await callback.answer(text[:200] + "..." if len(text) > 200 else text)
+    except Exception as e:
+        logging.error(f"خطأ في تعديل النص: {e}")
+        await callback.answer("❌ حدث خطأ في التحديث")
+
 # كولداون المهام (30 ثانية بين المهام)
 MISSION_COOLDOWN: Dict[int, float] = {}
 COOLDOWN_DURATION = 30
@@ -45,7 +60,8 @@ async def show_missions_menu(callback: CallbackQuery):
             time_passed = current_time - MISSION_COOLDOWN[user_id]
             if time_passed < COOLDOWN_DURATION:
                 remaining = int(COOLDOWN_DURATION - time_passed)
-                await callback.message.edit_text(
+                await safe_edit_text(
+                    callback,
                     f"⏳ **انتظر {remaining} ثانية قبل بدء مهمة جديدة!**",
                     reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                         InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")
@@ -66,7 +82,8 @@ async def show_missions_menu(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")]
         ]
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             f"📋 **اختر فئة المهمة:**\n\n"
             f"👤 **اللاعب:** {player.name}\n"
             f"🏅 **المستوى:** {player.level}\n"
@@ -122,7 +139,8 @@ async def show_normal_missions(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             missions_text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
@@ -179,7 +197,8 @@ async def show_collect_missions(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             missions_text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
@@ -236,7 +255,8 @@ async def show_medium_missions(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             missions_text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
@@ -293,7 +313,8 @@ async def show_legendary_missions(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             missions_text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
@@ -367,11 +388,14 @@ async def start_mission(callback: CallbackQuery):
             'start_time': datetime.now()
         })
         
-        # بدء المؤقت
-        timer_task = asyncio.create_task(mission_timer(user_id, callback.message))
-        ACTIVE_TIMERS[user_id] = timer_task
+        # بدء المؤقت (فقط إذا كان callback.message صالح)
+        if (callback.message and 
+            callback.message.__class__.__name__ == 'Message'):
+            timer_task = asyncio.create_task(mission_timer(user_id, callback.message))
+            ACTIVE_TIMERS[user_id] = timer_task
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             f"⚡ **بدأت تنفيذ مهمة '{mission_data['name']}'!**\n\n"
             f"📝 **الوصف:** {mission_data['description']}\n"
             f"⏱️ **المدة:** {mission_data['duration']} دقيقة\n"
@@ -403,7 +427,10 @@ async def show_active_mission_status(callback: CallbackQuery):
         mission = ACTIVE_MISSIONS[user_id]
         
         if mission.is_completed():
-            await complete_active_mission(user_id, callback.message)
+            # استخدام callback بدلاً من callback.message للإنهاء
+            if (callback.message and 
+                callback.message.__class__.__name__ == 'Message'):
+                await complete_active_mission(user_id, callback.message)
             return
         
         time_remaining = mission.time_remaining()
@@ -413,7 +440,8 @@ async def show_active_mission_status(callback: CallbackQuery):
         # شريط التقدم
         progress_bar = "🟩" * int(progress_percent // 10) + "⬜" * (10 - int(progress_percent // 10))
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             f"📊 **حالة المهمة النشطة:**\n\n"
             f"🎯 **المهمة:** {mission.mission_name}\n"
             f"⏱️ **الوقت المتبقي:** {time_remaining}\n"
@@ -479,7 +507,7 @@ async def complete_active_mission(user_id: int, message: Message):
         if user_data:
             new_balance = user_data.get('balance', 0) + mission.money_reward
             await update_user_balance(user_id, new_balance)
-            await add_transaction(user_id, mission.money_reward, "مكافأة مهمة", f"مكافأة مهمة: {mission.mission_name}")
+            await add_transaction(user_id, "مكافأة مهمة", mission.money_reward, f"مكافأة مهمة: {mission.mission_name}")
         
         # حفظ بيانات اللاعب المحدثة
         await save_guild_player({
@@ -618,7 +646,8 @@ async def show_advanced_missions(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             missions_text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
@@ -706,7 +735,8 @@ async def show_kill_missions(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback,
             missions_text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
