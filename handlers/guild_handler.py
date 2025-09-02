@@ -330,54 +330,26 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         elif data == "guild_shop":
             await show_shop_menu(callback)
         
-        elif data.startswith("shop_weapons:"):
-            user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                await show_weapons_shop(callback)
-            else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        elif data == "shop_weapons":
+            await show_weapons_shop(callback)
         
-        elif data.startswith("shop_badges:"):
-            user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                await show_badges_shop(callback)
-            else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        elif data == "shop_badges":
+            await show_badges_shop(callback)
         
-        elif data.startswith("shop_titles:"):
-            user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                await show_titles_shop(callback)
-            else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        elif data == "shop_titles":
+            await show_titles_shop(callback)
         
-        elif data.startswith("shop_potions:"):
-            user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                await show_potions_shop(callback)
-            else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        elif data == "shop_potions":
+            await show_potions_shop(callback)
         
-        elif data.startswith("shop_rings:"):
-            user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                await show_rings_shop(callback)
-            else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        elif data == "shop_rings":
+            await show_rings_shop(callback)
         
-        elif data.startswith("shop_animals:"):
-            user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                await show_animals_shop(callback)
-            else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        elif data == "shop_animals":
+            await show_animals_shop(callback)
         
-        elif data.startswith("inventory:"):
-            user_id_from_data = int(data.split(":")[1])
-            if callback.from_user.id == user_id_from_data:
-                await show_inventory(callback)
-            else:
-                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        elif data == "inventory":
+            await show_inventory(callback)
         
         elif data.startswith("buy_"):
             await buy_item(callback)
