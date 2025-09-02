@@ -52,6 +52,7 @@ class GuildPlayer:
     power: int
     experience: int
     experience_needed: int
+    money: int  # إضافة حقل المال
     weapon: Optional[str]
     badge: Optional[str]
     title: Optional[str]
@@ -102,6 +103,7 @@ class GuildPlayer:
             'level': self.level,
             'power': self.power,
             'experience': self.experience,
+            'money': self.money,
             'weapon': self.weapon,
             'badge': self.badge,
             'title': self.title,
@@ -508,6 +510,7 @@ async def start_guild_registration(message: Message, state: FSMContext):
                 power=player_data['power'],
                 experience=player_data['experience'],
                 experience_needed=player_data['level'] * 600,
+                money=player_data.get('money', 5000),  # قيمة افتراضية لو لم توجد
                 weapon=player_data['weapon'],
                 badge=player_data['badge'],
                 title=player_data['title'],
@@ -626,6 +629,7 @@ async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
             power=100,
             experience=0,
             experience_needed=600,
+            money=5000,  # مال ابتدائي
             weapon=None,
             badge=None,
             title=None,
@@ -651,6 +655,7 @@ async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
             'level': player.level,
             'power': player.power,
             'experience': player.experience,
+            'money': player.money,
             'weapon': player.weapon,
             'badge': player.badge,
             'title': player.title,
@@ -757,6 +762,42 @@ async def show_personal_code(callback: CallbackQuery):
         logging.error(f"خطأ في عرض الرمز الشخصي: {e}")
         await callback.answer("❌ حدث خطأ")
 
+async def create_new_player(user_id: int, name: str):
+    """إنشاء لاعب جديد بالإعدادات الافتراضية"""
+    try:
+        # إنشاء لاعب بالإعدادات الافتراضية
+        player = GuildPlayer(
+            user_id=user_id,
+            username=f"user_{user_id}",
+            name=name,
+            guild="heroes",  # نقابة افتراضية
+            gender="male",   # جنس افتراضي
+            character_class="warrior",  # فئة افتراضية
+            advanced_class="غير متاح",
+            level=1,
+            power=100,
+            experience=0,
+            experience_needed=600,
+            money=5000,  # مال ابتدائي
+            weapon=None,
+            badge=None,
+            title=None,
+            potion=None,
+            ring=None,
+            animal=None,
+            personal_code="",
+            created_at=datetime.now()
+        )
+        
+        # حفظ اللاعب في الذاكرة وقاعدة البيانات
+        GUILD_PLAYERS[user_id] = player
+        await player.save_to_database()
+        return player
+        
+    except Exception as e:
+        logging.error(f"خطأ في إنشاء لاعب جديد: {e}")
+        return None
+
 # تصدير الدوال المطلوبة
 __all__ = [
     'start_guild_registration',
@@ -765,6 +806,7 @@ __all__ = [
     'handle_class_selection',
     'show_guild_main_menu',
     'show_personal_code',
+    'create_new_player',
     'GUILD_PLAYERS',
     'ACTIVE_MISSIONS'
 ]

@@ -27,6 +27,7 @@ async def init_guild_database():
                     level INTEGER DEFAULT 1,
                     power INTEGER DEFAULT 100,
                     experience INTEGER DEFAULT 0,
+                    money INTEGER DEFAULT 5000,
                     weapon TEXT,
                     badge TEXT,
                     title TEXT,
@@ -38,6 +39,12 @@ async def init_guild_database():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            # إضافة عمود المال إذا لم يكن موجوداً (للترقية)
+            try:
+                await db.execute("ALTER TABLE guild_players ADD COLUMN money INTEGER DEFAULT 5000")
+            except:
+                pass  # العمود موجود بالفعل
             
             # جدول المهام النشطة
             await db.execute("""
@@ -99,9 +106,9 @@ async def save_guild_player(player_data: Dict[str, Any]) -> bool:
             await db.execute("""
                 INSERT OR REPLACE INTO guild_players (
                     user_id, username, name, guild, gender, character_class,
-                    advanced_class, level, power, experience, weapon, badge,
+                    advanced_class, level, power, experience, money, weapon, badge,
                     title, potion, ring, animal, personal_code, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 player_data['user_id'],
                 player_data['username'],
@@ -113,6 +120,7 @@ async def save_guild_player(player_data: Dict[str, Any]) -> bool:
                 player_data['level'],
                 player_data['power'],
                 player_data['experience'],
+                player_data.get('money', 5000),  # قيمة افتراضية للمال
                 player_data['weapon'],
                 player_data['badge'],
                 player_data['title'],

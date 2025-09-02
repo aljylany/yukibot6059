@@ -9,7 +9,7 @@ import asyncio
 from typing import Dict
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
@@ -17,7 +17,7 @@ from aiogram.fsm.context import FSMContext
 from modules.guild_game import (
     start_guild_registration, handle_guild_selection, handle_gender_selection,
     handle_class_selection, show_guild_main_menu, show_personal_code,
-    GUILD_PLAYERS, ACTIVE_MISSIONS
+    GUILD_PLAYERS, ACTIVE_MISSIONS, create_new_player
 )
 from modules.guild_database import init_guild_database, load_guild_player
 from modules.guild_missions import (
@@ -42,6 +42,9 @@ from utils.decorators import user_required
 
 # إنشاء router متخصص للنقابة
 guild_router = Router()
+
+# نظام التحقق من المستخدم - فقط من استدعى اللعبة يمكنه اللعب
+USER_INTERACTIONS: Dict[int, int] = {}
 
 async def initialize_guild_system():
     """تهيئة نظام النقابة"""
@@ -102,9 +105,11 @@ async def guild_missions_command(message: Message, state: FSMContext):
         
         keyboard = [
             [InlineKeyboardButton(text="⭐ عادية", callback_data=f"missions_normal:{user_id}")],
-            [InlineKeyboardButton(text="💎 جمع", callback_data=f"missions_collect:{user_id}")],
             [InlineKeyboardButton(text="⚔️ متوسطة", callback_data=f"missions_medium:{user_id}")],
+            [InlineKeyboardButton(text="🔮 متقدمة", callback_data=f"missions_advanced:{user_id}")],
             [InlineKeyboardButton(text="🔥 أسطورية", callback_data=f"missions_legendary:{user_id}")],
+            [InlineKeyboardButton(text="💎 جمع", callback_data=f"missions_collect:{user_id}")],
+            [InlineKeyboardButton(text="👹 قتل وحوش", callback_data=f"missions_kill:{user_id}")],
             [InlineKeyboardButton(text="🎮 القائمة الرئيسية", callback_data=f"guild_main_menu:{user_id}")]
         ]
         
@@ -115,9 +120,11 @@ async def guild_missions_command(message: Message, state: FSMContext):
             f"🏅 **المستوى:** {player.level}\n"
             f"⚔️ **القوة:** {format_number(player.power)}\n\n"
             f"⭐ **عادية** - مهام بسيطة ومربحة\n"
-            f"💎 **جمع** - مهام جمع الموارد الثمينة\n"
             f"⚔️ **متوسطة** - مهام أكثر صعوبة وخطراً\n"
-            f"🔥 **أسطورية** - مهام للمحاربين الأقوياء",
+            f"🔮 **متقدمة** - مهام للمحاربين المتقدمين\n"
+            f"🔥 **أسطورية** - مهام للمحاربين الأقوياء\n"
+            f"💎 **جمع** - مهام جمع الموارد الثمينة\n"
+            f"👹 **قتل وحوش** - مهام قتال الوحوش",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
     except Exception as e:
@@ -161,7 +168,7 @@ async def guild_shop_command(message: Message, state: FSMContext):
         await message.reply(
             f"🛒 **متجر النقابة**\n\n"
             f"👤 **اللاعب:** {player.name}\n"
-            f"💰 **المال:** {format_number(player.money)}$\n"
+            f"🏅 **المستوى:** {player.level}\n"
             f"⚔️ **القوة:** {format_number(player.power)}\n\n"
             f"🛍️ **فئات المتجر:**",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -258,8 +265,22 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_class_selection(callback, state)
         
         # القوائم الرئيسية
+        elif data.startswith("guild_main_menu:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
+                    from aiogram.types import Message
+                    if isinstance(callback.message, Message):
+                        await show_guild_main_menu(callback.message, state)
+                    else:
+                        await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
+                else:
+                    await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
+        
         elif data == "guild_main_menu":
-            # التحقق من وجود الرسالة وأنها من النوع الصحيح
+            # معالجة زر الرجوع بدون user_id
             if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
                 from aiogram.types import Message
                 if isinstance(callback.message, Message):
@@ -285,8 +306,16 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         elif data == "missions_medium":
             await show_medium_missions(callback)
         
+        elif data == "missions_advanced":
+            from modules.guild_missions import show_advanced_missions
+            await show_advanced_missions(callback)
+        
         elif data == "missions_legendary":
             await show_legendary_missions(callback)
+        
+        elif data == "missions_kill":
+            from modules.guild_missions import show_kill_missions
+            await show_kill_missions(callback)
         
         elif data.startswith("start_mission_"):
             await start_mission(callback)
@@ -301,26 +330,54 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         elif data == "guild_shop":
             await show_shop_menu(callback)
         
-        elif data == "shop_weapons":
-            await show_weapons_shop(callback)
+        elif data.startswith("shop_weapons:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                await show_weapons_shop(callback)
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
         
-        elif data == "shop_badges":
-            await show_badges_shop(callback)
+        elif data.startswith("shop_badges:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                await show_badges_shop(callback)
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
         
-        elif data == "shop_titles":
-            await show_titles_shop(callback)
+        elif data.startswith("shop_titles:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                await show_titles_shop(callback)
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
         
-        elif data == "shop_potions":
-            await show_potions_shop(callback)
+        elif data.startswith("shop_potions:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                await show_potions_shop(callback)
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
         
-        elif data == "shop_rings":
-            await show_rings_shop(callback)
+        elif data.startswith("shop_rings:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                await show_rings_shop(callback)
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
         
-        elif data == "shop_animals":
-            await show_animals_shop(callback)
+        elif data.startswith("shop_animals:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                await show_animals_shop(callback)
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
         
-        elif data == "shop_inventory":
-            await show_inventory(callback)
+        elif data.startswith("inventory:"):
+            user_id_from_data = int(data.split(":")[1])
+            if callback.from_user.id == user_id_from_data:
+                await show_inventory(callback)
+            else:
+                await callback.answer("❌ لا يمكنك التفاعل مع هذه اللعبة!")
         
         elif data.startswith("buy_"):
             await buy_item(callback)

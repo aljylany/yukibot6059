@@ -58,9 +58,11 @@ async def show_missions_menu(callback: CallbackQuery):
         
         keyboard = [
             [InlineKeyboardButton(text="⭐ عادية", callback_data="missions_normal")],
-            [InlineKeyboardButton(text="💎 جمع", callback_data="missions_collect")],
             [InlineKeyboardButton(text="⚔️ متوسطة", callback_data="missions_medium")],
+            [InlineKeyboardButton(text="🎯 متقدمة", callback_data="missions_advanced")],
             [InlineKeyboardButton(text="🔥 أسطورية", callback_data="missions_legendary")],
+            [InlineKeyboardButton(text="💎 جمع", callback_data="missions_collect")],
+            [InlineKeyboardButton(text="👹 قتل وحوش", callback_data="missions_kill")],
             [InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")]
         ]
         
@@ -70,9 +72,11 @@ async def show_missions_menu(callback: CallbackQuery):
             f"🏅 **المستوى:** {player.level}\n"
             f"⚔️ **القوة:** {format_number(player.power)}\n\n"
             f"⭐ **عادية** - مهام بسيطة ومربحة\n"
-            f"💎 **جمع** - مهام جمع الموارد الثمينة\n"
             f"⚔️ **متوسطة** - مهام أكثر صعوبة وخطراً\n"
-            f"🔥 **أسطورية** - مهام للمحاربين الأقوياء",
+            f"🎯 **متقدمة** - مهام للمحاربين المتمرسين\n"
+            f"🔥 **أسطورية** - مهام للمحاربين الأقوياء\n"
+            f"💎 **جمع** - مهام جمع الموارد الثمينة\n"
+            f"👹 **قتل وحوش** - مهام قتال الوحوش الشرسة",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
         )
         
@@ -546,6 +550,173 @@ async def complete_active_mission(user_id: int, message: Message):
     except Exception as e:
         logging.error(f"خطأ في إنهاء المهمة: {e}")
 
+async def show_advanced_missions(callback: CallbackQuery):
+    """عرض المهام المتقدمة"""
+    try:
+        user_id = callback.from_user.id
+        player = GUILD_PLAYERS[user_id]
+        
+        keyboard = []
+        missions_text = "🎯 **المهام المتقدمة:**\n\n"
+        
+        # مهام متقدمة (بين المتوسطة والأسطورية)
+        advanced_missions = {
+            "elite_exploration": {
+                "name": "🏛️ استكشاف المعبد النخبوي",
+                "description": "استكشف المعابد المخفية بحثاً عن الكنوز",
+                "duration": 45,
+                "experience": 2500,
+                "money": 3500,
+                "required_level": 15,
+                "power_requirement": 2500
+            },
+            "dragon_hunt": {
+                "name": "🐉 صيد التنين الصغير",
+                "description": "اقتل التنانين الصغيرة واحصل على مكافآت ثمينة",
+                "duration": 60,
+                "experience": 3500,
+                "money": 5000,
+                "required_level": 20,
+                "power_requirement": 3500
+            }
+        }
+        
+        for mission_id, mission_data in advanced_missions.items():
+            # فحص متطلبات المستوى والقوة
+            level_met = player.level >= mission_data["required_level"]
+            power_met = player.power >= mission_data["power_requirement"]
+            available = level_met and power_met
+            
+            if available:
+                button_text = f"✅ {mission_data['name']}"
+                callback_data = f"start_mission_advanced_{mission_id}"
+            else:
+                button_text = f"🔒 {mission_data['name']}"
+                callback_data = f"locked_mission_{mission_id}"
+            
+            keyboard.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=callback_data
+            )])
+            
+            # إضافة معلومات المهمة
+            if available:
+                status = "✅ متاح"
+            elif not level_met:
+                status = f"🔒 يحتاج مستوى {mission_data['required_level']}"
+            else:
+                status = f"🔒 يحتاج قوة {format_number(mission_data['power_requirement'])}"
+                
+            missions_text += (
+                f"{mission_data['name']}\n"
+                f"📝 {mission_data['description']}\n"
+                f"⏱️ المدة: {mission_data['duration']} دقيقة\n"
+                f"⭐ الخبرة: {format_number(mission_data['experience'])}\n"
+                f"💰 المال: {format_number(mission_data['money'])}$\n"
+                f"🎯 الحالة: {status}\n\n"
+            )
+        
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
+        
+        await callback.message.edit_text(
+            missions_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض المهام المتقدمة: {e}")
+        await callback.answer("❌ حدث خطأ")
+
+async def show_kill_missions(callback: CallbackQuery):
+    """عرض مهام قتل الوحوش"""
+    try:
+        user_id = callback.from_user.id
+        player = GUILD_PLAYERS[user_id]
+        
+        keyboard = []
+        missions_text = "👹 **مهام قتل الوحوش:**\n\n"
+        
+        # مهام قتل الوحوش
+        kill_missions = {
+            "goblin_slayer": {
+                "name": "👺 إبادة الغوبلن",
+                "description": "اقتل مجموعة من الغوبلن المؤذيين",
+                "duration": 25,
+                "experience": 1200,
+                "money": 1800,
+                "required_level": 8,
+                "power_requirement": 1200
+            },
+            "orc_destroyer": {
+                "name": "💀 محطم الأورك",
+                "description": "واجه قبيلة الأورك واهزمها",
+                "duration": 40,
+                "experience": 2200,
+                "money": 3200,
+                "required_level": 12,
+                "power_requirement": 2000
+            },
+            "beast_hunter": {
+                "name": "🐺 صياد الوحوش",
+                "description": "اصطد الوحوش الشرسة في الغابة المظلمة",
+                "duration": 50,
+                "experience": 3000,
+                "money": 4500,
+                "required_level": 18,
+                "power_requirement": 2800
+            }
+        }
+        
+        for mission_id, mission_data in kill_missions.items():
+            # فحص متطلبات المستوى والقوة
+            level_met = player.level >= mission_data["required_level"]
+            power_met = player.power >= mission_data["power_requirement"]
+            available = level_met and power_met
+            
+            if available:
+                button_text = f"✅ {mission_data['name']}"
+                callback_data = f"start_mission_kill_{mission_id}"
+            else:
+                button_text = f"🔒 {mission_data['name']}"
+                callback_data = f"locked_mission_{mission_id}"
+            
+            keyboard.append([InlineKeyboardButton(
+                text=button_text,
+                callback_data=callback_data
+            )])
+            
+            # إضافة معلومات المهمة
+            if available:
+                status = "✅ متاح"
+            elif not level_met:
+                status = f"🔒 يحتاج مستوى {mission_data['required_level']}"
+            else:
+                status = f"🔒 يحتاج قوة {format_number(mission_data['power_requirement'])}"
+                
+            missions_text += (
+                f"{mission_data['name']}\n"
+                f"📝 {mission_data['description']}\n"
+                f"⏱️ المدة: {mission_data['duration']} دقيقة\n"
+                f"⭐ الخبرة: {format_number(mission_data['experience'])}\n"
+                f"💰 المال: {format_number(mission_data['money'])}$\n"
+                f"🎯 الحالة: {status}\n\n"
+            )
+        
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
+        
+        await callback.message.edit_text(
+            missions_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logging.error(f"خطأ في عرض مهام قتل الوحوش: {e}")
+        await callback.answer("❌ حدث خطأ")
+
 async def handle_locked_mission(callback: CallbackQuery):
     """معالجة المهام المغلقة"""
     try:
@@ -557,7 +728,11 @@ async def handle_locked_mission(callback: CallbackQuery):
 __all__ = [
     'show_missions_menu',
     'show_normal_missions',
+    'show_medium_missions', 
+    'show_advanced_missions',
+    'show_legendary_missions',
     'show_collect_missions',
+    'show_kill_missions',
     'start_mission',
     'show_active_mission_status',
     'handle_locked_mission',
