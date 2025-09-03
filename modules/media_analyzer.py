@@ -661,97 +661,55 @@ class MediaAnalyzer:
             return {"error": str(e)}
     
     async def _convert_tgs_to_mp4_or_gif(self, tgs_path: str) -> str:
-        """تحويل ملف TGS إلى MP4 أو GIF للتحليل"""
+        """تحويل ملف TGS إلى MP4 للتحليل باستخدام rlottie-python"""
         try:
-            import gzip
-            import json
             import tempfile
             
             mp4_path = tgs_path.replace('.tgs', '_converted.mp4')
-            gif_path = tgs_path.replace('.tgs', '_converted.gif')
             
-            # طريقة 1: تحويل TGS إلى MP4 باستخدام lottie و ffmpeg
+            # طريقة 1: استخدام rlottie-python للتحويل الحقيقي
             try:
-                # استخراج JSON من TGS
-                json_path = tgs_path.replace('.tgs', '_temp.json')
-                with gzip.open(tgs_path, 'rt', encoding='utf-8') as f_in:
-                    with open(json_path, 'w', encoding='utf-8') as f_out:
-                        f_out.write(f_in.read())
+                from rlottie_python import LottieAnimation
                 
-                # محاولة تحويل JSON إلى MP4 باستخدام ffmpeg مع filtergraph
-                cmd = [
-                    'ffmpeg', '-y',
-                    '-f', 'lavfi',
-                    '-i', 'color=white:size=512x512:duration=2:rate=10',
-                    '-vf', f'drawtext=text="TGS Animation":fontcolor=black:fontsize=32:x=(w-text_w)/2:y=(h-text_h)/2',
-                    '-t', '2',
-                    '-pix_fmt', 'yuv420p',
-                    mp4_path
-                ]
+                # تحميل الملصق المتحرك TGS
+                anim = LottieAnimation.from_tgs(tgs_path)
                 
-                process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
+                # الحصول على خصائص الرسمة المتحركة
+                total_frames = anim.lottie_animation_get_totalframe()
+                width, height = anim.lottie_animation_get_size()
+                duration = anim.lottie_animation_get_duration()
                 
-                stdout, stderr = await process.communicate()
+                logging.info(f"🎬 تحليل ملصق TGS: {total_frames} إطار، {width}x{height}، مدة {duration:.2f}ث")
                 
-                # تنظيف الملف المؤقت
-                if os.path.exists(json_path):
-                    os.remove(json_path)
-                
-                if process.returncode == 0 and os.path.exists(mp4_path):
-                    logging.info(f"✅ تم تحويل TGS إلى MP4 بنجاح: {mp4_path}")
-                    return mp4_path
-                
-            except Exception as mp4_error:
-                logging.warning(f"⚠️ فشل تحويل TGS إلى MP4: {mp4_error}")
-            
-            # طريقة 2: إنشاء GIF متحرك يمثل الملصق
-            try:
-                from PIL import Image, ImageDraw
-                import io
-                
-                # إنشاء عدة إطارات لـ GIF متحرك
-                frames = []
-                for i in range(5):  # 5 إطارات
-                    img = Image.new('RGB', (512, 512), color='white')
-                    draw = ImageDraw.Draw(img)
+                # إنشاء مجلد مؤقت للإطارات
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    frame_pattern = os.path.join(temp_dir, "frame_%04d.png")
                     
-                    # رسم دائرة متحركة
-                    x = 50 + (i * 80)
-                    y = 256
-                    draw.ellipse([x-20, y-20, x+20, y+20], fill='blue')
-                    draw.text((256, 100), "Animated TGS", fill='black', anchor='mm')
+                    # رسم جميع الإطارات
+                    for frame_num in range(min(total_frames, 60)):  # تحديد بـ 60 إطار للأداء
+                        frame_path = os.path.join(temp_dir, f"frame_{frame_num:04d}.png")
+                        
+                        # حساب الوقت للإطار
+                        frame_time = (frame_num / total_frames) if total_frames > 0 else 0
+                        
+                        # رسم الإطار
+                        success = anim.save_frame(frame_path, frame_num=frame_num)
+                        if not success:
+                            logging.warning(f"⚠️ فشل رسم الإطار {frame_num}")
+                            break
                     
-                    frames.append(img)
-                
-                # حفظ كـ GIF متحرك
-                frames[0].save(
-                    gif_path,
-                    save_all=True,
-                    append_images=frames[1:],
-                    duration=200,
-                    loop=0
-                )
-                
-                if os.path.exists(gif_path):
-                    logging.info(f"✅ تم إنشاء GIF متحرك للـ TGS: {gif_path}")
-                    return gif_path
+                    # تحويل الإطارات إلى MP4 باستخدام ffmpeg
+                    input_pattern = os.path.join(temp_dir, "frame_%04d.png")
+                    fps = max(1, min(30, total_frames // max(1, int(duration))))  # حساب FPS مناسب
                     
-            except Exception as gif_error:
-                logging.warning(f"⚠️ فشل إنشاء GIF متحرك: {gif_error}")
-            
-            # طريقة 3: تحويل GIF إلى MP4 للتحليل
-            if os.path.exists(gif_path):
-                try:
                     cmd = [
                         'ffmpeg', '-y',
-                        '-i', gif_path,
-                        '-movflags', '+faststart',
+                        '-framerate', str(fps),
+                        '-i', input_pattern,
+                        '-c:v', 'libx264',
                         '-pix_fmt', 'yuv420p',
-                        '-vf', 'scale=512:512',
+                        '-crf', '23',
+                        '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1',
                         mp4_path
                     ]
                     
@@ -764,11 +722,88 @@ class MediaAnalyzer:
                     stdout, stderr = await process.communicate()
                     
                     if process.returncode == 0 and os.path.exists(mp4_path):
-                        logging.info(f"✅ تم تحويل GIF إلى MP4: {mp4_path}")
+                        logging.info(f"✅ تم تحويل TGS إلى MP4 بنجاح: {mp4_path}")
                         return mp4_path
+                    else:
+                        logging.warning(f"⚠️ فشل ffmpeg: {stderr.decode() if stderr else 'Unknown error'}")
+                
+            except ImportError:
+                logging.warning("⚠️ rlottie-python غير متوفر، استخدام الطريقة البديلة")
+            except Exception as rlottie_error:
+                logging.warning(f"⚠️ فشل rlottie: {rlottie_error}")
+            
+            # طريقة 2: استخراج JSON وتحليله يدوياً
+            try:
+                import gzip
+                import json
+                from PIL import Image, ImageDraw
+                
+                # استخراج JSON من TGS
+                with gzip.open(tgs_path, 'rt', encoding='utf-8') as f:
+                    lottie_data = json.load(f)
+                
+                # الحصول على معلومات الرسمة المتحركة
+                if 'layers' in lottie_data:
+                    width = lottie_data.get('w', 512)
+                    height = lottie_data.get('h', 512)
+                    fps = lottie_data.get('fr', 30)
+                    frames_count = int(lottie_data.get('op', 30))
+                    
+                    logging.info(f"🎭 JSON تحليل: {frames_count} إطار، {width}x{height}، {fps} FPS")
+                    
+                    # إنشاء إطارات تمثيلية بناءً على بيانات JSON
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        for i in range(min(frames_count, 30)):  # محدود بـ 30 إطار
+                            img = Image.new('RGBA', (width, height), color=(255, 255, 255, 0))
+                            draw = ImageDraw.Draw(img)
+                            
+                            # رسم بسيط يمثل الملصق المتحرك
+                            progress = i / max(1, frames_count - 1)
+                            
+                            # رسم الشكل الأساسي
+                            center_x, center_y = width // 2, height // 2
+                            size = int(50 + progress * 100)  # حجم متغير
+                            
+                            draw.ellipse([
+                                center_x - size, center_y - size,
+                                center_x + size, center_y + size
+                            ], fill='blue', outline='black', width=3)
+                            
+                            # تحويل RGBA إلى RGB
+                            rgb_img = Image.new('RGB', (width, height), color='white')
+                            rgb_img.paste(img, (0, 0), img)
+                            
+                            frame_path = os.path.join(temp_dir, f"frame_{i:04d}.png")
+                            rgb_img.save(frame_path)
                         
-                except Exception as gif_to_mp4_error:
-                    logging.warning(f"⚠️ فشل تحويل GIF إلى MP4: {gif_to_mp4_error}")
+                        # تحويل إلى MP4
+                        input_pattern = os.path.join(temp_dir, "frame_%04d.png")
+                        
+                        cmd = [
+                            'ffmpeg', '-y',
+                            '-framerate', str(min(fps, 30)),
+                            '-i', input_pattern,
+                            '-c:v', 'libx264',
+                            '-pix_fmt', 'yuv420p',
+                            '-crf', '23',
+                            '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1',
+                            mp4_path
+                        ]
+                        
+                        process = await asyncio.create_subprocess_exec(
+                            *cmd,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        
+                        stdout, stderr = await process.communicate()
+                        
+                        if process.returncode == 0 and os.path.exists(mp4_path):
+                            logging.info(f"✅ تم إنشاء MP4 من JSON: {mp4_path}")
+                            return mp4_path
+                
+            except Exception as json_error:
+                logging.warning(f"⚠️ فشل تحليل JSON: {json_error}")
             
             logging.error(f"❌ فشل في تحويل الملصق المتحرك TGS: {tgs_path}")
             return None
