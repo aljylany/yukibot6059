@@ -253,7 +253,7 @@ class MediaAnalyzer:
                 # انتظار قبل المحاولة التالية
                 await asyncio.sleep(retry_delay)
                 
-        return {"error": "فشل في جميع المحاولات"}
+        return {"error": "فشل في جميع المحاولات - خدمة التحليل غير متاحة مؤقتاً"}
     
     def _parse_text_response(self, text: str) -> Dict[str, Any]:
         """تحليل الرد النصي إذا فشل JSON"""
@@ -377,7 +377,7 @@ class MediaAnalyzer:
                 # انتظار قبل المحاولة التالية
                 await asyncio.sleep(retry_delay)
                 
-        return {"error": "فشل في جميع المحاولات"}
+        return {"error": "فشل في جميع المحاولات - خدمة التحليل غير متاحة مؤقتاً"}
     
     async def analyze_animation_content(self, animation_path: str) -> Dict[str, Any]:
         """تحليل محتوى الصور المتحركة (GIF)"""
@@ -964,7 +964,7 @@ class MediaAnalyzer:
                 # انتظار قبل المحاولة التالية
                 await asyncio.sleep(retry_delay)
                 
-        return {"error": "فشل في جميع المحاولات"}
+        return {"error": "فشل في جميع المحاولات - خدمة التحليل غير متاحة مؤقتاً"}
 
 
     async def cleanup_temp_file(self, file_path: str):
