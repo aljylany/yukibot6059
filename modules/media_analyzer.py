@@ -494,13 +494,13 @@ class MediaAnalyzer:
                 with open(doc_path, 'r', encoding='utf-8') as f:
                     content = f.read()
             else:
-                # للملفات الأخرى، نعتبرها آمنة مؤقتاً
+                # للملفات الأخرى، نرفضها احتياطياً للأمان
                 return {
-                    "is_safe": True,
-                    "violations": [],
-                    "severity": "low",
-                    "description": "مستند غير نصي",
-                    "confidence": 0.5
+                    "is_safe": False,
+                    "violations": ["ملف غير مدعوم - رفض احتياطي"],
+                    "severity": "medium",
+                    "description": "مستند غير نصي (يُحذف احتياطياً للأمان)",
+                    "confidence": 0.7
                 }
             
             # تحليل النص باستخدام Gemini
@@ -744,15 +744,15 @@ class MediaAnalyzer:
                 with open(converted_png, "rb") as f:
                     image_bytes = f.read()
             else:
-                # في حالة فشل التحويل، أرجع تحليل افتراضي آمن
+                # في حالة فشل التحويل، نرفض الملصق احتياطياً للأمان
                 logging.warning(f"⚠️ فشل تحويل الملصق المتحرك TGS إلى PNG: {sticker_path}")
                 return {
-                    "is_safe": True,
-                    "violations": [],
-                    "severity": "low", 
-                    "description": "ملصق متحرك - لم يتم تحليله بسبب فشل التحويل",
-                    "confidence": 0.3,
-                    "gesture_analysis": "لم يتم تحليل الإيماءات بسبب فشل التحويل",
+                    "is_safe": False,
+                    "violations": ["فشل في التحويل - محتوى مشبوه"],
+                    "severity": "medium", 
+                    "description": "ملصق متحرك - فشل في التحليل (يُحذف احتياطياً للأمان)",
+                    "confidence": 0.8,
+                    "gesture_analysis": "لم يتم تحليل الإيماءات - رفض احتياطي",
                     "sticker_type": "animated_conversion_failed"
                 }
             
@@ -841,14 +841,14 @@ class MediaAnalyzer:
             
         except Exception as e:
             logging.error(f"❌ خطأ في تحليل الملصق المتحرك: {e}")
-            # في حالة الفشل، نعتبر الملصق آمناً مؤقتاً
+            # في حالة الفشل، نرفض الملصق احتياطياً للأمان
             return {
-                "is_safe": True,
-                "violations": [],
-                "severity": "low",
-                "description": "ملصق متحرك - فشل في التحليل الكامل",
-                "confidence": 0.4,
-                "gesture_analysis": "لم يتم تحليل الإيماءات بسبب مشكلة تقنية",
+                "is_safe": False,
+                "violations": ["فشل في التحليل - محتوى مشبوه"],
+                "severity": "medium",
+                "description": "ملصق متحرك - فشل في التحليل (يُحذف احتياطياً للأمان)",
+                "confidence": 0.8,
+                "gesture_analysis": "لم يتم تحليل الإيماءات - رفض احتياطي",
                 "sticker_type": "animated_error",
                 "error": str(e)
             }
