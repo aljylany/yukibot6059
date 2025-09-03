@@ -25,33 +25,49 @@ class MediaAnalyzer:
     def __init__(self):
         """تهيئة محلل الوسائط"""
         self.client = None
+        self.current_key_index = 0
         self.setup_gemini()
         
     def setup_gemini(self):
         """إعداد Gemini API"""
         try:
-            # استخدام مفتاح Gemini من متغيرات البيئة أو api.txt
-            gemini_key = os.environ.get("GEMINI_API_KEY")
-            if not gemini_key:
-                # محاولة قراءة من api.txt
-                try:
-                    with open("api.txt", "r") as f:
-                        lines = f.readlines()
-                        for line in lines:
-                            if line.strip().startswith("ai "):
-                                gemini_key = lines[lines.index(line) + 1].strip()
-                                break
-                except:
-                    pass
+            from utils.api_loader import api_loader
+            self.api_loader = api_loader
+            all_keys = self.api_loader.get_all_ai_keys()
             
-            if gemini_key:
-                self.client = genai.Client(api_key=gemini_key)
-                logging.info("✅ تم تهيئة Gemini لتحليل الوسائط")
+            if all_keys and self.current_key_index < len(all_keys):
+                current_key = all_keys[self.current_key_index]
+                self.client = genai.Client(api_key=current_key)
+                logging.info(f"✅ تم تهيئة Gemini لتحليل الوسائط - المفتاح {self.current_key_index + 1}/{len(all_keys)}")
             else:
-                logging.error("❌ لم يتم العثور على مفتاح Gemini API")
+                logging.error("❌ لم يتم العثور على مفاتيح Gemini API")
                 
         except Exception as e:
             logging.error(f"❌ خطأ في إعداد Gemini: {e}")
+    
+    def switch_to_next_key(self):
+        """التبديل للمفتاح التالي عند فشل الحالي"""
+        try:
+            all_keys = self.api_loader.get_all_ai_keys()
+            if self.current_key_index + 1 < len(all_keys):
+                self.current_key_index += 1
+                current_key = all_keys[self.current_key_index]
+                self.client = genai.Client(api_key=current_key)
+                logging.info(f"🔄 تم التبديل للمفتاح {self.current_key_index + 1}/{len(all_keys)}")
+                return True
+            else:
+                logging.warning("⚠️ تم استنزاف جميع مفاتيح Gemini المتاحة")
+                return False
+        except Exception as e:
+            logging.error(f"❌ خطأ في تبديل المفتاح: {e}")
+            return False
+    
+    def handle_quota_exceeded(self, error_message: str) -> bool:
+        """معالجة خطأ استنزاف الحصة والتبديل للمفتاح التالي"""
+        if "429" in str(error_message) and "RESOURCE_EXHAUSTED" in str(error_message):
+            logging.warning(f"⚠️ تم استنزاف حصة المفتاح الحالي، محاولة التبديل...")
+            return self.switch_to_next_key()
+        return False
     
     async def download_media_file(self, bot, file_id: str, file_path: str) -> Optional[str]:
         """تحميل ملف الوسائط"""
@@ -807,8 +823,65 @@ class MediaAnalyzer:
             return {"error": "No response from AI"}
             
         except Exception as e:
-            logging.error(f"❌ خطأ في تحليل ملصق الفيديو: {e}")
-            return {"error": str(e)}
+            error_str = str(e)
+            logging.error(f"❌ خطأ في تحليل ملصق الفيديو: {error_str}")
+            
+            # محاولة التبديل للمفتاح التالي إذا كان خطأ استنزاف الحصة
+            if self.handle_quota_exceeded(error_str):
+                logging.info("🔄 محاولة إعادة التحليل بالمفتاح الجديد...")
+                try:
+                    # إعادة المحاولة مع المفتاح الجديد
+                    with open(sticker_path, "rb") as f:
+                        sticker_bytes = f.read()
+                    
+                    response = self.client.models.generate_content(
+                        model="gemini-2.5-pro",
+                        contents=[
+                            types.Part.from_bytes(sticker_bytes, mime_type="video/webm"),
+                            types.Part.from_text("""
+                            احلل ملصق الفيديو هذا وركز فقط على المحتوى المخالف الصريح والواضح:
+                            
+                            🚫 **المحتوى المحظور الصريح فقط:**
+                            
+                            **قواعد التقييم المحددة:**
+                            - الضحك والسلوك العادي: مقبول تماماً
+                            - الملابس المحتشمة: مقبولة تماماً  
+                            - الرقص العادي والحفلات العادية: مقبولة إذا كانت محتشمة
+                            - الصدر المكشوف أو شبه المكشوف: غير مقبول (خطر متوسط)
+                            - المحتوى الإباحي الصريح والعنف الواضح: غير مقبول (خطر عالي)
+                            
+                            أجب بـ JSON:
+                            {
+                                "is_safe": true/false,
+                                "violations": ["فقط المخالفات الصريحة"],
+                                "severity": "low/medium/high",
+                                "description": "وصف المحتوى",
+                                "confidence": 0.95,
+                                "gesture_analysis": "تحليل الإيماءات",
+                                "environment_analysis": "تحليل البيئة",
+                                "clothing_analysis": "تحليل الملابس",
+                                "sticker_type": "video"
+                            }
+                            
+                            **اعتبر المحتوى آمناً إلا إذا كان يُظهر الصدر مكشوفاً أو محتوى إباحي صريح أو عنف واضح.**
+                            """)
+                        ]
+                    )
+                    
+                    if response and response.text:
+                        result_text = response.text.strip()
+                        if result_text.startswith('```json'):
+                            result_text = result_text[7:]
+                        if result_text.endswith('```'):
+                            result_text = result_text[:-3]
+                        
+                        result = json.loads(result_text.strip())
+                        return result
+                        
+                except Exception as retry_error:
+                    logging.error(f"❌ فشل إعادة المحاولة: {retry_error}")
+            
+            return {"error": error_str}
     
     async def _analyze_static_sticker_fallback(self, sticker_path: str) -> Dict[str, Any]:
         """معالج احتياطي للملصقات التي تفشل في التحليل المتقدم"""
