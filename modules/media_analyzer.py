@@ -854,7 +854,7 @@ class MediaAnalyzer:
             **اعتبر المحتوى آمناً إلا إذا كان يُظهر الصدر مكشوفاً أو محتوى إباحي صريح أو عنف واضح.**
             """
             
-            response = self.client.models.generate_content(
+                response = self.client.models.generate_content(
                 model="gemini-2.5-pro",
                 contents=[
                     types.Part.from_bytes(
@@ -868,15 +868,15 @@ class MediaAnalyzer:
                 )
             )
             
-            if response.text:
-                import json
-                try:
-                    result = json.loads(response.text)
-                    result["sticker_type"] = "video"
-                    return result
-                except json.JSONDecodeError:
-                    return self._parse_text_response(response.text)
-            
+                if response.text:
+                    import json
+                    try:
+                        result = json.loads(response.text)
+                        result["sticker_type"] = "video"
+                        return result
+                    except json.JSONDecodeError:
+                        return self._parse_text_response(response.text)
+                
                 return {"error": "No response from AI"}
                 
             except Exception as e:
