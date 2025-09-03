@@ -212,7 +212,16 @@ class UnifiedMessageProcessor:
                     
                     return False  # محتوى آمن
             else:
-                await loading_message.edit_text("❌ فشل في تحليل المحتوى")
+                # فحص إذا كانت المشكلة استنزاف جميع المفاتيح
+                error_msg = analysis_result.get("error", "") if analysis_result else ""
+                if "فشل في جميع المحاولات" in error_msg or "استنزاف" in error_msg:
+                    await loading_message.edit_text(
+                        "⏳ **جميع مفاتيح التحليل مشغولة حالياً**\n\n"
+                        "🔄 سيتم إعادة تشغيل النظام غداً تلقائياً\n"
+                        "⭐ يمكنك المحاولة مرة أخرى لاحقاً"
+                    )
+                else:
+                    await loading_message.edit_text("❌ فشل في تحليل المحتوى")
                 return False
                 
         except Exception as e:
