@@ -11,8 +11,8 @@ import subprocess
 import asyncio
 import aiohttp
 import time
-from datetime import datetime
-from typing import Dict, Any, Optional, List
+from datetime import datetime, date
+from typing import Dict, Any, Optional, List, Set
 from aiogram.types import Message, PhotoSize, Document, Video, Audio
 from google import genai
 from google.genai import types
@@ -27,38 +27,94 @@ class MediaAnalyzer:
         """تهيئة محلل الوسائط"""
         self.client = None
         self.current_key_index = 0
+        self.exhausted_keys: Dict[int, date] = {}  # تتبع المفاتيح المستنزفة مع التاريخ
+        self.last_reset_date = date.today()  # آخر يوم تم إعادة تعيين القائمة
         self.setup_gemini()
         
     def setup_gemini(self):
-        """إعداد Gemini API"""
+        """إعداد Gemini API مع النظام الذكي لتجنب المفاتيح المستنزفة"""
         try:
             from utils.api_loader import api_loader
             self.api_loader = api_loader
             all_keys = self.api_loader.get_all_ai_keys()
             
-            if all_keys and self.current_key_index < len(all_keys):
+            if not all_keys:
+                logging.error("❌ لم يتم العثور على مفاتيح Gemini API")
+                return
+            
+            # إعادة تعيين قائمة المفاتيح المستنزفة في يوم جديد
+            self._reset_daily_exhausted_keys()
+            
+            # اختيار أفضل مفتاح متوفر
+            best_key_index = self._get_best_available_key(all_keys)
+            
+            if best_key_index is not None:
+                self.current_key_index = best_key_index
                 current_key = all_keys[self.current_key_index]
                 self.client = genai.Client(api_key=current_key)
-                logging.info(f"✅ تم تهيئة Gemini لتحليل الوسائط - المفتاح {self.current_key_index + 1}/{len(all_keys)}")
+                
+                exhausted_count = len(self.exhausted_keys)
+                available_count = len(all_keys) - exhausted_count
+                logging.info(f"✅ تم تهيئة Gemini - المفتاح {self.current_key_index + 1}/{len(all_keys)} (متوفر: {available_count}, مستنزف: {exhausted_count})")
             else:
-                logging.error("❌ لم يتم العثور على مفاتيح Gemini API")
+                logging.warning("⚠️ جميع المفاتيح مستنزفة لليوم - سيتم المحاولة بالمفتاح الأول")
+                self.current_key_index = 0
+                current_key = all_keys[0]
+                self.client = genai.Client(api_key=current_key)
                 
         except Exception as e:
             logging.error(f"❌ خطأ في إعداد Gemini: {e}")
     
+    def _reset_daily_exhausted_keys(self):
+        """إعادة تعيين قائمة المفاتيح المستنزفة في يوم جديد"""
+        today = date.today()
+        if today != self.last_reset_date:
+            logging.info(f"🔄 يوم جديد ({today}) - إعادة تعيين قائمة المفاتيح المستنزفة")
+            self.exhausted_keys.clear()
+            self.last_reset_date = today
+    
+    def _get_best_available_key(self, all_keys: List[str]) -> Optional[int]:
+        """اختيار أفضل مفتاح متوفر (غير مستنزف)"""
+        available_keys = []
+        for i in range(len(all_keys)):
+            if i not in self.exhausted_keys:
+                available_keys.append(i)
+        
+        if available_keys:
+            # البدء بأول مفتاح متوفر
+            return available_keys[0]
+        
+        return None  # جميع المفاتيح مستنزفة
+    
+    def _mark_key_exhausted(self, key_index: int):
+        """تسجيل مفتاح كمستنزف لليوم"""
+        self.exhausted_keys[key_index] = date.today()
+        logging.warning(f"🚫 تم تسجيل المفتاح {key_index + 1} كمستنزف لليوم")
+    
     def switch_to_next_key(self):
-        """التبديل للمفتاح التالي عند فشل الحالي"""
+        """التبديل للمفتاح التالي المتوفر (غير المستنزف)"""
         try:
             all_keys = self.api_loader.get_all_ai_keys()
-            if self.current_key_index + 1 < len(all_keys):
-                self.current_key_index += 1
+            
+            # تسجيل المفتاح الحالي كمستنزف
+            self._mark_key_exhausted(self.current_key_index)
+            
+            # البحث عن أفضل مفتاح متوفر
+            best_key_index = self._get_best_available_key(all_keys)
+            
+            if best_key_index is not None:
+                self.current_key_index = best_key_index
                 current_key = all_keys[self.current_key_index]
                 self.client = genai.Client(api_key=current_key)
-                logging.info(f"🔄 تم التبديل للمفتاح {self.current_key_index + 1}/{len(all_keys)}")
+                
+                exhausted_count = len(self.exhausted_keys)
+                available_count = len(all_keys) - exhausted_count
+                logging.info(f"🔄 تم التبديل للمفتاح {self.current_key_index + 1}/{len(all_keys)} (متوفر: {available_count}, مستنزف: {exhausted_count})")
                 return True
             else:
-                logging.warning("⚠️ تم استنزاف جميع مفاتيح Gemini المتاحة")
+                logging.warning("⚠️ تم استنزاف جميع مفاتيح Gemini المتاحة لليوم")
                 return False
+                
         except Exception as e:
             logging.error(f"❌ خطأ في تبديل المفتاح: {e}")
             return False
