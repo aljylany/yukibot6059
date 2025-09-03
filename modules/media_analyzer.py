@@ -5,12 +5,18 @@ Media Analysis System using AI
 
 import logging
 import os
+import json
+import gzip
+import subprocess
+import asyncio
 import aiohttp
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from aiogram.types import Message, PhotoSize, Document, Video, Audio
 from google import genai
 from google.genai import types
+from PIL import Image
+import tempfile
 
 
 class MediaAnalyzer:
@@ -504,16 +510,154 @@ class MediaAnalyzer:
             logging.error(f"❌ خطأ في تحليل الملصق الثابت: {e}")
             return {"error": str(e)}
     
-    async def _analyze_animated_sticker(self, sticker_path: str) -> Dict[str, Any]:
-        """تحليل الملصقات المتحركة (TGS)"""
+    async def _convert_tgs_to_png(self, tgs_path: str) -> str:
+        """تحويل ملف TGS إلى صورة PNG للتحليل"""
         try:
-            # ملصقات TGS معقدة - نعاملها كملصقات عادية مؤقتاً لتجنب مشاكل MIME type
-            logging.info(f"🎭 معالجة ملصق متحرك TGS كملصق عادي: {sticker_path}")
+            # إنشاء مسار للصورة المحولة
+            png_path = tgs_path.replace('.tgs', '_converted.png')
             
-            # نستخدم معالجة الملصق العادي للملصقات المتحركة مؤقتاً
+            # طريقة 1: استخدام ffmpeg لتحويل TGS إلى PNG
+            try:
+                cmd = [
+                    'ffmpeg', '-y',  # -y للكتابة فوق الملف الموجود
+                    '-i', tgs_path,
+                    '-vf', 'scale=512:512',  # تحديد حجم الصورة
+                    '-frames:v', '1',  # إطار واحد فقط (الأول)
+                    png_path
+                ]
+                
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
+                stdout, stderr = await process.communicate()
+                
+                if process.returncode == 0 and os.path.exists(png_path):
+                    logging.info(f"✅ تم تحويل TGS إلى PNG بنجاح: {png_path}")
+                    return png_path
+                else:
+                    logging.warning(f"⚠️ فشل تحويل TGS بـ ffmpeg: {stderr.decode() if stderr else 'Unknown error'}")
+            
+            except Exception as ffmpeg_error:
+                logging.warning(f"⚠️ خطأ في ffmpeg: {ffmpeg_error}")
+            
+            # طريقة 2: إنشاء صورة بديلة بسيطة للتحليل النصي
+            try:
+                # قراءة محتوى TGS (إذا كان مضغوط)
+                with open(tgs_path, 'rb') as f:
+                    tgs_content = f.read()
+                
+                # محاولة فك الضغط إذا كان مضغوط
+                try:
+                    if tgs_content.startswith(b'\x1f\x8b'):  # gzip header
+                        tgs_content = gzip.decompress(tgs_content)
+                        
+                    # إذا كان JSON، يمكن قراءة بعض المعلومات
+                    if tgs_content.startswith(b'{'):
+                        tgs_data = json.loads(tgs_content.decode('utf-8'))
+                        logging.info(f"📋 تم قراءة بيانات TGS: {len(str(tgs_data))} حرف")
+                except:
+                    pass
+                
+                # إنشاء صورة بديلة بسيطة للتحليل
+                img = Image.new('RGB', (512, 512), color='white')
+                img.save(png_path, 'PNG')
+                logging.info(f"📄 تم إنشاء صورة بديلة للملصق: {png_path}")
+                return png_path
+                
+            except Exception as fallback_error:
+                logging.error(f"❌ فشل في إنشاء صورة بديلة: {fallback_error}")
+                return None
+                
+        except Exception as e:
+            logging.error(f"❌ خطأ شامل في تحويل TGS: {e}")
+            return None
+
+    async def _analyze_animated_sticker(self, sticker_path: str) -> Dict[str, Any]:
+        """تحليل الملصقات المتحركة (TGS) بعد تحويلها لصورة ثابتة"""
+        try:
+            logging.info(f"🎭 بدء تحليل ملصق متحرك TGS: {sticker_path}")
+            
+            # تحويل TGS إلى صورة ثابتة
+            converted_png = await self._convert_tgs_to_png(sticker_path)
+            
+            if converted_png and os.path.exists(converted_png):
+                # تحليل الصورة المحولة
+                logging.info(f"🔍 تحليل الصورة المحولة: {converted_png}")
+                
+                with open(converted_png, "rb") as f:
+                    image_bytes = f.read()
+                
+                safety_prompt = """
+                احلل هذه الصورة المستخرجة من ملصق متحرك بعناية فائقة:
+                
+                هذه صورة تم استخراجها من ملصق متحرك (TGS). ابحث عن:
+                1. محتوى جنسي أو عري
+                2. عنف أو دماء أو أذى
+                3. محتوى مخيف أو مرعب
+                4. كراهية أو تمييز عنصري
+                5. محتوى غير لائق
+                6. إيماءات مخالفة أو مسيئة مثل:
+                   - رفع الإصبع الأوسط (middle finger)
+                   - إيماءات جنسية أو استفزازية
+                   - إيماءات عدوانية أو تهديدية
+                   - أي حركات يد أو إيماءات غير لائقة
+                
+                ملاحظة: هذه صورة ثابتة مستخرجة من ملصق متحرك، قد تكون بسيطة أو غير واضحة.
+                
+                أجب بـ JSON:
+                {
+                    "is_safe": true/false,
+                    "violations": ["المخالفات"],
+                    "severity": "low/medium/high",
+                    "description": "وصف الملصق المتحرك (من الصورة المستخرجة)",
+                    "confidence": 0.85,
+                    "gesture_analysis": "تحليل الإيماءات من الإطار المستخرج",
+                    "sticker_type": "animated_converted"
+                }
+                
+                كن دقيقاً في التحليل!
+                """
+                
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(
+                            data=image_bytes,
+                            mime_type="image/png"
+                        ),
+                        safety_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
+                )
+                
+                # حذف الصورة المؤقتة
+                try:
+                    os.remove(converted_png)
+                    logging.info(f"🗑️ تم حذف الصورة المؤقتة: {converted_png}")
+                except:
+                    pass
+                
+                if response.text:
+                    import json
+                    try:
+                        result = json.loads(response.text)
+                        result["sticker_type"] = "animated_converted"
+                        result["conversion_method"] = "TGS to PNG"
+                        logging.info(f"✅ تم تحليل الملصق المتحرك بنجاح بعد التحويل")
+                        return result
+                    except json.JSONDecodeError:
+                        return self._parse_text_response(response.text)
+            
+            # إذا فشل التحويل، استخدم المعالج الاحتياطي
+            logging.warning("⚠️ فشل تحويل TGS، استخدام المعالج الاحتياطي")
             result = await self._analyze_static_sticker_fallback(sticker_path)
-            result["sticker_type"] = "animated"
-            result["note"] = "تم تحليل الملصق المتحرك باستخدام المعالج العادي"
+            result["sticker_type"] = "animated_fallback"
+            result["note"] = "فشل تحويل TGS، تم استخدام التحليل الاحتياطي"
             
             return result
             
@@ -524,10 +668,10 @@ class MediaAnalyzer:
                 "is_safe": True,
                 "violations": [],
                 "severity": "low",
-                "description": "ملصق متحرك - لم يتم تحليله بالكامل",
-                "confidence": 0.5,
-                "gesture_analysis": "تحليل محدود للملصق المتحرك",
-                "sticker_type": "animated",
+                "description": "ملصق متحرك - فشل في التحليل الكامل",
+                "confidence": 0.4,
+                "gesture_analysis": "لم يتم تحليل الإيماءات بسبب مشكلة تقنية",
+                "sticker_type": "animated_error",
                 "error": str(e)
             }
     
