@@ -494,7 +494,7 @@ class MediaAnalyzer:
                 "sticker_type": "static"
             }
             
-            **لا تتساهل أبداً مع المحتوى المشبوه! الأمان أولاً!**
+            **كن منطقياً ومتوازناً في التقييم. السلوك الطبيعي مقبول.**
             """
             
             response = self.client.models.generate_content(
@@ -668,7 +668,7 @@ class MediaAnalyzer:
                 "sticker_type": "animated_converted"
             }
             
-            **لا تتساهل أبداً مع المحتوى المشبوه! الأمان أولاً!**
+            **كن منطقياً ومتوازناً في التقييم. السلوك الطبيعي مقبول.**
             """
             
             response = self.client.models.generate_content(
@@ -758,22 +758,22 @@ class MediaAnalyzer:
                - تطبيع السلوكيات المحرمة
                - الترويج للانحلال الأخلاقي
             
-            **تحذير مهم:** كن صارماً جداً! أي محتوى مشكوك فيه يُعتبر غير آمن!
+            **ملاحظة مهمة:** ركز على المحتوى الصريح والواضح المخالف فقط. الملابس العادية والسلوك الطبيعي مقبول.
             
             أجب بـ JSON:
             {
                 "is_safe": true/false,
-                "violations": ["المخالفات بالتفصيل"],
+                "violations": ["المخالفات الواضحة فقط"],
                 "severity": "low/medium/high",
                 "description": "وصف دقيق للمحتوى",
                 "confidence": 0.95,
-                "gesture_analysis": "تحليل مفصل للإيماءات والحركات",
+                "gesture_analysis": "تحليل الإيماءات والحركات",
                 "environment_analysis": "تحليل البيئة والمكان",
-                "clothing_analysis": "تحليل الملابس ومدى احتشامها",
+                "clothing_analysis": "تحليل الملابس",
                 "sticker_type": "video"
             }
             
-            **لا تتساهل أبداً مع المحتوى المشبوه! الأمان أولاً!**
+            **كن منطقياً ومتوازناً في التقييم. ركز على المحتوى المخالف الواضح فقط.**
             """
             
             response = self.client.models.generate_content(
