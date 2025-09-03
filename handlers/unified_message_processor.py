@@ -187,7 +187,7 @@ class UnifiedMessageProcessor:
                     await loading_message.edit_text(warning_msg)
                     
                     # إشعار المشرفين
-                    await self.content_moderator.notify_authorities(message, analysis_result)
+                    await self.content_moderator.notify_authorities(message, message.bot, analysis_result)
                     
                     # تسجيل المخالفة
                     await self.content_moderator.log_violation(message, analysis_result)
