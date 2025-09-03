@@ -335,8 +335,15 @@ class MediaAnalyzer:
     async def analyze_document_content(self, doc_path: str) -> Dict[str, Any]:
         """تحليل محتوى المستند"""
         try:
-            # فحص إذا كان الملف صورة متحركة (GIF) مرسلة كمستند
-            if doc_path.lower().endswith(('.gif', '.webp')) or 'gif' in doc_path.lower():
+            # فحص إذا كان الملف ملصق مرسل كمستند
+            if doc_path.lower().endswith('.tgs') or 'tgs' in doc_path.lower():
+                logging.info(f"🎭 اكتشاف ملصق متحرك TGS مرسل كمستند: {doc_path}")
+                return await self.analyze_sticker_content(doc_path, "animated_sticker")
+            elif doc_path.lower().endswith('.webp') or 'webp' in doc_path.lower():
+                # ملصقات WebP - قد تكون ثابتة أو متحركة
+                logging.info(f"🎭 اكتشاف ملصق WebP مرسل كمستند: {doc_path}")
+                return await self.analyze_sticker_content(doc_path, "sticker")
+            elif doc_path.lower().endswith(('.gif')) or 'gif' in doc_path.lower():
                 logging.info(f"🎬 اكتشاف صورة متحركة مرسلة كمستند: {doc_path}")
                 return await self.analyze_animation_content(doc_path)
             
@@ -404,6 +411,251 @@ class MediaAnalyzer:
             
         except Exception as e:
             logging.error(f"❌ خطأ في تحليل المستند: {e}")
+            return {"error": str(e)}
+    
+    async def analyze_sticker_content(self, sticker_path: str, sticker_type: str) -> Dict[str, Any]:
+        """تحليل محتوى الملصقات (عادية، متحركة، فيديو)"""
+        try:
+            if not self.client:
+                return {"error": "Gemini client not initialized"}
+            
+            # تحديد نوع المعالجة حسب نوع الملصق
+            if sticker_type == "animated_sticker":
+                # للملصقات المتحركة TGS - نتعامل معها كصورة متحركة
+                return await self._analyze_animated_sticker(sticker_path)
+            elif sticker_type == "video_sticker": 
+                # للملصقات الفيديو WebM - نتعامل معها كفيديو
+                return await self._analyze_video_sticker(sticker_path)
+            else:
+                # للملصقات العادية WebP - نتعامل معها كصورة
+                return await self._analyze_static_sticker(sticker_path)
+                
+        except Exception as e:
+            logging.error(f"❌ خطأ في تحليل الملصق: {e}")
+            return {"error": str(e)}
+    
+    async def _analyze_static_sticker(self, sticker_path: str) -> Dict[str, Any]:
+        """تحليل الملصقات الثابتة (WebP)"""
+        try:
+            with open(sticker_path, "rb") as f:
+                sticker_bytes = f.read()
+            
+            safety_prompt = """
+            احلل هذا الملصق بعناية فائقة واكتشف ما إذا كان يحتوي على أي محتوى مخالف أو مسيء:
+            
+            1. محتوى جنسي أو عري
+            2. عنف أو دماء أو أذى
+            3. محتوى مخيف أو مرعب
+            4. كراهية أو تمييز عنصري
+            5. محتوى غير لائق للأطفال
+            6. رموز أو محتوى إرهابي
+            7. إيماءات مخالفة أو مسيئة مثل:
+               - رفع الإصبع الأوسط (middle finger)
+               - إيماءات جنسية أو استفزازية
+               - إيماءات عدوانية أو تهديدية
+               - إيماءات بذيئة أو مسيئة
+               - أي حركات يد أو إيماءات غير لائقة
+            
+            انتبه بشكل خاص للأيدي والأصابع والإيماءات في الملصق!
+            الملصقات غالباً ما تحتوي على تعبيرات وإيماءات، فحصها بعناية!
+            
+            إذا كان الملصق آمن، قدم وصفاً جميلاً ومفصلاً للملصق.
+            
+            أجب بـ JSON:
+            {
+                "is_safe": true/false,
+                "violations": ["نوع المخالفة"],
+                "severity": "low/medium/high",
+                "description": "وصف مفصل للملصق - إذا كان آمناً اجعل الوصف جميلاً",
+                "confidence": 0.95,
+                "gesture_analysis": "تحليل مفصل للإيماءات والحركات",
+                "sticker_type": "static"
+            }
+            
+            كن صارماً جداً مع الإيماءات المخالفة في الملصقات!
+            """
+            
+            response = self.client.models.generate_content(
+                model="gemini-2.5-pro",
+                contents=[
+                    types.Part.from_bytes(
+                        data=sticker_bytes,
+                        mime_type="image/webp"
+                    ),
+                    safety_prompt
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                )
+            )
+            
+            if response.text:
+                import json
+                try:
+                    result = json.loads(response.text)
+                    result["sticker_type"] = "static"
+                    return result
+                except json.JSONDecodeError:
+                    return self._parse_text_response(response.text)
+            
+            return {"error": "No response from AI"}
+            
+        except Exception as e:
+            logging.error(f"❌ خطأ في تحليل الملصق الثابت: {e}")
+            return {"error": str(e)}
+    
+    async def _analyze_animated_sticker(self, sticker_path: str) -> Dict[str, Any]:
+        """تحليل الملصقات المتحركة (TGS)"""
+        try:
+            # ملفات TGS هي ملفات JSON مضغوطة، لكن يمكن أيضاً معالجتها كـ WebP أو GIF
+            # سنحاول أولاً كصورة متحركة
+            with open(sticker_path, "rb") as f:
+                sticker_bytes = f.read()
+            
+            safety_prompt = """
+            احلل هذا الملصق المتحرك بعناية فائقة شديدة!
+            
+            ابحث عن أي محتوى مخالف أو مسيء:
+            1. محتوى جنسي أو عري
+            2. عنف أو دماء
+            3. محتوى مخيف أو مرعب  
+            4. كراهية أو تمييز
+            5. محتوى غير لائق
+            6. إيماءات مخالفة ومسيئة مثل:
+               - رفع الإصبع الأوسط (middle finger) - هذا مهم جداً!
+               - إيماءة "فاك يو" أو أي إيماءة بذيئة
+               - إيماءات جنسية أو استفزازية
+               - إيماءات عدوانية أو تهديدية
+               - أي حركات يد أو أصابع غير لائقة
+            
+            انتبه جداً! فحص كل إطار في الملصق المتحرك!
+            ركز على الأيدي والأصابع بعناية فائقة!
+            الملصقات المتحركة قد تحتوي على حركات سريعة مخالفة!
+            
+            أجب بـ JSON:
+            {
+                "is_safe": true/false,
+                "violations": ["المخالفات"],
+                "severity": "low/medium/high",
+                "description": "وصف الملصق المتحرك",
+                "confidence": 0.95,
+                "gesture_analysis": "تحليل مفصل للإيماءات - ركز على كل إطار",
+                "sticker_type": "animated"
+            }
+            
+            كن صارماً جداً! لا تتساهل مع أي إيماءة مسيئة في الملصقات المتحركة!
+            """
+            
+            try:
+                # نجرب أولاً كـ video للملصقات المتحركة
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(
+                            data=sticker_bytes,
+                            mime_type="video/webm"
+                        ),
+                        safety_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
+                )
+            except:
+                # إذا فشل، نجرب كصورة متحركة
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(
+                            data=sticker_bytes,
+                            mime_type="image/gif"
+                        ),
+                        safety_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
+                )
+            
+            if response.text:
+                import json
+                try:
+                    result = json.loads(response.text)
+                    result["sticker_type"] = "animated"
+                    return result
+                except json.JSONDecodeError:
+                    return self._parse_text_response(response.text)
+            
+            return {"error": "No response from AI"}
+            
+        except Exception as e:
+            logging.error(f"❌ خطأ في تحليل الملصق المتحرك: {e}")
+            return {"error": str(e)}
+    
+    async def _analyze_video_sticker(self, sticker_path: str) -> Dict[str, Any]:
+        """تحليل ملصقات الفيديو (WebM)"""
+        try:
+            with open(sticker_path, "rb") as f:
+                sticker_bytes = f.read()
+            
+            safety_prompt = """
+            احلل ملصق الفيديو هذا بعناية فائقة واكتشف أي محتوى مخالف:
+            
+            1. محتوى جنسي أو عري
+            2. عنف أو دماء
+            3. محتوى مخيف أو مرعب
+            4. كراهية أو تمييز
+            5. محتوى غير لائق
+            6. إيماءات مخالفة مثل:
+               - رفع الإصبع الأوسط
+               - إيماءات جنسية أو استفزازية
+               - إيماءات عدوانية أو مسيئة
+               - أي حركات يد غير لائقة
+            
+            راقب بدقة جميع الإيماءات والحركات في ملصق الفيديو!
+            ملصقات الفيديو قد تحتوي على حركات سريعة ومعقدة!
+            
+            أجب بـ JSON:
+            {
+                "is_safe": true/false,
+                "violations": ["المخالفات"],
+                "severity": "low/medium/high",
+                "description": "وصف ملصق الفيديو",
+                "confidence": 0.95,
+                "gesture_analysis": "تحليل الإيماءات والحركات",
+                "sticker_type": "video"
+            }
+            
+            كن صارماً جداً مع الإيماءات المخالفة!
+            """
+            
+            response = self.client.models.generate_content(
+                model="gemini-2.5-pro",
+                contents=[
+                    types.Part.from_bytes(
+                        data=sticker_bytes,
+                        mime_type="video/webm"
+                    ),
+                    safety_prompt
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                )
+            )
+            
+            if response.text:
+                import json
+                try:
+                    result = json.loads(response.text)
+                    result["sticker_type"] = "video"
+                    return result
+                except json.JSONDecodeError:
+                    return self._parse_text_response(response.text)
+            
+            return {"error": "No response from AI"}
+            
+        except Exception as e:
+            logging.error(f"❌ خطأ في تحليل ملصق الفيديو: {e}")
             return {"error": str(e)}
     
     async def cleanup_temp_file(self, file_path: str):

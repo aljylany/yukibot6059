@@ -43,12 +43,12 @@ class UnifiedMessageProcessor:
                 
                 # تسجيل تفاصيل الرسالة
                 content_type = self._get_content_type(message)
-                user_name = message.from_user.first_name or "مجهول"
+                user_name = getattr(message.from_user, 'first_name', None) or "مجهول"
                 
                 logging.info(f"📝 رسالة {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # تحليل المحتوى إذا كان صورة أو فيديو أو صورة متحركة
-                if message.photo or message.video or message.document or message.animation:
+                # تحليل المحتوى إذا كان صورة أو فيديو أو صورة متحركة أو ملصق
+                if message.photo or message.video or message.document or message.animation or message.sticker:
                     return await self._analyze_media_content(message)
                 
                 # لباقي الرسائل - السماح بجميع الرسائل
@@ -106,13 +106,28 @@ class UnifiedMessageProcessor:
                 file_id = message.animation.file_id
                 file_name = f"animation_{message.message_id}.gif"
                 media_type = "animation"
+            elif message.sticker:
+                file_id = message.sticker.file_id
+                # تحديد نوع الملصق بناءً على الخصائص
+                if hasattr(message.sticker, 'is_animated') and message.sticker.is_animated:
+                    file_name = f"animated_sticker_{message.message_id}.tgs"
+                    media_type = "animated_sticker"
+                elif hasattr(message.sticker, 'is_video') and message.sticker.is_video:
+                    file_name = f"video_sticker_{message.message_id}.webm"
+                    media_type = "video_sticker"
+                else:
+                    file_name = f"sticker_{message.message_id}.webp"
+                    media_type = "sticker"
             elif message.document:
                 file_id = message.document.file_id
                 file_name = message.document.file_name or f"document_{message.message_id}"
-                # فحص إذا كان المستند صورة متحركة
+                # فحص إذا كان المستند صورة متحركة أو ملصق
                 if file_name and (file_name.lower().endswith(('.gif', '.webp')) or 'gif' in file_name.lower()):
                     media_type = "animation"
                     file_name = f"animation_{message.message_id}.gif"
+                elif file_name and file_name.lower().endswith('.tgs'):
+                    media_type = "animated_sticker"
+                    file_name = f"animated_sticker_{message.message_id}.tgs"
                 else:
                     media_type = "document"
             
@@ -138,6 +153,8 @@ class UnifiedMessageProcessor:
                 analysis_result = await media_analyzer.analyze_video_content(file_path)
             elif media_type == "animation":
                 analysis_result = await media_analyzer.analyze_animation_content(file_path)
+            elif media_type in ["sticker", "animated_sticker", "video_sticker"]:
+                analysis_result = await media_analyzer.analyze_sticker_content(file_path, media_type)
             elif media_type == "document":
                 analysis_result = await media_analyzer.analyze_document_content(file_path)
             
@@ -160,8 +177,9 @@ class UnifiedMessageProcessor:
                         pass
                     
                     # رسالة تحذير
+                    user_display_name = getattr(message.from_user, 'first_name', None) or "مجهول"
                     warning_msg = f"⚠️ **تم اكتشاف محتوى مخالف!**\n\n"
-                    warning_msg += f"👤 **المستخدم:** {message.from_user.first_name}\n"
+                    warning_msg += f"👤 **المستخدم:** {user_display_name}\n"
                     warning_msg += f"📋 **نوع المخالفة:** {', '.join(violations)}\n"
                     warning_msg += f"⚖️ **درجة الخطورة:** {severity}\n"
                     warning_msg += f"🗑️ **تم حذف الملف تلقائياً**"
@@ -198,7 +216,8 @@ class UnifiedMessageProcessor:
         except Exception as e:
             logging.error(f"❌ خطأ في تحليل المحتوى: {e}")
             try:
-                await loading_message.edit_text("❌ حدث خطأ أثناء تحليل المحتوى")
+                if 'loading_message' in locals() and loading_message:
+                    await loading_message.edit_text("❌ حدث خطأ أثناء تحليل المحتوى")
             except:
                 pass
             return False
