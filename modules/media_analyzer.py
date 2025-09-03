@@ -10,6 +10,7 @@ import gzip
 import subprocess
 import asyncio
 import aiohttp
+import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from aiogram.types import Message, PhotoSize, Document, Video, Audio
@@ -64,8 +65,10 @@ class MediaAnalyzer:
     
     def handle_quota_exceeded(self, error_message: str) -> bool:
         """معالجة خطأ استنزاف الحصة والتبديل للمفتاح التالي"""
-        if "429" in str(error_message) and "RESOURCE_EXHAUSTED" in str(error_message):
-            logging.warning(f"⚠️ تم استنزاف حصة المفتاح الحالي، محاولة التبديل...")
+        error_str = str(error_message)
+        # معالجة أخطاء الحصة وزحمة الخدمة
+        if any(code in error_str for code in ["429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "overloaded"]):
+            logging.warning(f"⚠️ مشكلة في الخدمة: {error_str[:100]}... محاولة التبديل للمفتاح التالي")
             return self.switch_to_next_key()
         return False
     
@@ -100,75 +103,97 @@ class MediaAnalyzer:
     
     async def analyze_image_content(self, image_path: str) -> Dict[str, Any]:
         """تحليل محتوى الصورة للكشف عن المخالفات"""
-        try:
-            if not self.client:
-                return {"error": "Gemini client not initialized"}
-            
-            with open(image_path, "rb") as f:
-                image_bytes = f.read()
-            
-            # إنشاء prompt مخصص للكشف عن المحتوى المخالف مع التركيز على الإيماءات
-            safety_prompt = """
-            احلل هذه الصورة بعناية فائقة واكتشف ما إذا كانت تحتوي على أي من التالي:
-            
-            1. محتوى جنسي أو عري (حتى جزئي)
-            2. عنف أو دماء أو أذى جسدي
-            3. محتوى مخيف أو مرعب
-            4. كراهية أو تمييز عنصري
-            5. محتوى غير لائق للأطفال
-            6. رموز أو محتوى إرهابي
-            7. إيماءات مخالفة أو غير لائقة مثل:
-               - رفع الإصبع الأوسط (middle finger)
-               - إيماءات جنسية أو استفزازية
-               - إيماءات عدوانية أو تهديدية
-               - إيماءات مسيئة أو بذيئة (مثل الإيماءة المعروفة بـ "فاك يو")
-               - أي حركات يد أو جسد غير لائقة أو مسيئة
-            
-            انتبه بشكل خاص للأيدي والأصابع والإيماءات في الصورة! افحص كل إصبع بعناية!
-            
-            إذا كانت الصورة آمنة، قدم وصفاً مفصلاً وجميلاً للمحتوى.
-            
-            أجب بـ JSON مع الهيكل التالي:
-            {
-                "is_safe": true/false,
-                "violations": ["نوع المخالفة 1", "نوع المخالفة 2"],
-                "severity": "low/medium/high",
-                "description": "وصف مفصل للمحتوى - إذا كان آمناً اجعل الوصف جميلاً ومفصلاً",
-                "confidence": 0.95,
-                "gesture_analysis": "تحليل مفصل للإيماءات والحركات - ركز على الأيدي والأصابع"
-            }
-            
-            كن صارماً جداً في التحليل، خاصة مع الإيماءات المخالفة! لا تتساهل مع أي إيماءة مسيئة!
-            """
-            
-            response = self.client.models.generate_content(
-                model="gemini-2.5-pro",
-                contents=[
-                    types.Part.from_bytes(
-                        data=image_bytes,
-                        mime_type="image/jpeg"
-                    ),
-                    safety_prompt
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
+        max_retries = 3
+        retry_delay = 2  # ثواني
+        
+        for attempt in range(max_retries):
+            try:
+                if not self.client:
+                    if attempt == 0:
+                        self.setup_gemini()
+                    if not self.client:
+                        return {"error": "فشل في تهيئة Gemini client"}
+                
+                with open(image_path, "rb") as f:
+                    image_bytes = f.read()
+                
+                # إنشاء prompt مخصص للكشف عن المحتوى المخالف مع التركيز على الإيماءات
+                safety_prompt = """
+                احلل هذه الصورة بعناية فائقة واكتشف ما إذا كانت تحتوي على أي من التالي:
+                
+                1. محتوى جنسي أو عري (حتى جزئي)
+                2. عنف أو دماء أو أذى جسدي
+                3. محتوى مخيف أو مرعب
+                4. كراهية أو تمييز عنصري
+                5. محتوى غير لائق للأطفال
+                6. رموز أو محتوى إرهابي
+                7. إيماءات مخالفة أو غير لائقة مثل:
+                   - رفع الإصبع الأوسط (middle finger)
+                   - إيماءات جنسية أو استفزازية
+                   - إيماءات عدوانية أو تهديدية
+                   - إيماءات مسيئة أو بذيئة (مثل الإيماءة المعروفة بـ "فاك يو")
+                   - أي حركات يد أو جسد غير لائقة أو مسيئة
+                
+                انتبه بشكل خاص للأيدي والأصابع والإيماءات في الصورة! افحص كل إصبع بعناية!
+                
+                إذا كانت الصورة آمنة، قدم وصفاً مفصلاً وجميلاً للمحتوى.
+                
+                أجب بـ JSON مع الهيكل التالي:
+                {
+                    "is_safe": true/false,
+                    "violations": ["نوع المخالفة 1", "نوع المخالفة 2"],
+                    "severity": "low/medium/high",
+                    "description": "وصف مفصل للمحتوى - إذا كان آمناً اجعل الوصف جميلاً ومفصلاً",
+                    "confidence": 0.95,
+                    "gesture_analysis": "تحليل مفصل للإيماءات والحركات - ركز على الأيدي والأصابع"
+                }
+                
+                كن صارماً جداً في التحليل، خاصة مع الإيماءات المخالفة! لا تتساهل مع أي إيماءة مسيئة!
+                """
+                
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(
+                            data=image_bytes,
+                            mime_type="image/jpeg"
+                        ),
+                        safety_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
                 )
-            )
-            
-            if response.text:
-                import json
-                try:
-                    result = json.loads(response.text)
-                    return result
-                except json.JSONDecodeError:
-                    # إذا فشل parsing JSON، استخدم التحليل النصي
-                    return self._parse_text_response(response.text)
-            
-            return {"error": "No response from AI"}
-            
-        except Exception as e:
-            logging.error(f"❌ خطأ في تحليل الصورة: {e}")
-            return {"error": str(e)}
+                
+                if response.text:
+                    import json
+                    try:
+                        result = json.loads(response.text)
+                        return result
+                    except json.JSONDecodeError:
+                        # إذا فشل parsing JSON، استخدم التحليل النصي
+                        return self._parse_text_response(response.text)
+                
+                return {"error": "No response from AI"}
+                
+            except Exception as e:
+                error_str = str(e)
+                logging.error(f"❌ خطأ في تحليل الصورة (محاولة {attempt + 1}/{max_retries}): {e}")
+                
+                # محاولة التبديل للمفتاح التالي
+                if self.handle_quota_exceeded(error_str):
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay)
+                        continue
+                
+                # إذا كانت آخر محاولة، أرجع الخطأ
+                if attempt == max_retries - 1:
+                    return {"error": f"فشل التحليل بعد {max_retries} محاولات: {error_str}"}
+                    
+                # انتظار قبل المحاولة التالية
+                await asyncio.sleep(retry_delay)
+                
+        return {"error": "فشل في جميع المحاولات"}
     
     def _parse_text_response(self, text: str) -> Dict[str, Any]:
         """تحليل الرد النصي إذا فشل JSON"""
@@ -205,68 +230,90 @@ class MediaAnalyzer:
     
     async def analyze_video_content(self, video_path: str) -> Dict[str, Any]:
         """تحليل محتوى الفيديو"""
-        try:
-            if not self.client:
-                return {"error": "Gemini client not initialized"}
-            
-            with open(video_path, "rb") as f:
-                video_bytes = f.read()
-            
-            safety_prompt = """
-            احلل هذا الفيديو بعناية فائقة واكتشف ما إذا كان يحتوي على أي محتوى مخالف:
-            
-            1. محتوى جنسي أو عري
-            2. عنف أو دماء
-            3. محتوى مخيف أو مرعب
-            4. كراهية أو تمييز
-            5. محتوى غير لائق
-            6. إيماءات مخالفة مثل:
-               - رفع الإصبع الأوسط
-               - إيماءات جنسية أو استفزازية
-               - إيماءات عدوانية أو مسيئة
-               - أي حركات يد غير لائقة
-            
-            راقب بدقة جميع الإيماءات والحركات في الفيديو!
-            
-            أجب بـ JSON:
-            {
-                "is_safe": true/false,
-                "violations": ["المخالفات"],
-                "severity": "low/medium/high",
-                "description": "وصف المحتوى",
-                "confidence": 0.95,
-                "gesture_analysis": "تحليل الإيماءات والحركات"
-            }
-            
-            كن صارماً جداً مع الإيماءات المخالفة!
-            """
-            
-            response = self.client.models.generate_content(
-                model="gemini-2.5-pro",
-                contents=[
-                    types.Part.from_bytes(
-                        data=video_bytes,
-                        mime_type="video/mp4"
-                    ),
-                    safety_prompt
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                if not self.client:
+                    if attempt == 0:
+                        self.setup_gemini()
+                    if not self.client:
+                        return {"error": "فشل في تهيئة Gemini client"}
+                
+                with open(video_path, "rb") as f:
+                    video_bytes = f.read()
+                
+                safety_prompt = """
+                احلل هذا الفيديو بعناية فائقة واكتشف ما إذا كان يحتوي على أي محتوى مخالف:
+                
+                1. محتوى جنسي أو عري
+                2. عنف أو دماء
+                3. محتوى مخيف أو مرعب
+                4. كراهية أو تمييز
+                5. محتوى غير لائق
+                6. إيماءات مخالفة مثل:
+                   - رفع الإصبع الأوسط
+                   - إيماءات جنسية أو استفزازية
+                   - إيماءات عدوانية أو مسيئة
+                   - أي حركات يد غير لائقة
+                
+                راقب بدقة جميع الإيماءات والحركات في الفيديو!
+                
+                أجب بـ JSON:
+                {
+                    "is_safe": true/false,
+                    "violations": ["المخالفات"],
+                    "severity": "low/medium/high",
+                    "description": "وصف المحتوى",
+                    "confidence": 0.95,
+                    "gesture_analysis": "تحليل الإيماءات والحركات"
+                }
+                
+                كن صارماً جداً مع الإيماءات المخالفة!
+                """
+                
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(
+                            data=video_bytes,
+                            mime_type="video/mp4"
+                        ),
+                        safety_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
                 )
-            )
-            
-            if response.text:
-                import json
-                try:
-                    return json.loads(response.text)
-                except json.JSONDecodeError:
-                    return self._parse_text_response(response.text)
-            
-            return {"error": "No response from AI"}
-            
-        except Exception as e:
-            logging.error(f"❌ خطأ في تحليل الفيديو: {e}")
-            return {"error": str(e)}
+                
+                if response.text:
+                    import json
+                    try:
+                        return json.loads(response.text)
+                    except json.JSONDecodeError:
+                        return self._parse_text_response(response.text)
+                
+                return {"error": "No response from AI"}
+                
+            except Exception as e:
+                error_str = str(e)
+                logging.error(f"❌ خطأ في تحليل الفيديو (محاولة {attempt + 1}/{max_retries}): {e}")
+                
+                # محاولة التبديل للمفتاح التالي
+                if self.handle_quota_exceeded(error_str):
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay)
+                        continue
+                
+                # إذا كانت آخر محاولة، أرجع الخطأ
+                if attempt == max_retries - 1:
+                    return {"error": f"فشل التحليل بعد {max_retries} محاولات: {error_str}"}
+                    
+                # انتظار قبل المحاولة التالية
+                await asyncio.sleep(retry_delay)
+                
+        return {"error": "فشل في جميع المحاولات"}
     
     async def analyze_animation_content(self, animation_path: str) -> Dict[str, Any]:
         """تحليل محتوى الصور المتحركة (GIF)"""
@@ -737,11 +784,21 @@ class MediaAnalyzer:
     
     async def _analyze_video_sticker(self, sticker_path: str) -> Dict[str, Any]:
         """تحليل ملصقات الفيديو (WebM)"""
-        try:
-            with open(sticker_path, "rb") as f:
-                sticker_bytes = f.read()
-            
-            safety_prompt = """
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                if not self.client:
+                    if attempt == 0:
+                        self.setup_gemini()
+                    if not self.client:
+                        return {"error": "فشل في تهيئة Gemini client"}
+                
+                with open(sticker_path, "rb") as f:
+                    sticker_bytes = f.read()
+                
+                safety_prompt = """
             احلل ملصق الفيديو هذا بعناية فائقة شديدة واكتشف أي محتوى مخالف وفقاً للمعايير الإسلامية المحافظة:
             
             ⚠️ **معايير التحليل الصارمة:**
@@ -820,149 +877,36 @@ class MediaAnalyzer:
                 except json.JSONDecodeError:
                     return self._parse_text_response(response.text)
             
-            return {"error": "No response from AI"}
-            
-        except Exception as e:
-            error_str = str(e)
-            logging.error(f"❌ خطأ في تحليل ملصق الفيديو: {error_str}")
-            
-            # محاولة التبديل للمفتاح التالي إذا كان خطأ استنزاف الحصة
-            if self.handle_quota_exceeded(error_str):
-                logging.info("🔄 محاولة إعادة التحليل بالمفتاح الجديد...")
-                try:
-                    # إعادة المحاولة مع المفتاح الجديد
-                    with open(sticker_path, "rb") as f:
-                        sticker_bytes = f.read()
+                return {"error": "No response from AI"}
+                
+            except Exception as e:
+                error_str = str(e)
+                logging.error(f"❌ خطأ في تحليل ملصق الفيديو (محاولة {attempt + 1}/{max_retries}): {e}")
+                
+                # محاولة التبديل للمفتاح التالي
+                if self.handle_quota_exceeded(error_str):
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay)
+                        continue
+                
+                # إذا كانت آخر محاولة، أرجع الخطأ
+                if attempt == max_retries - 1:
+                    return {"error": f"فشل التحليل بعد {max_retries} محاولات: {error_str}"}
                     
-                    response = self.client.models.generate_content(
-                        model="gemini-2.5-pro",
-                        contents=[
-                            types.Part.from_bytes(sticker_bytes, mime_type="video/webm"),
-                            types.Part.from_text("""
-                            احلل ملصق الفيديو هذا وركز فقط على المحتوى المخالف الصريح والواضح:
-                            
-                            🚫 **المحتوى المحظور الصريح فقط:**
-                            
-                            **قواعد التقييم المحددة:**
-                            - الضحك والسلوك العادي: مقبول تماماً
-                            - الملابس المحتشمة: مقبولة تماماً  
-                            - الرقص العادي والحفلات العادية: مقبولة إذا كانت محتشمة
-                            - الصدر المكشوف أو شبه المكشوف: غير مقبول (خطر متوسط)
-                            - المحتوى الإباحي الصريح والعنف الواضح: غير مقبول (خطر عالي)
-                            
-                            أجب بـ JSON:
-                            {
-                                "is_safe": true/false,
-                                "violations": ["فقط المخالفات الصريحة"],
-                                "severity": "low/medium/high",
-                                "description": "وصف المحتوى",
-                                "confidence": 0.95,
-                                "gesture_analysis": "تحليل الإيماءات",
-                                "environment_analysis": "تحليل البيئة",
-                                "clothing_analysis": "تحليل الملابس",
-                                "sticker_type": "video"
-                            }
-                            
-                            **اعتبر المحتوى آمناً إلا إذا كان يُظهر الصدر مكشوفاً أو محتوى إباحي صريح أو عنف واضح.**
-                            """)
-                        ]
-                    )
-                    
-                    if response and response.text:
-                        result_text = response.text.strip()
-                        if result_text.startswith('```json'):
-                            result_text = result_text[7:]
-                        if result_text.endswith('```'):
-                            result_text = result_text[:-3]
-                        
-                        result = json.loads(result_text.strip())
-                        return result
-                        
-                except Exception as retry_error:
-                    logging.error(f"❌ فشل إعادة المحاولة: {retry_error}")
-            
-            return {"error": error_str}
-    
-    async def _analyze_static_sticker_fallback(self, sticker_path: str) -> Dict[str, Any]:
-        """معالج احتياطي للملصقات التي تفشل في التحليل المتقدم"""
-        try:
-            # نحاول قراءة الملف كصورة عادية
-            with open(sticker_path, "rb") as f:
-                sticker_bytes = f.read()
-            
-            # تحليل مبسط للملصق
-            safety_prompt = """
-            احلل هذا الملصق بعناية واكتشف أي محتوى مخالف.
-            
-            ابحث عن:
-            1. محتوى جنسي أو غير لائق
-            2. عنف أو دماء
-            3. إيماءات مسيئة أو بذيئة
-            4. كراهية أو تمييز
-            
-            أجب بـ JSON:
-            {
-                "is_safe": true/false,
-                "violations": ["المخالفات إن وجدت"],
-                "severity": "low/medium/high",
-                "description": "وصف الملصق",
-                "confidence": 0.8
-            }
-            """
-            
-            # محاولة تحليل بسيطة
-            response = self.client.models.generate_content(
-                model="gemini-2.5-pro",
-                contents=[
-                    types.Part.from_bytes(
-                        data=sticker_bytes[:1024*50],  # أول 50KB فقط لتجنب المشاكل
-                        mime_type="image/webp"
-                    ),
-                    safety_prompt
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                )
-            )
-            
-            if response.text:
-                import json
-                try:
-                    return json.loads(response.text)
-                except json.JSONDecodeError:
-                    return self._parse_text_response(response.text)
-            
-            # إذا فشل كل شيء، نعتبر الملصق آمناً
-            return {
-                "is_safe": True,
-                "violations": [],
-                "severity": "low",
-                "description": "ملصق عادي - تحليل مبسط",
-                "confidence": 0.6
-            }
-            
-        except Exception as e:
-            logging.error(f"❌ خطأ في المعالج الاحتياطي: {e}")
-            # آمن افتراضياً مع رسالة واضحة
-            return {
-                "is_safe": True,
-                "violations": [],
-                "severity": "low", 
-                "description": "ملصق متحرك - تم السماح به (لا يمكن تحليل هذا النوع من الملصقات حالياً)",
-                "confidence": 0.7,
-                "gesture_analysis": "تم فحص الملصق بشكل أساسي - لم يتم رصد محتوى مخالف واضح",
-                "note": "الملصقات المتحركة المعقدة تحتاج محلل متخصص إضافي"
-            }
-    
+                # انتظار قبل المحاولة التالية
+                await asyncio.sleep(retry_delay)
+                
+        return {"error": "فشل في جميع المحاولات"}
+
+
     async def cleanup_temp_file(self, file_path: str):
-        """حذف الملف المؤقت"""
+        """تنظيف الملفات المؤقتة"""
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
                 logging.info(f"🗑️ تم حذف الملف المؤقت: {file_path}")
         except Exception as e:
-            logging.error(f"خطأ في حذف الملف المؤقت: {e}")
+            logging.error(f"❌ خطأ في حذف الملف المؤقت: {e}")
 
-
-# إنشاء مثيل المحلل
+# إنشاء مثيل محلل الوسائط
 media_analyzer = MediaAnalyzer()

@@ -87,6 +87,7 @@ class UnifiedMessageProcessor:
         """تحليل محتوى الوسائط"""
         try:
             # إرسال رسالة انتظار
+            loading_message = None
             loading_message = await message.reply("🔍 **جاري تحليل الملف...**")
             
             # تحديد نوع الملف وتحميله
@@ -187,7 +188,8 @@ class UnifiedMessageProcessor:
                     await loading_message.edit_text(warning_msg)
                     
                     # إشعار المشرفين
-                    await self.content_moderator.notify_authorities(message, message.bot, analysis_result)
+                    if message.bot:
+                        await self.content_moderator.notify_authorities(message, message.bot, analysis_result)
                     
                     # تسجيل المخالفة
                     await self.content_moderator.log_violation(message, analysis_result)
@@ -216,8 +218,8 @@ class UnifiedMessageProcessor:
         except Exception as e:
             logging.error(f"❌ خطأ في تحليل المحتوى: {e}")
             try:
-                if 'loading_message' in locals() and loading_message:
-                    await loading_message.edit_text("❌ حدث خطأ أثناء تحليل المحتوى")
+                # تأكد من أن loading_message موجود
+                await loading_message.edit_text("❌ حدث خطأ أثناء تحليل المحتوى")
             except:
                 pass
             return False
