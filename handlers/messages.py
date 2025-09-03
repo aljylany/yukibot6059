@@ -3004,20 +3004,7 @@ async def handle_media_messages(message: Message):
             pass
 
 
-# معالج الملصقات
-@router.message(F.sticker)
-@user_required
-async def handle_sticker_messages(message: Message):
-    """معالج الملصقات"""
-    stickers = [
-        "🎮", "💰", "🏦", "🏠", "🔓", "📈", "🌾", "🏰", "⭐"
-    ]
-    import random
-    
-    await message.reply(
-        f"{random.choice(stickers)} ملصق جميل!\n\n"
-        "استخدم /help لعرض الأوامر المتاحة."
-    )
+# تم حذف معالج الملصقات لتمرير جميع الملصقات لمحلل المحتوى في unified_message_processor.py
 
 
 
