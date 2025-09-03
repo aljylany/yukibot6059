@@ -4,11 +4,12 @@
 """
 
 import logging
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message
 from utils.decorators import group_only
 from modules.media_analyzer import media_analyzer
 from modules.content_moderation import ContentModerator
+from modules.profanity_filter import profanity_filter
 
 router = Router()
 
@@ -21,8 +22,8 @@ class UnifiedMessageProcessor:
         
     async def process_any_message(self, message: Message) -> bool:
         """
-        معالج موحد لجميع أنواع الرسائل
-        Returns False - لا يوجد فحص حاليا
+        معالج موحد لجميع أنواع الرسائل مع فلتر الألفاظ المسيئة
+        Returns True if message was handled/filtered, False otherwise
         """
         try:
             # منع المعالجة المتكررة
@@ -47,7 +48,17 @@ class UnifiedMessageProcessor:
                 
                 logging.info(f"📝 رسالة {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # تحليل المحتوى إذا كان صورة أو فيديو أو صورة متحركة أو ملصق
+                # أولاً: فحص فلتر الألفاظ المسيئة للرسائل النصية
+                if message.text or message.caption:
+                    try:
+                        bot = message.bot
+                        if await profanity_filter.process_message(message, bot):
+                            # تم التعامل مع الرسالة من قبل فلتر الألفاظ
+                            return True
+                    except Exception as filter_error:
+                        logging.error(f"خطأ في فلتر الألفاظ المسيئة: {filter_error}")
+                
+                # ثانياً: تحليل المحتوى إذا كان صورة أو فيديو أو صورة متحركة أو ملصق
                 if message.photo or message.video or message.document or message.animation or message.sticker:
                     return await self._analyze_media_content(message)
                 

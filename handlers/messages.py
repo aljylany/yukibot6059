@@ -36,6 +36,8 @@ from modules.utility_commands import WhisperStates
 from modules.ai_integration_handler import ai_integration
 # استيراد معالج القوائم الذكية
 from modules.smart_menu_handler import smart_menu_handler
+# استيراد نظام فلتر الألفاظ المسيئة
+from modules.profanity_commands import PROFANITY_COMMANDS
 # تم حذف نظام عبيد الذكي غير الضروري
 
 router = Router()
@@ -1822,6 +1824,15 @@ async def handle_general_message(message: Message, state: FSMContext):
     # فحص الأوامر المساعدة والأدوات
     if await handle_utility_commands(message):
         return
+    
+    # فحص أوامر فلتر الألفاظ المسيئة
+    if text in PROFANITY_COMMANDS:
+        try:
+            await PROFANITY_COMMANDS[text](message)
+            return
+        except Exception as profanity_error:
+            logging.error(f"خطأ في أمر فلتر الألفاظ المسيئة: {profanity_error}")
+            await message.reply("❌ حدث خطأ أثناء تنفيذ الأمر")
     
     # === أمر عرض قائمة الأوامر الشاملة ===
     if (text == 'الأوامر' or text == 'الاوامر' or text == 'قائمة الأوامر' or 
