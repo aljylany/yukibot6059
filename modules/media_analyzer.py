@@ -237,10 +237,14 @@ class MediaAnalyzer:
                 logging.error(f"❌ خطأ في تحليل الصورة (محاولة {attempt + 1}/{max_retries}): {e}")
                 
                 # محاولة التبديل للمفتاح التالي
-                if self.handle_quota_exceeded(error_str):
+                key_switched = self.handle_quota_exceeded(error_str)
+                if key_switched:
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay)
                         continue
+                elif any(code in error_str for code in ["429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE"]):
+                    # فشل التبديل - جميع المفاتيح مستنزفة
+                    return {"error": "فشل في جميع المحاولات - استنزاف جميع مفاتيح API"}
                 
                 # إذا كانت آخر محاولة، أرجع الخطأ
                 if attempt == max_retries - 1:
@@ -357,10 +361,14 @@ class MediaAnalyzer:
                 logging.error(f"❌ خطأ في تحليل الفيديو (محاولة {attempt + 1}/{max_retries}): {e}")
                 
                 # محاولة التبديل للمفتاح التالي
-                if self.handle_quota_exceeded(error_str):
+                key_switched = self.handle_quota_exceeded(error_str)
+                if key_switched:
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay)
                         continue
+                elif any(code in error_str for code in ["429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE"]):
+                    # فشل التبديل - جميع المفاتيح مستنزفة
+                    return {"error": "فشل في جميع المحاولات - استنزاف جميع مفاتيح API"}
                 
                 # إذا كانت آخر محاولة، أرجع الخطأ
                 if attempt == max_retries - 1:
@@ -940,10 +948,14 @@ class MediaAnalyzer:
                 logging.error(f"❌ خطأ في تحليل ملصق الفيديو (محاولة {attempt + 1}/{max_retries}): {e}")
                 
                 # محاولة التبديل للمفتاح التالي
-                if self.handle_quota_exceeded(error_str):
+                key_switched = self.handle_quota_exceeded(error_str)
+                if key_switched:
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay)
                         continue
+                elif any(code in error_str for code in ["429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE"]):
+                    # فشل التبديل - جميع المفاتيح مستنزفة
+                    return {"error": "فشل في جميع المحاولات - استنزاف جميع مفاتيح API"}
                 
                 # إذا كانت آخر محاولة، أرجع الخطأ
                 if attempt == max_retries - 1:
