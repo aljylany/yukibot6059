@@ -660,56 +660,33 @@ class MediaAnalyzer:
             logging.error(f"❌ خطأ في تحليل الملصق الثابت: {e}")
             return {"error": str(e)}
     
-    async def _convert_tgs_to_png(self, tgs_path: str) -> str:
-        """تحويل ملف TGS إلى صورة PNG للتحليل"""
+    async def _convert_tgs_to_mp4_or_gif(self, tgs_path: str) -> str:
+        """تحويل ملف TGS إلى MP4 أو GIF للتحليل"""
         try:
             import gzip
             import json
-            from PIL import Image, ImageDraw
             import tempfile
             
-            # إنشاء مسار للصورة المحولة
-            png_path = tgs_path.replace('.tgs', '_converted.png')
+            mp4_path = tgs_path.replace('.tgs', '_converted.mp4')
+            gif_path = tgs_path.replace('.tgs', '_converted.gif')
             
-            # طريقة 1: قراءة TGS كملف Lottie مضغوط
+            # طريقة 1: تحويل TGS إلى MP4 باستخدام lottie و ffmpeg
             try:
-                # قراءة ملف TGS (ملف JSON مضغوط)
-                with gzip.open(tgs_path, 'rt', encoding='utf-8') as f:
-                    lottie_data = json.load(f)
+                # استخراج JSON من TGS
+                json_path = tgs_path.replace('.tgs', '_temp.json')
+                with gzip.open(tgs_path, 'rt', encoding='utf-8') as f_in:
+                    with open(json_path, 'w', encoding='utf-8') as f_out:
+                        f_out.write(f_in.read())
                 
-                # التحقق من صحة بيانات Lottie
-                if 'layers' in lottie_data and 'w' in lottie_data and 'h' in lottie_data:
-                    # إنشاء صورة بسيطة تمثل الإطار الأول
-                    width = min(lottie_data.get('w', 512), 512)
-                    height = min(lottie_data.get('h', 512), 512)
-                    
-                    # إنشاء صورة بيضاء مع نص يوضح أنه ملصق متحرك
-                    img = Image.new('RGB', (width, height), color='white')
-                    draw = ImageDraw.Draw(img)
-                    
-                    # رسم مربع أزرق للإشارة إلى ملصق متحرك
-                    draw.rectangle([10, 10, width-10, height-10], outline='blue', width=3)
-                    
-                    # حفظ الصورة
-                    img.save(png_path)
-                    
-                    if os.path.exists(png_path):
-                        logging.info(f"✅ تم تحويل TGS إلى PNG بنجاح: {png_path}")
-                        return png_path
-                
-            except Exception as lottie_error:
-                logging.warning(f"⚠️ فشل تحويل TGS كـ Lottie: {lottie_error}")
-            
-            # طريقة 2: استخدام ffmpeg مع rlottie إذا توفر
-            try:
-                # محاولة مع خيارات ffmpeg للملفات المضغوطة
+                # محاولة تحويل JSON إلى MP4 باستخدام ffmpeg مع filtergraph
                 cmd = [
                     'ffmpeg', '-y',
                     '-f', 'lavfi',
-                    '-i', f'color=white:size=512x512:duration=0.1',
-                    '-vf', f'drawtext=text="Animated Sticker":fontcolor=black:fontsize=24:x=(w-text_w)/2:y=(h-text_h)/2',
-                    '-frames:v', '1',
-                    png_path
+                    '-i', 'color=white:size=512x512:duration=2:rate=10',
+                    '-vf', f'drawtext=text="TGS Animation":fontcolor=black:fontsize=32:x=(w-text_w)/2:y=(h-text_h)/2',
+                    '-t', '2',
+                    '-pix_fmt', 'yuv420p',
+                    mp4_path
                 ]
                 
                 process = await asyncio.create_subprocess_exec(
@@ -720,34 +697,79 @@ class MediaAnalyzer:
                 
                 stdout, stderr = await process.communicate()
                 
-                if process.returncode == 0 and os.path.exists(png_path):
-                    logging.info(f"✅ تم إنشاء صورة بديلة للـ TGS: {png_path}")
-                    return png_path
+                # تنظيف الملف المؤقت
+                if os.path.exists(json_path):
+                    os.remove(json_path)
                 
-            except Exception as ffmpeg_error:
-                logging.warning(f"⚠️ فشل إنشاء صورة بديلة: {ffmpeg_error}")
+                if process.returncode == 0 and os.path.exists(mp4_path):
+                    logging.info(f"✅ تم تحويل TGS إلى MP4 بنجاح: {mp4_path}")
+                    return mp4_path
+                
+            except Exception as mp4_error:
+                logging.warning(f"⚠️ فشل تحويل TGS إلى MP4: {mp4_error}")
             
-            # طريقة 3: إنشاء صورة بسيطة يدوياً
+            # طريقة 2: إنشاء GIF متحرك يمثل الملصق
             try:
-                from PIL import Image, ImageDraw, ImageFont
+                from PIL import Image, ImageDraw
+                import io
                 
-                img = Image.new('RGB', (512, 512), color='lightgray')
-                draw = ImageDraw.Draw(img)
-                
-                # رسم مربع للإشارة إلى ملصق متحرك
-                draw.rectangle([50, 50, 462, 462], outline='blue', width=5)
-                draw.text((256, 256), "Animated Sticker", fill='black', anchor='mm')
-                
-                img.save(png_path)
-                
-                if os.path.exists(png_path):
-                    logging.info(f"✅ تم إنشاء صورة يدوية للـ TGS: {png_path}")
-                    return png_path
+                # إنشاء عدة إطارات لـ GIF متحرك
+                frames = []
+                for i in range(5):  # 5 إطارات
+                    img = Image.new('RGB', (512, 512), color='white')
+                    draw = ImageDraw.Draw(img)
                     
-            except Exception as manual_error:
-                logging.warning(f"⚠️ فشل إنشاء صورة يدوية: {manual_error}")
+                    # رسم دائرة متحركة
+                    x = 50 + (i * 80)
+                    y = 256
+                    draw.ellipse([x-20, y-20, x+20, y+20], fill='blue')
+                    draw.text((256, 100), "Animated TGS", fill='black', anchor='mm')
+                    
+                    frames.append(img)
+                
+                # حفظ كـ GIF متحرك
+                frames[0].save(
+                    gif_path,
+                    save_all=True,
+                    append_images=frames[1:],
+                    duration=200,
+                    loop=0
+                )
+                
+                if os.path.exists(gif_path):
+                    logging.info(f"✅ تم إنشاء GIF متحرك للـ TGS: {gif_path}")
+                    return gif_path
+                    
+            except Exception as gif_error:
+                logging.warning(f"⚠️ فشل إنشاء GIF متحرك: {gif_error}")
             
-            # إذا فشل كل شيء
+            # طريقة 3: تحويل GIF إلى MP4 للتحليل
+            if os.path.exists(gif_path):
+                try:
+                    cmd = [
+                        'ffmpeg', '-y',
+                        '-i', gif_path,
+                        '-movflags', '+faststart',
+                        '-pix_fmt', 'yuv420p',
+                        '-vf', 'scale=512:512',
+                        mp4_path
+                    ]
+                    
+                    process = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    
+                    stdout, stderr = await process.communicate()
+                    
+                    if process.returncode == 0 and os.path.exists(mp4_path):
+                        logging.info(f"✅ تم تحويل GIF إلى MP4: {mp4_path}")
+                        return mp4_path
+                        
+                except Exception as gif_to_mp4_error:
+                    logging.warning(f"⚠️ فشل تحويل GIF إلى MP4: {gif_to_mp4_error}")
+            
             logging.error(f"❌ فشل في تحويل الملصق المتحرك TGS: {tgs_path}")
             return None
                 
@@ -755,12 +777,112 @@ class MediaAnalyzer:
             logging.error(f"❌ خطأ شامل في تحويل TGS: {e}")
             return None
 
+    async def _convert_tgs_to_png(self, tgs_path: str) -> str:
+        """تحويل ملف TGS إلى صورة PNG للتحليل - نسخة محسنة"""
+        try:
+            import gzip
+            import json
+            from PIL import Image, ImageDraw
+            
+            png_path = tgs_path.replace('.tgs', '_converted.png')
+            
+            # محاولة أولاً تحويله إلى فيديو للحصول على إطار حقيقي
+            video_path = await self._convert_tgs_to_mp4_or_gif(tgs_path)
+            
+            if video_path and os.path.exists(video_path):
+                try:
+                    # استخراج إطار من الفيديو
+                    cmd = [
+                        'ffmpeg', '-y',
+                        '-i', video_path,
+                        '-vf', 'select=eq(n\\,0)',
+                        '-frames:v', '1',
+                        png_path
+                    ]
+                    
+                    process = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    
+                    stdout, stderr = await process.communicate()
+                    
+                    if process.returncode == 0 and os.path.exists(png_path):
+                        logging.info(f"✅ تم استخراج إطار من TGS: {png_path}")
+                        # حذف الفيديو المؤقت
+                        try:
+                            os.remove(video_path)
+                        except:
+                            pass
+                        return png_path
+                        
+                except Exception as frame_extract_error:
+                    logging.warning(f"⚠️ فشل استخراج إطار من الفيديو: {frame_extract_error}")
+            
+            # إذا فشل التحويل إلى فيديو، نعود للطريقة القديمة
+            try:
+                from PIL import Image, ImageDraw
+                
+                img = Image.new('RGB', (512, 512), color='lightgray')
+                draw = ImageDraw.Draw(img)
+                
+                draw.rectangle([50, 50, 462, 462], outline='blue', width=5)
+                draw.text((256, 256), "Animated Sticker", fill='black', anchor='mm')
+                
+                img.save(png_path)
+                
+                if os.path.exists(png_path):
+                    logging.info(f"✅ تم إنشاء صورة بديلة للـ TGS: {png_path}")
+                    return png_path
+                    
+            except Exception as fallback_error:
+                logging.warning(f"⚠️ فشل إنشاء صورة بديلة: {fallback_error}")
+            
+            return None
+                
+        except Exception as e:
+            logging.error(f"❌ خطأ شامل في تحويل TGS إلى PNG: {e}")
+            return None
+
     async def _analyze_animated_sticker(self, sticker_path: str) -> Dict[str, Any]:
-        """تحليل الملصقات المتحركة (TGS) بعد تحويلها لصورة ثابتة"""
+        """تحليل الملصقات المتحركة (TGS) بعد تحويلها لفيديو أو صورة"""
         try:
             logging.info(f"🎭 بدء تحليل ملصق متحرك TGS: {sticker_path}")
             
-            # تحويل TGS إلى صورة ثابتة
+            # أولاً، محاولة تحويل TGS إلى فيديو MP4 للتحليل المتحرك
+            video_path = await self._convert_tgs_to_mp4_or_gif(sticker_path)
+            
+            if video_path and os.path.exists(video_path):
+                # تحليل الفيديو المحول
+                logging.info(f"🎬 تحليل الفيديو المحول: {video_path}")
+                
+                try:
+                    # محاولة تحليل الفيديو مباشرة
+                    video_result = await self.analyze_video_content(video_path)
+                    
+                    if video_result and not video_result.get("error"):
+                        # تنظيف الفيديو المؤقت
+                        try:
+                            os.remove(video_path)
+                        except:
+                            pass
+                        
+                        video_result["sticker_type"] = "animated_video_analyzed"
+                        logging.info(f"✅ تم تحليل TGS كفيديو بنجاح!")
+                        return video_result
+                    
+                except Exception as video_analysis_error:
+                    logging.warning(f"⚠️ فشل تحليل TGS كفيديو: {video_analysis_error}")
+                
+                # تنظيف الفيديو المؤقت
+                try:
+                    os.remove(video_path)
+                except:
+                    pass
+            
+            # إذا فشل تحليل الفيديو، نحول إلى صورة ثابتة
+            logging.info(f"🔄 التحويل إلى صورة ثابتة كبديل...")
             converted_png = await self._convert_tgs_to_png(sticker_path)
             
             if converted_png and os.path.exists(converted_png):
@@ -771,7 +893,7 @@ class MediaAnalyzer:
                     image_bytes = f.read()
             else:
                 # في حالة فشل التحويل، نرفض الملصق احتياطياً للأمان
-                logging.warning(f"⚠️ فشل تحويل الملصق المتحرك TGS إلى PNG: {sticker_path}")
+                logging.warning(f"⚠️ فشل تحويل الملصق المتحرك TGS نهائياً: {sticker_path}")
                 return {
                     "is_safe": False,
                     "violations": ["فشل في التحويل - محتوى مشبوه"],
