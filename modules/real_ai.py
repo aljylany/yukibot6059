@@ -899,13 +899,43 @@ async def handle_real_yuki_ai_message(message: Message):
         if not found_trigger:
             user_message = text.strip()
         
+        # فحص سياق الرد على الرسالة
+        reply_context = ""
+        if message.reply_to_message:
+            try:
+                replied_msg = message.reply_to_message
+                if replied_msg.from_user:
+                    replied_user_name = replied_msg.from_user.first_name or "شخص"
+                    
+                    if replied_msg.text:
+                        replied_text = replied_msg.text
+                        if len(replied_text) > 150:
+                            replied_text = replied_text[:150] + "..."
+                        
+                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على رسالة من {replied_user_name} كانت تقول: \"{replied_text}\""
+                        
+                        # إذا كان النص يحتوي على "سؤالي نفس سؤاله" أو مشابه
+                        if any(phrase in user_message.lower() for phrase in ['سؤالي نفس سؤاله', 'نفس سؤاله', 'سؤال نفسه', 'سؤالي مثل سؤاله']):
+                            # استبدال النص بالسؤال الأصلي
+                            user_message = replied_text
+                            reply_context += f"\n🔄 المستخدم {user_name} يسأل نفس السؤال الذي سأله {replied_user_name}"
+                    elif replied_msg.photo:
+                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على صورة من {replied_user_name}"
+                    elif replied_msg.voice:
+                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على رسالة صوتية من {replied_user_name}"
+                    else:
+                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على رسالة من {replied_user_name}"
+            except Exception as e:
+                logging.error(f"خطأ في معالجة سياق الرد: {e}")
+        
         # إذا كان النص فارغاً بعد إزالة "يوكي"
         if not user_message or len(user_message.strip()) < 2:
             # رد بتحية حسب الوقت
             ai_response = real_yuki_ai.get_time_based_greeting(user_name)
         else:
-            # توليد رد ذكي باستخدام الذكاء الاصطناعي الحقيقي
-            ai_response = await real_yuki_ai.generate_smart_response(user_message, user_name, message.from_user.id, message.chat.id, message.bot)
+            # توليد رد ذكي باستخدام الذكاء الاصطناعي الحقيقي مع سياق الرد
+            user_message_with_context = user_message + reply_context
+            ai_response = await real_yuki_ai.generate_smart_response(user_message_with_context, user_name, message.from_user.id, message.chat.id, message.bot)
         
         # إرسال الرد
         await message.reply(ai_response)
