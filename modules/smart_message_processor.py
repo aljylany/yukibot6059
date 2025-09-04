@@ -92,7 +92,11 @@ class SmartMessageProcessor:
             'confidence': 0.0
         }
         
-        message_text = message.text.lower() if message.text else ""
+        # التحقق من وجود النص أولاً
+        if not message.text:
+            return intent
+            
+        message_text = message.text.lower()
         
         # فحص الأولوية العالية
         priority_score = 0
@@ -114,7 +118,7 @@ class SmartMessageProcessor:
         
         # تحديد النوع الأساسي
         # أسئلة الذاكرة المحلية - ردود سريعة بدون AI
-        if 'ماذا تعرف عن' in message_text:
+        if 'ماذا تعرف عن' in message_text or 'تعرف فلان' in message_text:
             intent['type'] = 'memory_query'
             intent['needs_ai'] = False
         elif any(kw in message_text for kw in ['كيف', 'ماذا', 'متى', 'أين', 'لماذا', 'من', '؟']):
@@ -139,28 +143,52 @@ class SmartMessageProcessor:
     async def _process_memory_query(self, message: Message) -> str:
         """معالجة أسئلة الذاكرة المحلية - رد سريع بدون AI"""
         try:
+            if not message.text:
+                return "🤔 لا أفهم السؤال"
+                
             message_text = message.text.lower()
             
-            # البحث عن اسم الشخص المطلوب
-            if 'عن عبيد' in message_text:
-                # البحث في قاعدة البيانات
-                try:
-                    from modules.shared_memory_pg import shared_memory_pg
-                    conn = await shared_memory_pg.get_db_connection()
-                    if conn:
-                        results = await conn.fetch(
-                            "SELECT content FROM shared_conversations WHERE topic ILIKE '%عبيد%' ORDER BY timestamp DESC LIMIT 1"
-                        )
-                        await conn.close()
-                        
-                        if results:
-                            return f"📋 **معلومات عن عبيد:**\n\n{results[0]['content']}\n\n✨ هذا ما أتذكره عن عبيد!"
-                        else:
-                            return "🤔 لا أجد معلومات محفوظة عن عبيد في ذاكرتي حالياً"
-                except:
-                    return "🤔 لا أجد معلومات محفوظة عن عبيد في ذاكرتي حالياً"
+            # استخراج اسم الشخص من السؤال
+            person_name = None
+            if 'عن ' in message_text:
+                # استخراج الاسم بعد "عن"
+                parts = message_text.split('عن ')
+                if len(parts) > 1:
+                    person_name = parts[1].split()[0].strip()
+            elif 'تعرف ' in message_text:
+                # استخراج الاسم بعد "تعرف"
+                parts = message_text.split('تعرف ')
+                if len(parts) > 1:
+                    person_name = parts[1].split()[0].strip()
             
-            return "🤔 لا أفهم عن من تسأل تحديداً"
+            if person_name:
+                # البحث في الذاكرة المشتركة
+                try:
+                    # أولاً، محاولة البحث في النظام الجديد
+                    if self.shared_memory:
+                        memory_info = await self.shared_memory.search_shared_memory(
+                            message.chat.id, person_name
+                        )
+                        if memory_info:
+                            return f"📋 **معلومات عن {person_name}:**\n\n{memory_info}\n\n✨ هذا ما أتذكره!"
+                    
+                    # محاولة البحث في النظام القديم كاحتياط
+                    try:
+                        from modules.shared_memory_sqlite import shared_group_memory_sqlite as shared_memory_db
+                        memory_info = await shared_memory_db.get_group_memory(message.chat.id, person_name)
+                        if memory_info:
+                            return f"📋 **معلومات عن {person_name}:**\n\n{memory_info}\n\n✨ هذا ما أتذكره!"
+                    except ImportError:
+                        pass
+                    
+                    return f"🤔 لا أجد معلومات محفوظة عن {person_name} في ذاكرتي حالياً"
+                    
+                except Exception as e:
+                    logging.error(f"خطأ في البحث في الذاكرة المشتركة: {e}")
+                    return f"🤔 لا أجد معلومات محفوظة عن {person_name} في ذاكرتي حالياً"
+            
+            return "🤔 لا أفهم عن من تسأل تحديداً. جرب: 'ماذا تعرف عن [اسم الشخص]'"
+            
         except Exception as e:
             logging.error(f"خطأ في معالج الذاكرة: {e}")
             return "❌ حدث خطأ في البحث في الذاكرة"
@@ -181,7 +209,7 @@ class SmartMessageProcessor:
             return 'ai_comprehensive'
         
         # فحص الردود الخاصة
-        if self.special_responses(message.from_user.id, message.text):
+        if message.from_user and message.text and self.special_responses(message.from_user.id, message.text):
             return 'special_response'
         
         # رد على الرسائل المرتبطة بالأنظمة
@@ -231,16 +259,31 @@ class SmartMessageProcessor:
     async def _process_with_basic_ai(self, message: Message) -> str:
         """معالجة باستخدام الذكاء الأساسي"""
         try:
+            if not message.from_user:
+                return "🤖 مرحباً! يوكي هنا للمساعدة، كيف يمكنني خدمتك؟"
+                
             user_name = message.from_user.first_name or "صديقي"
-            response = await self.basic_ai.get_smart_response(message.text, user_name)
+            message_text = message.text or ""
+            
+            # تحقق من وجود الطريقة في basic_ai
+            if hasattr(self.basic_ai, 'get_smart_response'):
+                response = await self.basic_ai.get_smart_response(message_text, user_name)
+            else:
+                # استخدام طريقة بديلة
+                response = f"🤖 مرحباً {user_name}! يوكي هنا وجاهز للمساعدة!"
+            
             return response
         except Exception as e:
             logging.error(f"خطأ في الذكاء الأساسي: {e}")
-            return f"🤖 مرحباً {message.from_user.first_name}! يوكي هنا للمساعدة، كيف يمكنني خدمتك؟"
+            user_name = message.from_user.first_name if message.from_user else "صديقي"
+            return f"🤖 مرحباً {user_name}! يوكي هنا للمساعدة، كيف يمكنني خدمتك؟"
     
-    async def _process_with_special_response(self, message: Message) -> str:
+    async def _process_with_special_response(self, message: Message) -> Optional[str]:
         """معالجة الردود الخاصة"""
         try:
+            if not message.from_user or not message.text:
+                return None
+                
             response = self.special_responses(message.from_user.id, message.text)
             return response
         except Exception as e:

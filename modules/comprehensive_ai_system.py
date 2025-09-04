@@ -361,6 +361,11 @@ class ComprehensiveAISystem:
             # جلب معلومات المجموعة الحالية
             group_context = await self._get_current_group_context(message)
             
+            # جلب سياق الرسالة التي يرد عليها (إن وجدت)
+            reply_context = await self._get_reply_context(message)
+            if reply_context:
+                context = context + "\n\n" + reply_context if context else reply_context
+            
             # بناء السياق الشامل
             full_context = await self._build_comprehensive_context(
                 user_message, user_name, user_data, context, group_context
@@ -442,6 +447,56 @@ class ComprehensiveAISystem:
 """
         
         return final_context
+    
+    async def _get_reply_context(self, message: Message) -> str:
+        """الحصول على سياق الرسالة التي يرد عليها المستخدم"""
+        try:
+            if not message.reply_to_message:
+                return ""
+            
+            replied_message = message.reply_to_message
+            context_parts = []
+            
+            # معلومات الرسالة الأصلية
+            if replied_message.from_user:
+                original_user_name = replied_message.from_user.first_name or "شخص"
+                original_user_id = replied_message.from_user.id
+                context_parts.append(f"📨 الرسالة التي يرد عليها {message.from_user.first_name}:")
+                context_parts.append(f"👤 من: {original_user_name}")
+                
+                # محتوى الرسالة الأصلية
+                if replied_message.text:
+                    original_text = replied_message.text
+                    # قطع النص إذا كان طويلاً
+                    if len(original_text) > 200:
+                        original_text = original_text[:200] + "..."
+                    context_parts.append(f"💬 النص: \"{original_text}\"")
+                elif replied_message.photo:
+                    context_parts.append("🖼️ الرسالة الأصلية: صورة")
+                elif replied_message.document:
+                    context_parts.append("📁 الرسالة الأصلية: ملف")
+                elif replied_message.voice:
+                    context_parts.append("🎤 الرسالة الأصلية: رسالة صوتية")
+                else:
+                    context_parts.append("💬 الرسالة الأصلية: محتوى غير نصي")
+                
+                # إذا كانت الرسالة الأصلية من يوكي نفسه
+                if replied_message.from_user.is_bot and replied_message.from_user.username and 'yuki' in replied_message.from_user.username.lower():
+                    context_parts.append("🤖 ملاحظة: هذا رد على رسالة من يوكي نفسه")
+                    
+                    # البحث في ذاكرة المحادثة لمعرفة السياق
+                    conversation_history = await self.conversation_memory.get_conversation_history(message.from_user.id, limit=5)
+                    if conversation_history:
+                        for conv in conversation_history:
+                            if conv.get('assistant_message') and replied_message.text and replied_message.text in conv.get('assistant_message', ''):
+                                context_parts.append(f"🧠 السياق المحفوظ: كان يوكي يرد على سؤال \"{conv.get('user_message', '')}\"")
+                                break
+            
+            return "\n".join(context_parts) if context_parts else ""
+            
+        except Exception as e:
+            logging.error(f"خطأ في جلب سياق الرد: {e}")
+            return ""
     
     def _resolve_user_name(self, user_name: str, user_message: str) -> str:
         """حل الأسماء والعلاقات بذكاء"""

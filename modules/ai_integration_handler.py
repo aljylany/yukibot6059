@@ -58,6 +58,9 @@ class AIIntegrationHandler:
     async def _enhance_response_with_suggestions(self, message: Message, base_response: str) -> str:
         """تحسين الرد بإضافة اقتراحات ذكية"""
         try:
+            if not message.from_user or not message.text:
+                return base_response
+                
             user_id = message.from_user.id
             chat_id = message.chat.id
             
@@ -160,7 +163,7 @@ class AIIntegrationHandler:
             logging.error(f"خطأ في الحصول على اقتراحات الألعاب: {e}")
             return "🤖 عذراً، لا يمكنني اقتراح ألعاب في الوقت الحالي. حاول لاحقاً!"
     
-    async def start_adaptive_quiz(self, user_id: int, chat_id: int, category: str = 'general') -> Dict[str, Any]:
+    async def start_adaptive_quiz(self, user_id: int, chat_id: int, category: str = 'general') -> Optional[Dict[str, Any]]:
         """بدء كويز تكيفي"""
         try:
             user_data = await self.comprehensive_ai.get_comprehensive_user_data(user_id, chat_id)
@@ -171,7 +174,7 @@ class AIIntegrationHandler:
             logging.error(f"خطأ في بدء الكويز التكيفي: {e}")
             return None
     
-    async def start_economic_challenge(self, user_id: int, chat_id: int) -> Dict[str, Any]:
+    async def start_economic_challenge(self, user_id: int, chat_id: int) -> Optional[Dict[str, Any]]:
         """بدء تحدي اقتصادي"""
         try:
             user_data = await self.comprehensive_ai.get_comprehensive_user_data(user_id, chat_id)
@@ -182,7 +185,7 @@ class AIIntegrationHandler:
             logging.error(f"خطأ في بدء التحدي الاقتصادي: {e}")
             return None
     
-    async def start_interactive_story(self, user_id: int, chat_id: int, story_id: str = 'merchant_journey') -> Dict[str, Any]:
+    async def start_interactive_story(self, user_id: int, chat_id: int, story_id: str = 'merchant_journey') -> Optional[Dict[str, Any]]:
         """بدء قصة تفاعلية"""
         try:
             user_data = await self.comprehensive_ai.get_comprehensive_user_data(user_id, chat_id)
@@ -193,7 +196,7 @@ class AIIntegrationHandler:
             logging.error(f"خطأ في بدء القصة التفاعلية: {e}")
             return None
     
-    async def start_ai_battle(self, user_id: int, chat_id: int) -> Dict[str, Any]:
+    async def start_ai_battle(self, user_id: int, chat_id: int) -> Optional[Dict[str, Any]]:
         """بدء معركة ذكية مع يوكي"""
         try:
             user_data = await self.comprehensive_ai.get_comprehensive_user_data(user_id, chat_id)
