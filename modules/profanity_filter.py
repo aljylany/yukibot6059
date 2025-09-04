@@ -524,11 +524,26 @@ class ProfanityFilter:
                 fetch_one=True
             )
             
+            # معالجة النتائج من قاعدة البيانات
+            users_count = 0
+            punished_count = 0
+            warnings_count = 0
+            
+            if users_with_warnings:
+                users_count = users_with_warnings[0] if isinstance(users_with_warnings, tuple) else users_with_warnings
+                
+            if punished_users:
+                punished_count = punished_users[0] if isinstance(punished_users, tuple) else punished_users
+                
+            if total_warnings:
+                warnings_count = total_warnings[0] if isinstance(total_warnings, tuple) else total_warnings
+                warnings_count = warnings_count if warnings_count is not None else 0
+            
             return {
                 'enabled': self.is_enabled(chat_id),
-                'users_with_warnings': users_with_warnings[0] if users_with_warnings else 0,
-                'punished_users': punished_users[0] if punished_users else 0,
-                'total_warnings': total_warnings[0] if total_warnings and total_warnings[0] else 0
+                'users_with_warnings': int(users_count) if users_count else 0,
+                'punished_users': int(punished_count) if punished_count else 0,
+                'total_warnings': int(warnings_count) if warnings_count else 0
             }
             
         except Exception as e:

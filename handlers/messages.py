@@ -159,6 +159,42 @@ async def handle_sheikh_call(message: Message):
 async def handle_text_messages(message: Message, state: FSMContext):
     """معالج الرسائل النصية العامة حسب الحالة"""
     try:
+        # فحص فلتر الألفاظ المسيئة أولاً
+        if message.text and message.chat.type in ['group', 'supergroup']:
+            try:
+                from modules.profanity_filter import ProfanityFilter
+                profanity_filter = ProfanityFilter()
+                
+                # التحقق من تفعيل الفلتر في هذه المجموعة
+                if profanity_filter.is_enabled(message.chat.id):
+                    # فحص النص للألفاظ المسيئة
+                    has_profanity, found_words = profanity_filter.contains_profanity(message.text)
+                    
+                    if has_profanity:
+                        # حذف الرسالة فوراً
+                        try:
+                            await message.delete()
+                            logging.info(f"🗑️ تم حذف رسالة مسيئة من المستخدم {message.from_user.id}: '{message.text}'")
+                        except Exception as delete_error:
+                            logging.error(f"❌ خطأ في حذف الرسالة: {delete_error}")
+                        
+                        # إرسال تحذير للمستخدم
+                        user_name = message.from_user.first_name or "المستخدم"
+                        warning_text = f"⚠️ **تحذير!**\n\n👤 {user_name}\n🚫 تم حذف رسالتك لاحتوائها على ألفاظ مسيئة\n\n🔍 **الكلمات المكتشفة:** {', '.join(found_words[:3])}"
+                        
+                        try:
+                            await message.bot.send_message(
+                                chat_id=message.chat.id,
+                                text=warning_text,
+                                parse_mode='Markdown'
+                            )
+                        except Exception as warn_error:
+                            logging.error(f"❌ خطأ في إرسال التحذير: {warn_error}")
+                        
+                        return  # توقف عن معالجة الرسالة
+            except Exception as filter_error:
+                logging.error(f"خطأ في فلتر الألفاظ: {filter_error}")
+        
         # أولاً: فحص أوامر الإصمات الخاصة بالسيد الأعلى
         from modules.supreme_silence_commands import handle_silence_command, handle_unsilence_command, handle_silenced_list_command
         
@@ -3051,6 +3087,42 @@ async def handle_location_messages(message: Message):
 async def handle_ai_comprehensive_response(message: Message):
     """المعالج الذكي الشامل للرسائل - يدمج جميع أنظمة الذكاء الاصطناعي"""
     try:
+        # فحص فلتر الألفاظ المسيئة قبل كل شيء
+        if message.text and message.chat.type in ['group', 'supergroup']:
+            try:
+                from modules.profanity_filter import ProfanityFilter
+                profanity_filter = ProfanityFilter()
+                
+                # التحقق من تفعيل الفلتر في هذه المجموعة
+                if profanity_filter.is_enabled(message.chat.id):
+                    # فحص النص للألفاظ المسيئة
+                    has_profanity, found_words = profanity_filter.contains_profanity(message.text)
+                    
+                    if has_profanity:
+                        # حذف الرسالة فوراً
+                        try:
+                            await message.delete()
+                            logging.info(f"🗑️ تم حذف رسالة مسيئة من المعالج الشامل للمستخدم {message.from_user.id}: '{message.text}'")
+                        except Exception as delete_error:
+                            logging.error(f"❌ خطأ في حذف الرسالة: {delete_error}")
+                        
+                        # إرسال تحذير للمستخدم
+                        user_name = message.from_user.first_name or "المستخدم"
+                        warning_text = f"⚠️ **تحذير!**\n\n👤 {user_name}\n🚫 تم حذف رسالتك لاحتوائها على ألفاظ مسيئة\n\n🔍 **الكلمات المكتشفة:** {', '.join(found_words[:3])}"
+                        
+                        try:
+                            await message.bot.send_message(
+                                chat_id=message.chat.id,
+                                text=warning_text,
+                                parse_mode='Markdown'
+                            )
+                        except Exception as warn_error:
+                            logging.error(f"❌ خطأ في إرسال التحذير: {warn_error}")
+                        
+                        return  # توقف عن معالجة الرسالة
+            except Exception as filter_error:
+                logging.error(f"خطأ في فلتر الألفاظ: {filter_error}")
+        
         # استثناء أوامر نظام التقرير الملكي
         if message.text in ["تقرير", "إبلاغ", "تقارير", "تقاريري", "تقاريري الخاصة", "تقارير المستخدم", "إحصائيات_التقارير"]:
             return  # تمرير للمعالج المخصص
