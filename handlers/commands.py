@@ -75,16 +75,6 @@ async def start_command(message: Message, state: FSMContext):
         await message.reply(SYSTEM_MESSAGES["error"])
 
 
-@router.message(Command("register", "تسجيل"))
-async def register_command(message: Message):
-    """أمر التسجيل الجديد /register أو /تسجيل"""
-    try:
-        from modules.manual_registration import send_registration_required_message
-        await send_registration_required_message(message)
-    except Exception as e:
-        logging.error(f"خطأ في أمر التسجيل: {e}")
-        await message.reply("❌ حدث خطأ في نظام التسجيل")
-
 
 @router.message(Command("help"))
 @registration_required

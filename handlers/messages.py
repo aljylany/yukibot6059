@@ -64,47 +64,39 @@ async def handle_whisper_text_input(message: Message, state: FSMContext):
         await state.clear()
 
 
-# معالج خاص لإنشاء الحساب البنكي بدون فحص التسجيل
+# معالج إنشاء الحساب البنكي المطور - نظام التسجيل اليدوي الجديد
 @router.message(F.text.contains("انشاء حساب بنكي") | F.text.contains("إنشاء حساب بنكي") | F.text.contains("انشئ حساب"))
 async def handle_bank_creation_only(message: Message, state: FSMContext):
-    """معالج خاص لإنشاء الحساب البنكي للمستخدمين الجدد"""
+    """معالج إنشاء الحساب البنكي المطور مع النظام اليدوي الجديد"""
     try:
         # التحقق من أن الرسالة في مجموعة وليس في الخاص
         if message.chat.type == 'private':
             await message.reply("🚫 **هذا الأمر متاح في المجموعات فقط!**\n\n➕ أضف البوت لمجموعتك وابدأ اللعب مباشرة")
             return
-            
-        from modules.manual_registration import handle_bank_account_creation
-        await handle_bank_account_creation(message, state)
+        
+        # فحص إذا كان المستخدم مسجلاً بالفعل
+        from modules.manual_registration import is_user_registered
+        user_id = message.from_user.id
+        
+        if await is_user_registered(user_id):
+            await message.reply(
+                "✅ **لديك حساب مسجل بالفعل!**\n\n"
+                "💡 يمكنك استخدام جميع ميزات البوت مباشرة\n"
+                "🎮 جرب: رصيد، راتب، استثمار، اسهم"
+            )
+            return
+        
+        # بدء عملية التسجيل اليدوي الجديدة
+        from modules.manual_registration import send_registration_required_message
+        await send_registration_required_message(message)
         
     except Exception as e:
         logging.error(f"خطأ في معالج إنشاء الحساب البنكي: {e}")
         await message.reply("❌ حدث خطأ أثناء إنشاء الحساب البنكي")
 
 
-# معالج خاص لاختيار البنك أثناء التسجيل بدون فحص user_required
-@router.message(F.text.in_({"الأهلي", "الراجحي", "سامبا", "الرياض"}))
-async def handle_bank_selection_state(message: Message, state: FSMContext):
-    """معالج خاص لاختيار البنك أثناء عملية التسجيل"""
-    try:
-        current_state = await state.get_state()
-        
-        # التحقق من أن المستخدم في حالة اختيار البنك فقط
-        if current_state == BanksStates.waiting_bank_selection.state:
-            # التحقق من أن الرسالة في مجموعة وليس في الخاص
-            if message.chat.type == 'private':
-                await message.reply("🚫 **هذا الأمر متاح في المجموعات فقط!**")
-                return
-                
-            from modules.manual_registration import handle_bank_selection
-            await handle_bank_selection(message, state)
-        else:
-            # إذا لم يكن في حالة اختيار البنك، اتركه يمر للمعالج العادي
-            return
-        
-    except Exception as e:
-        logging.error(f"خطأ في معالج اختيار البنك: {e}")
-        await message.reply("❌ حدث خطأ أثناء اختيار البنك")
+# سيتم التعامل مع اختيار البنك عبر نظام التسجيل الجديد باستخدام callback buttons
+# لا حاجة لمعالج نص منفصل للبنوك
 
 
 # معالج خاص للنداء على الشيخ
