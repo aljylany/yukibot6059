@@ -9,7 +9,6 @@ from aiogram.types import Message
 from utils.decorators import group_only
 from modules.media_analyzer import media_analyzer
 from modules.content_moderation import ContentModerator
-from modules.profanity_filter import profanity_filter
 
 router = Router()
 
@@ -48,13 +47,37 @@ class UnifiedMessageProcessor:
                 
                 logging.info(f"📝 رسالة {content_type} من {user_name} (ID: {message.from_user.id})")
                 
-                # أولاً: فحص فلتر الألفاظ المسيئة للرسائل النصية
+                # فحص فلتر الألفاظ المسيئة للرسائل النصية
                 if message.text or message.caption:
                     try:
-                        bot = message.bot
-                        if await profanity_filter.process_message(message, bot):
-                            # تم التعامل مع الرسالة من قبل فلتر الألفاظ
-                            return True
+                        # إنشاء مثيل من فلتر الألفاظ
+                        from modules.profanity_filter import ProfanityFilter
+                        profanity_filter = ProfanityFilter()
+                        
+                        # التحقق من تفعيل الفلتر في هذه المجموعة
+                        if profanity_filter.is_enabled(message.chat.id):
+                            # فحص النص للألفاظ المسيئة
+                            text_to_check = message.text or message.caption
+                            has_profanity, found_words = profanity_filter.contains_profanity(text_to_check)
+                            
+                            if has_profanity:
+                                # حذف الرسالة
+                                try:
+                                    await message.delete()
+                                    logging.info(f"🗑️ تم حذف رسالة مسيئة من المستخدم {message.from_user.id}")
+                                except Exception as delete_error:
+                                    logging.error(f"❌ خطأ في حذف الرسالة: {delete_error}")
+                                
+                                # إرسال تحذير للمستخدم
+                                user_name = message.from_user.first_name or "المستخدم"
+                                warning_text = f"⚠️ **تحذير!**\n\n👤 {user_name}\n🚫 تم حذف رسالتك لاحتوائها على ألفاظ غير مناسبة\n\n🔍 **الكلمات المكتشفة:** {', '.join(found_words)}"
+                                
+                                try:
+                                    await message.answer(warning_text)
+                                except Exception as warn_error:
+                                    logging.error(f"❌ خطأ في إرسال التحذير: {warn_error}")
+                                
+                                return True  # تم التعامل مع الرسالة
                     except Exception as filter_error:
                         logging.error(f"خطأ في فلتر الألفاظ المسيئة: {filter_error}")
                 
