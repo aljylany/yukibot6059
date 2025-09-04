@@ -382,9 +382,33 @@ class ProfanityFilter:
             user_id = message.from_user.id
             chat_id = message.chat.id
             
-            # تجاهل رسائل المديرين
+            # فحص وجود ألفاظ مسيئة أولاً
+            has_profanity, found_words = self.contains_profanity(text)
+            
+            # تجاهل رسائل المديرين ولكن أرسل رسالة تنبيهية
             user_level = get_user_admin_level(user_id, chat_id)
             if user_level.value >= AdminLevel.MODERATOR.value:
+                if has_profanity:
+                    # للمشرفين: رسالة تنبيهية فقط بدون عقوبة
+                    user_name = message.from_user.first_name or "المشرف"
+                    warning_msg = (
+                        f"⚠️ **تنبيه للمشرف {user_name}**\n\n"
+                        f"🔍 تم اكتشاف ألفاظ غير مناسبة: **{', '.join(found_words[:3])}**\n\n"
+                        f"💡 **كمشرف، أنت محمي من العقوبات**\n"
+                        f"🎯 لكن يُنصح بتجنب هذه الألفاظ لتكون قدوة للأعضاء\n\n"
+                        f"✨ **شكراً لك على قيادة المجموعة بشكل إيجابي!**"
+                    )
+                    
+                    try:
+                        await message.reply(warning_msg, parse_mode="Markdown")
+                        logging.info(f"⚠️ تم إرسال تنبيه للمشرف {user_id} بخصوص الألفاظ المسيئة")
+                    except Exception as e:
+                        logging.error(f"❌ خطأ في إرسال رسالة التنبيه للمشرف: {e}")
+                
+                return False  # لا نحذف رسالة المشرف أو نعاقبه
+            
+            # للأعضاء العاديين - تطبيق الفلتر العادي
+            if not has_profanity:
                 return False
             
             # منع المعالجة المتكررة
@@ -401,9 +425,7 @@ class ProfanityFilter:
                     # المستخدم ما زال تحت العقوبة، لا نفعل شيء
                     return False
                 
-                # فحص وجود ألفاظ مسيئة
-                has_profanity, found_words = self.contains_profanity(text)
-                
+                # الألفاظ المسيئة تم فحصها مسبقاً
                 if has_profanity:
                     # حذف الرسالة
                     try:
