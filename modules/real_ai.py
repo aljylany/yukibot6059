@@ -899,32 +899,26 @@ async def handle_real_yuki_ai_message(message: Message):
         if not found_trigger:
             user_message = text.strip()
         
-        # فحص سياق الرد على الرسالة
+        # فحص سياق الرد على الرسالة (محسن للسرعة)
         reply_context = ""
-        if message.reply_to_message:
+        if message.reply_to_message and message.reply_to_message.from_user:
             try:
                 replied_msg = message.reply_to_message
-                if replied_msg.from_user:
-                    replied_user_name = replied_msg.from_user.first_name or "شخص"
+                replied_user_name = replied_msg.from_user.first_name or "شخص"
+                
+                if replied_msg.text:
+                    replied_text = replied_msg.text
+                    if len(replied_text) > 100:  # تقليل الحد الأقصى لتحسين السرعة
+                        replied_text = replied_text[:100] + "..."
                     
-                    if replied_msg.text:
-                        replied_text = replied_msg.text
-                        if len(replied_text) > 150:
-                            replied_text = replied_text[:150] + "..."
-                        
-                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على رسالة من {replied_user_name} كانت تقول: \"{replied_text}\""
-                        
-                        # إذا كان النص يحتوي على "سؤالي نفس سؤاله" أو مشابه
-                        if any(phrase in user_message.lower() for phrase in ['سؤالي نفس سؤاله', 'نفس سؤاله', 'سؤال نفسه', 'سؤالي مثل سؤاله']):
-                            # استبدال النص بالسؤال الأصلي
-                            user_message = replied_text
-                            reply_context += f"\n🔄 المستخدم {user_name} يسأل نفس السؤال الذي سأله {replied_user_name}"
-                    elif replied_msg.photo:
-                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على صورة من {replied_user_name}"
-                    elif replied_msg.voice:
-                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على رسالة صوتية من {replied_user_name}"
+                    # فحص سريع للعبارات المختصرة فقط
+                    if any(phrase in user_message.lower() for phrase in ['نفس سؤاله', 'سؤالي نفس', 'سؤال نفسه']):
+                        user_message = replied_text
+                        reply_context = f"\n🔄 {user_name} يسأل نفس سؤال {replied_user_name}"
                     else:
-                        reply_context = f"\n\n📨 المستخدم {user_name} يرد على رسالة من {replied_user_name}"
+                        reply_context = f"\n📨 رد على: {replied_user_name}"
+                else:
+                    reply_context = f"\n📨 رد على: {replied_user_name}"
             except Exception as e:
                 logging.error(f"خطأ في معالجة سياق الرد: {e}")
         

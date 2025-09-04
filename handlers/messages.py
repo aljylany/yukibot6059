@@ -2636,10 +2636,29 @@ async def handle_general_message(message: Message, state: FSMContext):
             logging.error(f"خطأ في معالجة تخمينات الألعاب: {e}")
     
     # === فحص الذكاء الاصطناعي في النهاية (بعد جميع الأوامر المطلقة والمهمة) ===
-    if (message.text and 
-        any(trigger in message.text.lower() for trigger in ['يوكي', 'yuki', 'يوكى']) and
-        message.chat.type in ['group', 'supergroup']):
-        logging.info(f"🎯 تم اكتشاف رسالة يوكي: '{message.text}' - توجيه للنظام المتقدم")
+    
+    # فحص إذا كان يرد على رسالة من يوكي بدون ذكر اسمه
+    is_reply_to_yuki = False
+    if (message.reply_to_message and 
+        message.reply_to_message.from_user and 
+        message.reply_to_message.from_user.is_bot and
+        message.reply_to_message.from_user.id == 7942168520):  # معرف بوت يوكي
+        is_reply_to_yuki = True
+        logging.info(f"🔄 رد على رسالة يوكي: '{message.text}' من المستخدم {message.from_user.id}")
+    
+    # فحص ذكر اسم يوكي في النص
+    has_yuki_mention = (message.text and 
+                       any(trigger in message.text.lower() for trigger in ['يوكي', 'yuki', 'يوكى']))
+    
+    # تشغيل النظام الذكي إذا ذُكر يوكي أو إذا كان رداً على رسالة يوكي
+    if (message.text and message.chat.type in ['group', 'supergroup'] and
+        (has_yuki_mention or is_reply_to_yuki)):
+        
+        if has_yuki_mention:
+            logging.info(f"🎯 تم اكتشاف رسالة يوكي: '{message.text}' - توجيه للنظام المتقدم")
+        elif is_reply_to_yuki:
+            logging.info(f"💬 رد على رسالة يوكي: '{message.text}' - توجيه للنظام المتقدم")
+            
         try:
             from modules.real_ai import handle_real_yuki_ai_message
             await handle_real_yuki_ai_message(message)
