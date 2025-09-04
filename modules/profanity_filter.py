@@ -530,13 +530,28 @@ class ProfanityFilter:
             warnings_count = 0
             
             if users_with_warnings:
-                users_count = users_with_warnings[0] if isinstance(users_with_warnings, tuple) else users_with_warnings
+                if isinstance(users_with_warnings, tuple):
+                    users_count = users_with_warnings[0]
+                elif isinstance(users_with_warnings, dict):
+                    users_count = list(users_with_warnings.values())[0] if users_with_warnings else 0
+                else:
+                    users_count = users_with_warnings
                 
             if punished_users:
-                punished_count = punished_users[0] if isinstance(punished_users, tuple) else punished_users
+                if isinstance(punished_users, tuple):
+                    punished_count = punished_users[0]
+                elif isinstance(punished_users, dict):
+                    punished_count = list(punished_users.values())[0] if punished_users else 0
+                else:
+                    punished_count = punished_users
                 
             if total_warnings:
-                warnings_count = total_warnings[0] if isinstance(total_warnings, tuple) else total_warnings
+                if isinstance(total_warnings, tuple):
+                    warnings_count = total_warnings[0]
+                elif isinstance(total_warnings, dict):
+                    warnings_count = list(total_warnings.values())[0] if total_warnings else 0
+                else:
+                    warnings_count = total_warnings
                 warnings_count = warnings_count if warnings_count is not None else 0
             
             return {

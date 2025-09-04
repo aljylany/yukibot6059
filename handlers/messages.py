@@ -162,13 +162,18 @@ async def handle_text_messages(message: Message, state: FSMContext):
         # فحص فلتر الألفاظ المسيئة أولاً
         if message.text and message.chat.type in ['group', 'supergroup']:
             try:
-                from modules.profanity_filter import ProfanityFilter
-                profanity_filter = ProfanityFilter()
+                from modules.profanity_filter import profanity_filter
+                
+                logging.info(f"🔍 FILTER DEBUG: بدء فحص رسالة '{message.text}' في المجموعة {message.chat.id}")
                 
                 # التحقق من تفعيل الفلتر في هذه المجموعة
-                if profanity_filter.is_enabled(message.chat.id):
+                is_enabled = profanity_filter.is_enabled(message.chat.id)
+                logging.info(f"🔍 FILTER DEBUG: حالة الفلتر في المجموعة {message.chat.id}: {is_enabled}")
+                
+                if is_enabled:
                     # فحص النص للألفاظ المسيئة
                     has_profanity, found_words = profanity_filter.contains_profanity(message.text)
+                    logging.info(f"🔍 FILTER DEBUG: نتيجة الفحص: {has_profanity}, كلمات مكتشفة: {found_words}")
                     
                     if has_profanity:
                         # حذف الرسالة فوراً
@@ -192,6 +197,8 @@ async def handle_text_messages(message: Message, state: FSMContext):
                             logging.error(f"❌ خطأ في إرسال التحذير: {warn_error}")
                         
                         return  # توقف عن معالجة الرسالة
+                else:
+                    logging.info(f"🔍 FILTER DEBUG: الفلتر غير مفعل في هذه المجموعة")
             except Exception as filter_error:
                 logging.error(f"خطأ في فلتر الألفاظ: {filter_error}")
         
