@@ -61,8 +61,48 @@ def group_only(func: Callable) -> Callable:
     return wrapper
 
 
+def registration_required(func: Callable) -> Callable:
+    """ديكوريتر للتحقق من تسجيل المستخدم الكامل قبل الوصول للميزات"""
+    @wraps(func)
+    async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
+        try:
+            # تحديد نوع الكائن
+            if isinstance(message_or_query, CallbackQuery):
+                user_id = message_or_query.from_user.id
+                message = message_or_query.message
+                await message_or_query.answer()
+            else:
+                user_id = message_or_query.from_user.id
+                message = message_or_query
+            
+            # فحص التسجيل
+            from database.operations import require_user_registration
+            is_registered = await require_user_registration(user_id)
+            
+            if not is_registered:
+                from modules.manual_registration import send_registration_required_message
+                await send_registration_required_message(message)
+                return
+            
+            # تنفيذ الوظيفة الأصلية
+            return await func(message_or_query, *args, **kwargs)
+            
+        except Exception as e:
+            logging.error(f"خطأ في ديكوريتر registration_required: {e}")
+            try:
+                system_messages = get_system_messages()
+                if isinstance(message_or_query, CallbackQuery):
+                    await message_or_query.message.reply(system_messages["error"])
+                else:
+                    await message_or_query.reply(system_messages["error"])
+            except:
+                pass
+    
+    return wrapper
+
+
 def user_required(func: Callable) -> Callable:
-    """ديكوريتر للتأكد من تسجيل المستخدم"""
+    """ديكوريتر للتأكد من تسجيل المستخدم (النسخة القديمة - متوافقة مع النظام الحالي)"""
     @wraps(func)
     async def wrapper(message_or_query: Union[Message, CallbackQuery], *args, **kwargs):
         try:

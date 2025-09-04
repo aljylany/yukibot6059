@@ -1,130 +1,441 @@
 """
-تسجيل يدوي للمستخدمين في النظام المصرفي
-Manual User Registration System
+نظام التسجيل اليدوي المطور
+Enhanced Manual Registration System
 """
 
 import logging
-from aiogram.types import Message
+from datetime import datetime
+from typing import Optional, Dict, Any
+from aiogram import Router, F
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from database.operations import get_user, create_user, update_user_activity
-from modules.banks import start_bank_selection, BANK_TYPES
-from utils.states import BanksStates
+from aiogram.fsm.state import State, StatesGroup
+
+from database.operations import execute_query
 from utils.helpers import format_number
 
-async def handle_bank_account_creation(message: Message, state: FSMContext):
-    """معالج إنشاء الحساب البنكي"""
+# إعداد التوجيه
+router = Router()
+
+# حالات FSM للتسجيل
+class RegistrationStates(StatesGroup):
+    waiting_for_name = State()
+    choosing_gender = State()
+    choosing_country = State()
+    choosing_bank = State()
+    confirming_registration = State()
+
+# قائمة البلدان العربية
+ARAB_COUNTRIES = {
+    "🇸🇦": "السعودية",
+    "🇦🇪": "الإمارات",
+    "🇪🇬": "مصر",
+    "🇯🇴": "الأردن",
+    "🇰🇼": "الكويت",
+    "🇶🇦": "قطر",
+    "🇧🇭": "البحرين",
+    "🇴🇲": "عمان",
+    "🇱🇧": "لبنان",
+    "🇸🇾": "سوريا",
+    "🇮🇶": "العراق",
+    "🇾🇪": "اليمن",
+    "🇱🇾": "ليبيا",
+    "🇹🇳": "تونس",
+    "🇩🇿": "الجزائر",
+    "🇲🇦": "المغرب",
+    "🇸🇩": "السودان",
+    "🇸🇴": "الصومال",
+    "🇩🇯": "جيبوتي",
+    "🇰🇲": "جزر القمر",
+    "🇲🇷": "موريتانيا",
+    "🇵🇸": "فلسطين"
+}
+
+# خيارات الجنس
+GENDER_OPTIONS = {
+    "male": {"emoji": "👨", "text": "ذكر"},
+    "female": {"emoji": "👩", "text": "أنثى"}
+}
+
+# أنواع البنوك مع مزاياها
+BANK_TYPES = {
+    "الأهلي": {
+        "name": "البنك الأهلي",
+        "emoji": "🏛️",
+        "initial_bonus": 2000,
+        "daily_salary": (100, 200),
+        "interest_rate": 0.03,
+        "description": "بنك تقليدي بمكافآت عالية"
+    },
+    "الراجحي": {
+        "name": "مصرف الراجحي", 
+        "emoji": "🏦",
+        "initial_bonus": 1500,
+        "daily_salary": (150, 250),
+        "interest_rate": 0.025,
+        "description": "مصرف إسلامي بأرباح ثابتة"
+    },
+    "سامبا": {
+        "name": "بنك سامبا",
+        "emoji": "💳",
+        "initial_bonus": 1800,
+        "daily_salary": (120, 180),
+        "interest_rate": 0.035,
+        "description": "بنك حديث بفوائد مرتفعة"
+    },
+    "الرياض": {
+        "name": "بنك الرياض",
+        "emoji": "🏢",
+        "initial_bonus": 1600,
+        "daily_salary": (130, 200),
+        "interest_rate": 0.028,
+        "description": "بنك متوازن للجميع"
+    }
+}
+
+
+async def is_user_registered(user_id: int) -> bool:
+    """التحقق من تسجيل المستخدم"""
     try:
-        if not message.from_user:
-            return
-            
-        user_id = message.from_user.id
-        username = message.from_user.username or ""
-        first_name = message.from_user.first_name or "مستخدم"
+        result = await execute_query(
+            "SELECT is_registered FROM users WHERE user_id = ?",
+            (user_id,),
+            fetch_one=True
+        )
+        return result.get('is_registered', False) if result else False
+    except Exception as e:
+        logging.error(f"خطأ في فحص تسجيل المستخدم {user_id}: {e}")
+        return False
+
+
+async def create_unregistered_user(user_id: int, username: str = "", first_name: str = "") -> bool:
+    """إنشاء مستخدم غير مسجل (للتتبع الأساسي فقط)"""
+    try:
+        await execute_query(
+            """
+            INSERT OR IGNORE INTO users (user_id, username, first_name, is_registered, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, username or "", first_name or "", False, 
+             datetime.now().isoformat(), datetime.now().isoformat())
+        )
+        return True
+    except Exception as e:
+        logging.error(f"خطأ في إنشاء المستخدم غير المسجل {user_id}: {e}")
+        return False
+
+
+async def complete_user_registration(user_id: int, full_name: str, gender: str, 
+                                   country: str, bank_type: str) -> bool:
+    """إكمال تسجيل المستخدم"""
+    try:
+        bank_info = BANK_TYPES[bank_type]
         
-        # التحقق من وجود حساب مسبقاً
-        existing_user = await get_user(user_id)
-        if existing_user:
-            await message.reply(
-                f"✅ **لديك حساب بنكي بالفعل!**\n\n"
-                f"🏦 البنك: {existing_user.get('bank_name', 'غير محدد')}\n"
-                f"💰 الرصيد: {format_number(existing_user['balance'])}$\n"
-                f"🏛️ رصيد البنك: {format_number(existing_user['bank_balance'])}$\n\n"
-                f"💡 يمكنك البدء في اللعب مباشرة!"
-            )
-            return
+        await execute_query(
+            """
+            UPDATE users SET 
+                first_name = ?, gender = ?, country = ?, bank_type = ?,
+                is_registered = ?, balance = ?, bank_balance = ?,
+                updated_at = ?
+            WHERE user_id = ?
+            """,
+            (full_name, gender, country, bank_type, True, 
+             bank_info['initial_bonus'], 0, 
+             datetime.now().isoformat(), user_id)
+        )
         
-        # بدء عملية اختيار البنك
-        await start_bank_selection(message)
-        await state.set_state(BanksStates.waiting_bank_selection)
+        # إضافة معاملة المكافأة
+        from database.operations import add_transaction
+        await add_transaction(
+            user_id=user_id,
+            transaction_type="registration_bonus", 
+            amount=bank_info['initial_bonus'],
+            description=f"مكافأة التسجيل - {bank_info['name']}"
+        )
+        
+        logging.info(f"تم إكمال تسجيل المستخدم: {user_id} - {full_name}")
+        return True
         
     except Exception as e:
-        logging.error(f"خطأ في handle_bank_account_creation: {e}")
-        await message.reply("❌ حدث خطأ أثناء إنشاء الحساب البنكي")
+        logging.error(f"خطأ في إكمال تسجيل المستخدم {user_id}: {e}")
+        return False
 
-async def handle_bank_selection(message: Message, state: FSMContext):
-    """معالج اختيار البنك"""
+
+def create_registration_keyboard() -> InlineKeyboardMarkup:
+    """إنشاء لوحة مفاتيح التسجيل"""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 سجل حساب جديد", callback_data="start_registration")]
+    ])
+
+
+def create_gender_keyboard() -> InlineKeyboardMarkup:
+    """إنشاء لوحة مفاتيح اختيار الجنس"""
+    buttons = []
+    for key, gender in GENDER_OPTIONS.items():
+        buttons.append([InlineKeyboardButton(
+            text=f"{gender['emoji']} {gender['text']}", 
+            callback_data=f"gender_{key}"
+        )])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def create_country_keyboard() -> InlineKeyboardMarkup:
+    """إنشاء لوحة مفاتيح اختيار البلد"""
+    buttons = []
+    row = []
+    for flag, country in ARAB_COUNTRIES.items():
+        row.append(InlineKeyboardButton(
+            text=f"{flag} {country}", 
+            callback_data=f"country_{country}"
+        ))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def create_bank_keyboard() -> InlineKeyboardMarkup:
+    """إنشاء لوحة مفاتيح اختيار البنك"""
+    buttons = []
+    for bank_key, bank_info in BANK_TYPES.items():
+        buttons.append([InlineKeyboardButton(
+            text=f"{bank_info['emoji']} {bank_info['name']}", 
+            callback_data=f"bank_{bank_key}"
+        )])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+async def send_registration_required_message(message: Message):
+    """إرسال رسالة تطلب التسجيل"""
+    welcome_text = """
+🔒 **مرحباً بك في بوت يوكي المطور!**
+
+🚨 **للوصول لميزات البوت، يجب تسجيل حساب أولاً**
+
+📋 **ما ستحتاج لتقديمه:**
+• 📝 الاسم الكامل
+• 👤 الجنس (ذكر/أنثى)
+• 🌍 البلد
+• 🏦 البنك المفضل
+
+💰 **مزايا التسجيل:**
+• مكافأة ترحيب تصل إلى 2000$
+• راتب يومي من 100-250$
+• إمكانية الوصول لجميع الألعاب
+• نظام مصرفي متكامل
+• إحصائيات شخصية مفصلة
+
+🎯 **اضغط الزر أدناه لبدء التسجيل:**
+    """
+    
+    await message.reply(welcome_text, reply_markup=create_registration_keyboard())
+
+
+@router.callback_query(F.data == "start_registration")
+async def start_registration_process(callback: CallbackQuery, state: FSMContext):
+    """بدء عملية التسجيل"""
     try:
-        if not message.text or not message.from_user:
-            return
-            
-        text = message.text.strip()
-        user_id = message.from_user.id
-        username = message.from_user.username or ""
-        first_name = message.from_user.first_name or "مستخدم"
+        await callback.answer("🚀 بدء التسجيل...")
         
-        # فحص اختيار البنك
-        selected_bank = None
-        for key, bank in BANK_TYPES.items():
-            if text == key or text == bank['name']:
-                selected_bank = key
+        await callback.message.edit_text(
+            "📝 **خطوة 1/4: الاسم الكامل**\n\n"
+            "🔤 **اكتب اسمك الكامل:**\n"
+            "• يفضل الاسم الحقيقي\n"
+            "• سيظهر في ملفك الشخصي\n"
+            "• يمكن تغييره لاحقاً\n\n"
+            "✍️ اكتب اسمك الآن:"
+        )
+        
+        await state.set_state(RegistrationStates.waiting_for_name)
+        
+    except Exception as e:
+        logging.error(f"خطأ في بدء التسجيل: {e}")
+
+
+@router.message(RegistrationStates.waiting_for_name)
+async def handle_name_input(message: Message, state: FSMContext):
+    """معالجة إدخال الاسم"""
+    try:
+        if not message.text or len(message.text.strip()) < 2:
+            await message.reply("❌ يرجى إدخال اسم صحيح (أكثر من حرفين)")
+            return
+        
+        full_name = message.text.strip()
+        await state.update_data(full_name=full_name)
+        
+        await message.reply(
+            f"✅ **تم حفظ الاسم:** {full_name}\n\n"
+            "👤 **خطوة 2/4: الجنس**\n\n"
+            "🔽 اختر جنسك من الأزرار أدناه:",
+            reply_markup=create_gender_keyboard()
+        )
+        
+        await state.set_state(RegistrationStates.choosing_gender)
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالجة الاسم: {e}")
+
+
+@router.callback_query(F.data.startswith("gender_"))
+async def handle_gender_selection(callback: CallbackQuery, state: FSMContext):
+    """معالجة اختيار الجنس"""
+    try:
+        gender_key = callback.data.split("_")[1]
+        gender_info = GENDER_OPTIONS[gender_key]
+        
+        await state.update_data(gender=gender_key)
+        await callback.answer(f"تم اختيار: {gender_info['text']}")
+        
+        await callback.message.edit_text(
+            f"✅ **تم اختيار الجنس:** {gender_info['emoji']} {gender_info['text']}\n\n"
+            "🌍 **خطوة 3/4: البلد**\n\n"
+            "🔽 اختر بلدك من القائمة أدناه:",
+            reply_markup=create_country_keyboard()
+        )
+        
+        await state.set_state(RegistrationStates.choosing_country)
+        
+    except Exception as e:
+        logging.error(f"خطأ في اختيار الجنس: {e}")
+
+
+@router.callback_query(F.data.startswith("country_"))
+async def handle_country_selection(callback: CallbackQuery, state: FSMContext):
+    """معالجة اختيار البلد"""
+    try:
+        country = callback.data.split("_", 1)[1]
+        await state.update_data(country=country)
+        
+        # العثور على علم البلد
+        country_flag = "🌍"
+        for flag, name in ARAB_COUNTRIES.items():
+            if name == country:
+                country_flag = flag
                 break
         
-        if not selected_bank:
-            await message.reply(
-                "❌ **اختيار غير صحيح!**\n\n"
-                "💡 اختر أحد البنوك التالية:\n"
-                "• الأهلي\n• الراجحي\n• سامبا\n• الرياض\n\n"
-                "اكتب اسم البنك كما هو موضح أعلاه"
-            )
-            return
+        await callback.answer(f"تم اختيار: {country}")
         
-        bank_info = BANK_TYPES[selected_bank]
+        # إنشاء نص معلومات البنوك
+        banks_info = "🏦 **معلومات البنوك المتاحة:**\n\n"
+        for bank_key, bank_info in BANK_TYPES.items():
+            banks_info += f"{bank_info['emoji']} **{bank_info['name']}**\n"
+            banks_info += f"• مكافأة التسجيل: {format_number(bank_info['initial_bonus'])}$\n"
+            banks_info += f"• الراتب اليومي: {bank_info['daily_salary'][0]}-{bank_info['daily_salary'][1]}$\n"
+            banks_info += f"• معدل الفائدة: {bank_info['interest_rate']*100:.1f}%\n"
+            banks_info += f"• الوصف: {bank_info['description']}\n\n"
         
-        # إنشاء المستخدم مع البنك المختار
-        success = await create_user_with_bank(user_id, username, first_name, selected_bank)
+        await callback.message.edit_text(
+            f"✅ **تم اختيار البلد:** {country_flag} {country}\n\n"
+            "🏦 **خطوة 4/4: اختيار البنك**\n\n"
+            f"{banks_info}"
+            "🔽 اختر البنك المفضل لك:",
+            reply_markup=create_bank_keyboard()
+        )
         
-        if success:
-            await message.reply(
-                f"🎉 **تم إنشاء حسابك البنكي بنجاح!**\n\n"
-                f"{bank_info['emoji']} **{bank_info['name']}**\n"
-                f"💰 مكافأة التسجيل: {format_number(bank_info['initial_bonus'])}$\n"
-                f"💼 راتبك اليومي: {bank_info['daily_salary'][0]}-{bank_info['daily_salary'][1]}$\n"
-                f"📈 معدل الفائدة: {bank_info['interest_rate']*100:.1f}%\n\n"
-                f"✅ **أصبح بإمكانك الآن:**\n"
-                f"• جمع راتبك اليومي بكتابة 'راتب'\n"
-                f"• عرض رصيدك بكتابة 'رصيد'\n"
-                f"• تحويل الأموال والاستثمار\n"
-                f"• اللعب مع الأصدقاء\n\n"
-                f"🎮 **مرحباً بك في عالم الألعاب الاقتصادية!**"
-            )
-            
-            # إلغاء الحالة
-            await state.clear()
-        else:
-            await message.reply("❌ حدث خطأ أثناء إنشاء الحساب، حاول مرة أخرى")
-            
+        await state.set_state(RegistrationStates.choosing_bank)
+        
     except Exception as e:
-        logging.error(f"خطأ في handle_bank_selection: {e}")
-        await message.reply("❌ حدث خطأ أثناء اختيار البنك")
+        logging.error(f"خطأ في اختيار البلد: {e}")
 
-async def create_user_with_bank(user_id: int, username: str, first_name: str, bank_key: str) -> bool:
-    """إنشاء مستخدم مع بنك محدد"""
+
+@router.callback_query(F.data.startswith("bank_"))
+async def handle_bank_selection(callback: CallbackQuery, state: FSMContext):
+    """معالجة اختيار البنك وإتمام التسجيل"""
     try:
-        import aiosqlite
-        from config.database import DATABASE_URL
-        from datetime import datetime
-        
+        bank_key = callback.data.split("_", 1)[1]
         bank_info = BANK_TYPES[bank_key]
         
-        async with aiosqlite.connect(DATABASE_URL) as db:
-            await db.execute(
-                """
-                INSERT INTO users (
-                    user_id, username, first_name, balance, bank_balance, 
-                    bank_name, bank_type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    user_id, username, first_name, 
-                    bank_info['initial_bonus'], 0, bank_info['name'], bank_key,
-                    datetime.now().isoformat(), datetime.now().isoformat()
+        # الحصول على بيانات التسجيل
+        data = await state.get_data()
+        full_name = data.get('full_name')
+        gender = data.get('gender')
+        country = data.get('country')
+        
+        await callback.answer(f"تم اختيار: {bank_info['name']}")
+        
+        # إتمام التسجيل في قاعدة البيانات
+        success = await complete_user_registration(
+            user_id=callback.from_user.id,
+            full_name=full_name,
+            gender=gender,
+            country=country,
+            bank_type=bank_key
+        )
+        
+        if success:
+            # العثور على علم البلد
+            country_flag = "🌍"
+            for flag, name in ARAB_COUNTRIES.items():
+                if name == country:
+                    country_flag = flag
+                    break
+            
+            gender_emoji = GENDER_OPTIONS[gender]['emoji']
+            gender_text = GENDER_OPTIONS[gender]['text']
+            
+            success_message = f"""
+🎉 **تم إنشاء حسابك بنجاح!**
+
+📋 **معلومات حسابك:**
+• 📝 الاسم: {full_name}
+• {gender_emoji} الجنس: {gender_text}
+• {country_flag} البلد: {country}
+• {bank_info['emoji']} البنك: {bank_info['name']}
+
+💰 **المكافآت المستلمة:**
+• 💵 مكافأة التسجيل: {format_number(bank_info['initial_bonus'])}$
+• 📈 راتب يومي: {bank_info['daily_salary'][0]}-{bank_info['daily_salary'][1]}$
+• 📊 معدل الفائدة: {bank_info['interest_rate']*100:.1f}%
+
+🎮 **يمكنك الآن:**
+• استخدام جميع ميزات البوت
+• اللعب مع الأصدقاء
+• تداول الأسهم والاستثمار
+• إدارة أموالك وحسابك المصرفي
+
+🚀 **مرحباً بك في عالم يوكي الاقتصادي!**
+
+💡 اكتب "رصيد" لعرض رصيدك الحالي
+            """
+            
+            await callback.message.edit_text(success_message)
+            
+            # إرسال إشعار للقناة الفرعية (إن وجدت)
+            try:
+                from modules.notification_manager import NotificationManager
+                notification_manager = NotificationManager(callback.bot)
+                await notification_manager.send_new_user_notification(
+                    user_id=callback.from_user.id,
+                    username=callback.from_user.username or "غير محدد",
+                    full_name=full_name,
+                    country=country,
+                    bank=bank_info['name']
                 )
+            except Exception as notif_error:
+                logging.warning(f"لم يتم إرسال إشعار المستخدم الجديد: {notif_error}")
+        else:
+            await callback.message.edit_text(
+                "❌ **حدث خطأ في إنشاء الحساب**\n\n"
+                "🔄 يرجى المحاولة مرة أخرى لاحقاً\n"
+                "أو التواصل مع الدعم الفني"
             )
-            await db.commit()
-            
-            logging.info(f"تم إنشاء مستخدم جديد: {user_id} - {username} - البنك: {bank_info['name']}")
-            return True
-            
+        
+        # مسح حالة التسجيل
+        await state.clear()
+        
     except Exception as e:
-        logging.error(f"خطأ في create_user_with_bank: {e}")
-        return False
+        logging.error(f"خطأ في اختيار البنك: {e}")
+        await callback.message.edit_text(
+            "❌ حدث خطأ في إتمام التسجيل. يرجى المحاولة مرة أخرى."
+        )
+
+
+# تصدير الوظائف المهمة
+__all__ = [
+    'router',
+    'is_user_registered', 
+    'create_unregistered_user',
+    'send_registration_required_message'
+]

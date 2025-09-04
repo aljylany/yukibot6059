@@ -69,6 +69,10 @@ async def main():
     # تسجيل معالجات الأحداث (بترتيب الأولوية)
     dp.include_router(commands.router)
     
+    # تسجيل نظام التسجيل اليدوي الجديد
+    from modules.manual_registration import router as registration_router
+    dp.include_router(registration_router)
+    
     # تسجيل معالج النقابة المتخصص قبل المعالج العام للأزرار
     from handlers.guild_handler import guild_router
     dp.include_router(guild_router)

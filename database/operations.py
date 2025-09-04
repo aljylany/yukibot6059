@@ -54,7 +54,7 @@ async def create_user(user_id: int, username: str = "", first_name: str = "") ->
 
 
 async def get_or_create_user(user_id: int, username: str = "", first_name: str = "") -> Optional[Dict[str, Any]]:
-    """الحصول على المستخدم أو إنشاؤه إذا لم يكن موجوداً"""
+    """الحصول على المستخدم أو إنشاؤه إذا لم يكن موجوداً (مطور للنظام الجديد)"""
     try:
         # محاولة الحصول على المستخدم
         user = await get_user(user_id)
@@ -64,8 +64,9 @@ async def get_or_create_user(user_id: int, username: str = "", first_name: str =
             await update_user_activity(user_id)
             return user
         
-        # إنشاء مستخدم جديد إذا لم يكن موجوداً
-        if await create_user(user_id, username or "", first_name or ""):
+        # إنشاء مستخدم غير مسجل للتتبع الأساسي فقط
+        from modules.manual_registration import create_unregistered_user
+        if await create_unregistered_user(user_id, username or "", first_name or ""):
             return await get_user(user_id)
         
         return None
@@ -73,6 +74,16 @@ async def get_or_create_user(user_id: int, username: str = "", first_name: str =
     except Exception as e:
         logging.error(f"خطأ في get_or_create_user: {e}")
         return None
+
+
+async def require_user_registration(user_id: int) -> bool:
+    """التحقق من تسجيل المستخدم قبل الوصول للميزات"""
+    try:
+        from modules.manual_registration import is_user_registered
+        return await is_user_registered(user_id)
+    except Exception as e:
+        logging.error(f"خطأ في فحص تسجيل المستخدم {user_id}: {e}")
+        return False
 
 
 async def update_user_activity(user_id: int) -> bool:

@@ -12,7 +12,7 @@ from datetime import datetime
 
 from database.operations import get_or_create_user, update_user_activity
 from modules import banks, real_estate, theft, stocks, investment, ranking, administration, farm, castle
-from utils.decorators import user_required, admin_required, group_only
+from utils.decorators import user_required, admin_required, group_only, registration_required
 from config.settings import SYSTEM_MESSAGES, ADMIN_IDS, NOTIFICATION_CHANNEL
 from handlers.advanced_admin_handler import handle_advanced_admin_commands
 from config.hierarchy import has_permission, AdminLevel
@@ -75,8 +75,19 @@ async def start_command(message: Message, state: FSMContext):
         await message.reply(SYSTEM_MESSAGES["error"])
 
 
+@router.message(Command("register", "تسجيل"))
+async def register_command(message: Message):
+    """أمر التسجيل الجديد /register أو /تسجيل"""
+    try:
+        from modules.manual_registration import send_registration_required_message
+        await send_registration_required_message(message)
+    except Exception as e:
+        logging.error(f"خطأ في أمر التسجيل: {e}")
+        await message.reply("❌ حدث خطأ في نظام التسجيل")
+
+
 @router.message(Command("help"))
-@user_required
+@registration_required
 async def help_command(message: Message):
     """أمر المساعدة /help"""
     try:
@@ -87,7 +98,7 @@ async def help_command(message: Message):
 
 
 @router.message(Command("balance"))
-@user_required
+@registration_required
 async def balance_command(message: Message):
     """عرض الرصيد /balance"""
     try:
@@ -98,7 +109,7 @@ async def balance_command(message: Message):
 
 
 @router.message(Command("daily"))
-@user_required
+@registration_required
 async def daily_command(message: Message):
     """المكافأة اليومية /daily"""
     try:
@@ -109,7 +120,7 @@ async def daily_command(message: Message):
 
 
 @router.message(Command("transfer"))
-@user_required
+@registration_required
 async def transfer_command(message: Message, state: FSMContext):
     """تحويل الأموال /transfer"""
     try:
@@ -120,7 +131,7 @@ async def transfer_command(message: Message, state: FSMContext):
 
 
 @router.message(Command("bank"))
-@user_required
+@registration_required
 async def bank_command(message: Message):
     """إدارة البنك /bank"""
     try:
