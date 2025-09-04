@@ -233,6 +233,35 @@ async def send_registration_required_message(message: Message):
     await message.reply(welcome_text, reply_markup=create_registration_keyboard())
 
 
+async def send_completion_required_message(message: Message, missing_data: list):
+    """إرسال رسالة تطلب إكمال البيانات الناقصة"""
+    completion_text = f"""
+🔄 **إكمال بيانات حسابك البنكي**
+
+📝 **البيانات الناقصة:** {', '.join(missing_data)}
+
+💡 **لماذا نحتاج هذه البيانات؟**
+• تخصيص تجربتك في البوت
+• إتاحة المميزات الكاملة 
+• أمان أفضل لحسابك
+• إحصائيات شخصية دقيقة
+
+✨ **المميزات بعد الإكمال:**
+• وصول كامل لجميع الألعاب
+• مكافآت إضافية حصرية
+• نظام ترقية محسن
+• تجربة شخصية مميزة
+
+🎯 **اضغط الزر أدناه لإكمال بياناتك:**
+    """
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 إكمال البيانات الناقصة", callback_data="complete_missing_data")]
+    ])
+    
+    await message.reply(completion_text, reply_markup=keyboard)
+
+
 @router.callback_query(F.data == "start_registration")
 async def start_registration_process(callback: CallbackQuery, state: FSMContext):
     """بدء عملية التسجيل"""
@@ -430,6 +459,65 @@ async def handle_bank_selection(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(
             "❌ حدث خطأ في إتمام التسجيل. يرجى المحاولة مرة أخرى."
         )
+
+
+@router.callback_query(F.data == "complete_missing_data")
+async def start_completion_process(callback: CallbackQuery, state: FSMContext):
+    """بدء عملية إكمال البيانات الناقصة"""
+    try:
+        await callback.answer("🔄 بدء إكمال البيانات...")
+        
+        # الحصول على بيانات المستخدم الحالية
+        from database.operations import get_user
+        user = await get_user(callback.from_user.id)
+        
+        if not user:
+            await callback.message.edit_text("❌ لم يتم العثور على حسابك!")
+            return
+        
+        # فحص البيانات الناقصة
+        full_name = user.get('first_name', '')
+        gender = user.get('gender', '')
+        country = user.get('country', '')
+        
+        # تحديد الخطوة الأولى المطلوبة
+        if not full_name or full_name.strip() == '':
+            # البدء بطلب الاسم
+            await callback.message.edit_text(
+                "📝 **إكمال البيانات - الاسم الكامل**\n\n"
+                "🔤 **اكتب اسمك الكامل:**\n"
+                "• يفضل الاسم الحقيقي\n"
+                "• سيظهر في ملفك الشخصي\n"
+                "• يمكن تغييره لاحقاً\n\n"
+                "✍️ اكتب اسمك الآن:"
+            )
+            await state.set_state(RegistrationStates.waiting_for_name)
+        elif not gender or gender.strip() == '':
+            # طلب الجنس
+            await callback.message.edit_text(
+                "👤 **إكمال البيانات - الجنس**\n\n"
+                "🔽 اختر جنسك من الأزرار أدناه:",
+                reply_markup=create_gender_keyboard()
+            )
+            await state.set_state(RegistrationStates.choosing_gender)
+        elif not country or country.strip() == '':
+            # طلب البلد
+            await callback.message.edit_text(
+                "🌍 **إكمال البيانات - البلد**\n\n"
+                "🔽 اختر بلدك من القائمة أدناه:",
+                reply_markup=create_country_keyboard()
+            )
+            await state.set_state(RegistrationStates.choosing_country)
+        else:
+            # جميع البيانات موجودة
+            await callback.message.edit_text(
+                "✅ **حسابك مكتمل بالفعل!**\n\n"
+                "جميع بياناتك موجودة ولا تحتاج لإكمال أي شيء"
+            )
+        
+    except Exception as e:
+        logging.error(f"خطأ في بدء إكمال البيانات: {e}")
+        await callback.message.edit_text("❌ حدث خطأ في بدء إكمال البيانات")
 
 
 # تصدير الوظائف المهمة

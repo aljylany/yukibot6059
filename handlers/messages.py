@@ -74,16 +74,82 @@ async def handle_bank_creation_only(message: Message, state: FSMContext):
             await message.reply("🚫 **هذا الأمر متاح في المجموعات فقط!**\n\n➕ أضف البوت لمجموعتك وابدأ اللعب مباشرة")
             return
         
-        # فحص إذا كان المستخدم مسجلاً بالفعل
+        # فحص إذا كان المستخدم مسجلاً بالفعل أو لديه حساب بنكي قديم
         from modules.manual_registration import is_user_registered
+        from database.operations import get_user
         user_id = message.from_user.id
         
-        if await is_user_registered(user_id):
-            await message.reply(
-                "✅ **لديك حساب مسجل بالفعل!**\n\n"
-                "💡 يمكنك استخدام جميع ميزات البوت مباشرة\n"
-                "🎮 جرب: رصيد، راتب، استثمار، اسهم"
-            )
+        # التحقق من التسجيل الحديث أو وجود حساب قديم
+        is_registered = await is_user_registered(user_id)
+        existing_user = await get_user(user_id)
+        
+        if is_registered or (existing_user and existing_user.get('balance') is not None):
+            # المستخدم مسجل أو لديه حساب قديم
+            user_info = existing_user or {}
+            
+            # معلومات الحساب الأساسية
+            bank_type = user_info.get('bank_type', 'غير محدد')
+            balance = user_info.get('balance', 0)
+            bank_balance = user_info.get('bank_balance', 0)
+            
+            # معلومات شخصية
+            full_name = user_info.get('first_name', '')
+            gender = user_info.get('gender', '')
+            country = user_info.get('country', '')
+            
+            # تحديد حالة الحساب والبيانات الناقصة
+            missing_data = []
+            if not full_name or full_name.strip() == '':
+                missing_data.append("الاسم")
+            if not gender or gender.strip() == '':
+                missing_data.append("الجنس")
+            if not country or country.strip() == '':
+                missing_data.append("البلد")
+            
+            # تحديد نوع الحساب
+            if is_registered and not missing_data:
+                account_status = "✅ **لديك حساب مسجل بالكامل!**\n\n"
+                account_info = f"🏦 **معلومات حسابك الكاملة:**\n"
+                account_info += f"• 👤 الاسم: {full_name}\n"
+                account_info += f"• {'👨' if gender == 'male' else '👩' if gender == 'female' else '🧑'} الجنس: {'ذكر' if gender == 'male' else 'أنثى' if gender == 'female' else 'غير محدد'}\n"
+                account_info += f"• 🌍 البلد: {country}\n"
+                account_info += f"• 💰 الرصيد النقدي: {balance:,.0f}$\n"
+                account_info += f"• 🏦 رصيد البنك: {bank_balance:,.0f}$\n"
+                account_info += f"• 🏛️ نوع البنك: {bank_type}\n\n"
+                account_info += f"💡 يمكنك استخدام جميع ميزات البوت مباشرة\n"
+                account_info += f"🎮 جرب: رصيد، راتب، استثمار، اسهم"
+            elif missing_data:
+                # حساب قديم أو ناقص البيانات
+                account_status = "⚠️ **لديك حساب بنكي لكن ينقصه بعض المعلومات!**\n\n"
+                account_info = f"🏦 **معلومات حسابك الحالية:**\n"
+                if full_name and full_name.strip():
+                    account_info += f"• 👤 الاسم: {full_name}\n"
+                if gender and gender.strip():
+                    account_info += f"• {'👨' if gender == 'male' else '👩' if gender == 'female' else '🧑'} الجنس: {'ذكر' if gender == 'male' else 'أنثى' if gender == 'female' else gender}\n"
+                if country and country.strip():
+                    account_info += f"• 🌍 البلد: {country}\n"
+                account_info += f"• 💰 الرصيد النقدي: {balance:,.0f}$\n"
+                account_info += f"• 🏦 رصيد البنك: {bank_balance:,.0f}$\n"
+                account_info += f"• 🏛️ نوع البنك: {bank_type}\n\n"
+                
+                account_info += f"📝 **البيانات الناقصة:** {', '.join(missing_data)}\n\n"
+                account_info += f"🔄 **لإكمال ملفك الشخصي:**\n"
+                account_info += f"اكتب 'اكمال التسجيل' لإضافة المعلومات الناقصة\n\n"
+                account_info += f"💡 يمكنك استخدام البوت حالياً لكن بعض المميزات تتطلب إكمال البيانات"
+            else:
+                # حساب قديم كامل
+                account_status = "✅ **لديك حساب بنكي كامل!**\n\n"
+                account_info = f"🏦 **معلومات حسابك:**\n"
+                account_info += f"• 👤 الاسم: {full_name}\n"
+                account_info += f"• {'👨' if gender == 'male' else '👩' if gender == 'female' else '🧑'} الجنس: {'ذكر' if gender == 'male' else 'أنثى' if gender == 'female' else gender}\n"
+                account_info += f"• 🌍 البلد: {country}\n"
+                account_info += f"• 💰 الرصيد النقدي: {balance:,.0f}$\n"
+                account_info += f"• 🏦 رصيد البنك: {bank_balance:,.0f}$\n"
+                account_info += f"• 🏛️ نوع البنك: {bank_type}\n\n"
+                account_info += f"💡 يمكنك استخدام جميع ميزات البوت مباشرة\n"
+                account_info += f"🎮 جرب: رصيد، راتب، استثمار، اسهم"
+            
+            await message.reply(f"{account_status}{account_info}")
             return
         
         # بدء عملية التسجيل اليدوي الجديدة
@@ -93,6 +159,55 @@ async def handle_bank_creation_only(message: Message, state: FSMContext):
     except Exception as e:
         logging.error(f"خطأ في معالج إنشاء الحساب البنكي: {e}")
         await message.reply("❌ حدث خطأ أثناء إنشاء الحساب البنكي")
+
+
+# معالج إكمال التسجيل للمستخدمين القدامى
+@router.message(F.text.contains("اكمال التسجيل") | F.text.contains("إكمال التسجيل") | F.text.contains("اكمل تسجيلي"))
+async def handle_complete_registration(message: Message, state: FSMContext):
+    """معالج إكمال التسجيل للمستخدمين القدامى"""
+    try:
+        # التحقق من أن الرسالة في مجموعة وليس في الخاص
+        if message.chat.type == 'private':
+            await message.reply("🚫 **هذا الأمر متاح في المجموعات فقط!**\n\n➕ أضف البوت لمجموعتك وابدأ اللعب مباشرة")
+            return
+        
+        from database.operations import get_user
+        user_id = message.from_user.id
+        
+        # التحقق من وجود المستخدم
+        existing_user = await get_user(user_id)
+        if not existing_user:
+            await message.reply("❌ لا يوجد لديك حساب بنكي!\n\nاكتب 'انشاء حساب بنكي' لإنشاء حساب جديد")
+            return
+        
+        # التحقق من البيانات الناقصة
+        full_name = existing_user.get('first_name', '')
+        gender = existing_user.get('gender', '')
+        country = existing_user.get('country', '')
+        
+        missing_data = []
+        if not full_name or full_name.strip() == '':
+            missing_data.append("الاسم")
+        if not gender or gender.strip() == '':
+            missing_data.append("الجنس")
+        if not country or country.strip() == '':
+            missing_data.append("البلد")
+        
+        if not missing_data:
+            await message.reply(
+                "✅ **حسابك مكتمل بالفعل!**\n\n"
+                "جميع بياناتك موجودة ولا تحتاج لإكمال أي شيء\n"
+                "يمكنك استخدام جميع ميزات البوت مباشرة"
+            )
+            return
+        
+        # بدء عملية إكمال التسجيل
+        from modules.manual_registration import send_completion_required_message
+        await send_completion_required_message(message, missing_data)
+        
+    except Exception as e:
+        logging.error(f"خطأ في معالج إكمال التسجيل: {e}")
+        await message.reply("❌ حدث خطأ أثناء إكمال التسجيل")
 
 
 # سيتم التعامل مع اختيار البنك عبر نظام التسجيل الجديد باستخدام callback buttons

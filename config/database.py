@@ -43,9 +43,36 @@ async def init_database():
                     times_stolen INTEGER DEFAULT 0,
                     is_banned BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_salary_time TEXT,
+                    last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+            
+            # إضافة العمود is_registered للمستخدمين الموجودين إذا لم يكن موجوداً
+            try:
+                await db.execute('ALTER TABLE users ADD COLUMN is_registered BOOLEAN DEFAULT FALSE')
+                logging.info("✅ تم إضافة عمود is_registered بنجاح")
+            except Exception as e:
+                if "duplicate column name" not in str(e):
+                    logging.error(f"خطأ في إضافة عمود is_registered: {e}")
+                # إذا كان العمود موجود بالفعل، نتابع
+            
+            # إضافة عمود last_salary_time إذا لم يكن موجوداً
+            try:
+                await db.execute('ALTER TABLE users ADD COLUMN last_salary_time TEXT')
+                logging.info("✅ تم إضافة عمود last_salary_time بنجاح")
+            except Exception as e:
+                if "duplicate column name" not in str(e):
+                    logging.error(f"خطأ في إضافة عمود last_salary_time: {e}")
+            
+            # إضافة عمود last_active إذا لم يكن موجوداً
+            try:
+                await db.execute('ALTER TABLE users ADD COLUMN last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+                logging.info("✅ تم إضافة عمود last_active بنجاح")
+            except Exception as e:
+                if "duplicate column name" not in str(e):
+                    logging.error(f"خطأ في إضافة عمود last_active: {e}")
             
             # إنشاء جدول المستويات (نظام XP)
             await db.execute('''
