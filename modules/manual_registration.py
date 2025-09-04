@@ -161,6 +161,39 @@ async def complete_user_registration(user_id: int, full_name: str, gender: str,
         return False
 
 
+async def update_user_missing_data(user_id: int, full_name: str = None, 
+                                 gender: str = None, country: str = None) -> bool:
+    """تحديث البيانات الناقصة للمستخدم الموجود"""
+    try:
+        # الحصول على البيانات الحالية
+        from database.operations import get_user
+        current_user = await get_user(user_id)
+        if not current_user:
+            return False
+        
+        # إعداد البيانات المحدثة
+        updated_name = full_name if full_name else current_user.get('first_name', '')
+        updated_gender = gender if gender else current_user.get('gender', '')
+        updated_country = country if country else current_user.get('country', '')
+        
+        await execute_query(
+            """
+            UPDATE users SET 
+                first_name = ?, gender = ?, country = ?, is_registered = ?, updated_at = ?
+            WHERE user_id = ?
+            """,
+            (updated_name, updated_gender, updated_country, True, 
+             datetime.now().isoformat(), user_id)
+        )
+        
+        logging.info(f"تم تحديث بيانات المستخدم: {user_id} - {updated_name}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"خطأ في تحديث بيانات المستخدم {user_id}: {e}")
+        return False
+
+
 def create_registration_keyboard() -> InlineKeyboardMarkup:
     """إنشاء لوحة مفاتيح التسجيل"""
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -294,14 +327,58 @@ async def handle_name_input(message: Message, state: FSMContext):
         full_name = message.text.strip()
         await state.update_data(full_name=full_name)
         
-        await message.reply(
-            f"✅ **تم حفظ الاسم:** {full_name}\n\n"
-            "👤 **خطوة 2/4: الجنس**\n\n"
-            "🔽 اختر جنسك من الأزرار أدناه:",
-            reply_markup=create_gender_keyboard()
-        )
+        # التحقق إذا كان هذا إكمال بيانات أم تسجيل جديد
+        data = await state.get_data()
+        is_completion = data.get('is_completion', False)
         
-        await state.set_state(RegistrationStates.choosing_gender)
+        if is_completion:
+            # إكمال البيانات - نحتاج للتحقق من البيانات الناقصة الأخرى
+            from database.operations import get_user
+            user = await get_user(message.from_user.id)
+            gender = user.get('gender', '')
+            country = user.get('country', '')
+            
+            if not gender or gender.strip() == '':
+                await message.reply(
+                    f"✅ **تم حفظ الاسم:** {full_name}\n\n"
+                    "👤 **البيانات الناقصة: الجنس**\n\n"
+                    "🔽 اختر جنسك من الأزرار أدناه:",
+                    reply_markup=create_gender_keyboard()
+                )
+                await state.set_state(RegistrationStates.choosing_gender)
+            elif not country or country.strip() == '':
+                # حفظ الاسم وانتقال للبلد
+                await update_user_missing_data(message.from_user.id, full_name=full_name)
+                await message.reply(
+                    f"✅ **تم حفظ الاسم:** {full_name}\n\n"
+                    "🌍 **البيانات الناقصة: البلد**\n\n"
+                    "🔽 اختر بلدك من القائمة أدناه:",
+                    reply_markup=create_country_keyboard()
+                )
+                await state.set_state(RegistrationStates.choosing_country)
+            else:
+                # فقط الاسم ناقص - تحديث وإنهاء
+                success = await update_user_missing_data(message.from_user.id, full_name=full_name)
+                if success:
+                    await message.reply(
+                        f"✅ **تم إكمال بياناتك بنجاح!**\n\n"
+                        f"📝 **الاسم:** {full_name}\n"
+                        f"{'👨' if gender == 'male' else '👩' if gender == 'female' else '🧑'} **الجنس:** {'ذكر' if gender == 'male' else 'أنثى' if gender == 'female' else gender}\n"
+                        f"🌍 **البلد:** {country}\n\n"
+                        "🎉 **الآن يمكنك استخدام جميع ميزات البوت!**"
+                    )
+                else:
+                    await message.reply("❌ حدث خطأ في حفظ البيانات")
+                await state.clear()
+        else:
+            # تسجيل جديد عادي
+            await message.reply(
+                f"✅ **تم حفظ الاسم:** {full_name}\n\n"
+                "👤 **خطوة 2/4: الجنس**\n\n"
+                "🔽 اختر جنسك من الأزرار أدناه:",
+                reply_markup=create_gender_keyboard()
+            )
+            await state.set_state(RegistrationStates.choosing_gender)
         
     except Exception as e:
         logging.error(f"خطأ في معالجة الاسم: {e}")
@@ -491,6 +568,7 @@ async def start_completion_process(callback: CallbackQuery, state: FSMContext):
                 "• يمكن تغييره لاحقاً\n\n"
                 "✍️ اكتب اسمك الآن:"
             )
+            await state.set_data({'is_completion': True})
             await state.set_state(RegistrationStates.waiting_for_name)
         elif not gender or gender.strip() == '':
             # طلب الجنس
