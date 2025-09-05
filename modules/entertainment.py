@@ -445,7 +445,35 @@ async def handle_marriage(message: Message, action: str):
                 await message.reply("😅 لا يمكنك الزواج من نفسك!")
                 return
 
+            # التحقق من الجنس للتأكد من توافق الزواج (ذكر-أنثى)
+            from database.operations import get_user
+            proposer_data = await get_user(user_id)
+            target_data = await get_user(target_user.id)
+            
+            if proposer_data and target_data:
+                proposer_gender = proposer_data.get('gender', '')
+                target_gender = target_data.get('gender', '')
+                
+                if proposer_gender and target_gender:
+                    # التحقق من توافق الجنس (male-female أو female-male)
+                    if proposer_gender == target_gender:
+                        gender_text = "ذكر" if proposer_gender == "male" else "أنثى"
+                        await message.reply(
+                            f"❌ **الزواج غير مسموح!**\n\n"
+                            f"🚫 لا يمكن للـ{gender_text} الزواج من {gender_text} آخر\n"
+                            f"💒 الزواج المسموح فقط بين الذكر والأنثى"
+                        )
+                        return
+                elif not proposer_gender or not target_gender:
+                    await message.reply(
+                        f"❌ **يجب إكمال التسجيل أولاً!**\n\n"
+                        f"📝 يجب على كلا الطرفين إكمال التسجيل وتحديد الجنس\n"
+                        f"⚙️ اكتب 'تسجيل' لإكمال بياناتك"
+                    )
+                    return
+
             # التحقق من الزواج الحالي للطرفين
+            from database.config.database import execute_query
             current_marriage_proposer = await execute_query(
                 "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
                 (user_id, user_id, message.chat.id),

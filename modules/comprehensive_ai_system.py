@@ -194,6 +194,9 @@ class ComprehensiveAISystem:
                     'user_id': user_id,
                     'username': user.get('username', 'غير محدد'),
                     'first_name': user.get('first_name', 'غير محدد'),
+                    'gender': user.get('gender', 'غير محدد'),
+                    'country': user.get('country', 'غير محدد'),
+                    'is_registered': user.get('is_registered', False),
                     'registration_date': user.get('created_at', 'غير محدد')
                 }
                 

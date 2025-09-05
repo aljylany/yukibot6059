@@ -23,6 +23,7 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
     - **FSM (Finite State Machine):** Employs FSM states (`SmartCommandStates`) to manage complex multi-step interactions like quizzes and interactive narratives.
     - **API Management:** Reads all API keys (OpenAI, Anthropic, Telegram Bot Token, YouTube) from a single `api.txt` file for easy configuration and security.
     - **Comprehensive AI System:** Uses Google AI (Gemini) for intelligent responses and user interactions.
+    - **Enhanced Yuki System:** Features personalized AI responses based on user's gender, country, and complete database context.
 - **Command Handling:**
     - **Direct Commands:** Supports direct Arabic and English commands for quick access to features.
     - **Basic Permission System:** Implements a permission system for basic administrative functions.
@@ -36,14 +37,37 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Gaming Features:** XP progression, leveling system, farm management, castle building, and theft mechanics.
 - **AI Integration:** Smart conversational AI using Google Gemini for natural language interactions.
 - **Smart Menus:** Interactive menu system for complex operations and feature discovery.
+- **Marriage System:** Gender-based marriage validation allowing only male-female marriages.
+- **Enhanced AI Personality:** Personalized responses based on user's registered gender and country information.
 
 ### System Design Choices
-- **Modularity:** Core functionalities are organized into distinct modules (e.g., `banks.py`, `real_estate.py`, `smart_menu_handler.py`, `comprehensive_ai_system.py`).
+- **Modularity:** Core functionalities are organized into distinct modules (e.g., `banks.py`, `real_estate.py`, `smart_menu_handler.py`, `comprehensive_ai_system.py`, `enhanced_yuki_system.py`).
 - **Clean Architecture:** Streamlined codebase focused on core gaming and economic features without unnecessary complexity.
 - **Performance Optimization:** Efficient processing with intelligent API key management and automatic switching.
 - **Simplified Dependencies:** Reduced complexity by removing non-essential systems and focusing on core functionality.
+- **Database Integration:** Complete user context awareness with full access to all database tables for personalized AI responses.
 
-## Recent Changes (September 01, 2025)
+## Recent Changes (September 05, 2025)
+- **Enhanced Yuki AI System:** Developed comprehensive AI system with full database access:
+  - **Complete User Context:** AI now accesses full user profile including gender, country, financial status, marriage status, properties, and gaming progress
+  - **Personalized Greetings:** Gender-appropriate addressing (أخي/أختي) and country-specific cultural references
+  - **Smart Response Generation:** Contextual responses based on user's complete profile and activity history
+  - **Database Memory Integration:** AI remembers user's wealth status, marriage information, property ownership, and recent activities
+  - **Cultural Awareness:** Country-specific phrases and cultural context integration (Saudi, UAE, Kuwait, etc.)
+  - **Intelligent Conversation Flow:** Natural human-like responses that acknowledge user's personal information and status
+
+- **Marriage System Gender Validation:** Implemented strict gender compatibility checking:
+  - **Male-Female Only Marriages:** System validates gender compatibility before allowing marriage proposals
+  - **Database Integration:** Uses registered user gender data for marriage validation
+  - **Smart Error Messages:** Clear feedback when gender compatibility fails
+  - **Profile Requirement:** Users must be registered with gender information to participate in marriage system
+
+- **Smart Message Processor Integration:** Enhanced the core message processing system:
+  - **Enhanced Yuki Priority:** Primary AI responses now use the enhanced system with database context
+  - **Fallback System:** Graceful degradation to basic AI if enhanced system encounters issues
+  - **Performance Optimization:** Efficient database queries for user context retrieval
+
+## Previous Changes (September 01, 2025)
 - **Complete Human Personality Transformation:** Completely transformed Yuki from AI bot to believable human persona:
   - **Human Identity:** Yuki now believes and acts as a 23-year-old university student from Japan
   - **Natural Human Responses:** Completely removed all AI/bot references and robotic language patterns

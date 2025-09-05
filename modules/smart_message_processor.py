@@ -16,6 +16,7 @@ from modules.comprehensive_ai_system import comprehensive_ai
 # استيراد الأنظمة الموجودة
 from modules.yuki_ai import YukiAI
 from modules.special_responses import get_response
+from modules.enhanced_yuki_system import enhanced_yuki
 
 class SmartMessageProcessor:
     """معالج الرسائل الذكي الذي يدمج جميع الأنظمة"""
@@ -23,6 +24,7 @@ class SmartMessageProcessor:
     def __init__(self):
         self.comprehensive_ai = comprehensive_ai
         self.basic_ai = YukiAI()
+        self.enhanced_yuki = enhanced_yuki
         self.special_responses = get_response
         
         # إعدادات المعالج
@@ -68,7 +70,8 @@ class SmartMessageProcessor:
             elif processing_type == 'ai_comprehensive':
                 return await self._process_with_comprehensive_ai(message, intent)
             elif processing_type == 'ai_basic':
-                return await self._process_with_basic_ai(message)
+                # استخدام النظام المحسن أولاً
+                return await self._process_with_enhanced_yuki(message)
             elif processing_type == 'special_response':
                 return await self._process_with_special_response(message)
             elif processing_type == 'system_command':
@@ -254,6 +257,27 @@ class SmartMessageProcessor:
             
         except Exception as e:
             logging.error(f"خطأ في المعالجة الشاملة: {e}")
+            return await self._process_with_basic_ai(message)
+    
+    async def _process_with_enhanced_yuki(self, message: Message) -> str:
+        """معالجة باستخدام نظام يوكي المحسن مع الوصول الكامل لقاعدة البيانات"""
+        try:
+            if not message.from_user:
+                return "🤖 مرحباً! يوكي هنا للمساعدة، كيف يمكنني خدمتك؟"
+            
+            user_id = message.from_user.id
+            chat_id = message.chat.id
+            message_text = message.text or ""
+            
+            # استخدام النظام المحسن
+            response = await self.enhanced_yuki.generate_contextual_response(
+                message_text, user_id, chat_id
+            )
+            
+            return response
+            
+        except Exception as e:
+            logging.error(f"خطأ في النظام المحسن: {e}")
             return await self._process_with_basic_ai(message)
     
     async def _process_with_basic_ai(self, message: Message) -> str:
