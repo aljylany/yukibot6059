@@ -335,7 +335,7 @@ async def start_mission(callback: CallbackQuery):
         parts = callback.data.split("_")
         logging.info(f"🔍 PARTS DEBUG: {parts}")
         mission_type = parts[2]  # normal أو collect
-        mission_id = parts[3]
+        mission_id = "_".join(parts[3:])  # دمج باقي الأجزاء
         logging.info(f"🎯 MISSION DEBUG: نوع المهمة: {mission_type}, معرف المهمة: {mission_id}")
         
         if user_id not in GUILD_PLAYERS:
