@@ -329,13 +329,17 @@ async def start_mission(callback: CallbackQuery):
     """بدء مهمة جديدة"""
     try:
         user_id = callback.from_user.id
+        logging.info(f"🎯 START MISSION DEBUG: بدء مهمة للمستخدم {user_id}, callback_data: {callback.data}")
         
         # تحليل البيانات
         parts = callback.data.split("_")
+        logging.info(f"🔍 PARTS DEBUG: {parts}")
         mission_type = parts[2]  # normal أو collect
         mission_id = parts[3]
+        logging.info(f"🎯 MISSION DEBUG: نوع المهمة: {mission_type}, معرف المهمة: {mission_id}")
         
         if user_id not in GUILD_PLAYERS:
+            logging.info(f"🚫 MISSION ERROR: المستخدم {user_id} غير مسجل في النقابة!")
             await callback.answer("❌ لست مسجل في النقابة!")
             return
         
