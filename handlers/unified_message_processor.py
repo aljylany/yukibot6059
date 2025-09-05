@@ -57,7 +57,7 @@ class UnifiedMessageProcessor:
                         # التحقق من تفعيل الفلتر في هذه المجموعة
                         if profanity_filter.is_enabled(message.chat.id):
                             # فحص النص للألفاظ المسيئة
-                            text_to_check = message.text or message.caption
+                            text_to_check = message.text or message.caption or ""
                             has_profanity, found_words = profanity_filter.contains_profanity(text_to_check)
                             
                             if has_profanity:
@@ -119,9 +119,9 @@ class UnifiedMessageProcessor:
     
     async def _analyze_media_content(self, message: Message) -> bool:
         """تحليل محتوى الوسائط"""
+        loading_message = None
         try:
             # إرسال رسالة انتظار
-            loading_message = None
             loading_message = await message.reply("🔍 **جاري تحليل الملف...**")
             
             # تحديد نوع الملف وتحميله
@@ -278,7 +278,8 @@ class UnifiedMessageProcessor:
             logging.error(f"❌ خطأ في تحليل المحتوى: {e}")
             try:
                 # تأكد من أن loading_message موجود
-                await loading_message.edit_text("❌ حدث خطأ أثناء تحليل المحتوى")
+                if loading_message:
+                    await loading_message.edit_text("❌ حدث خطأ أثناء تحليل المحتوى")
             except:
                 pass
             return False
