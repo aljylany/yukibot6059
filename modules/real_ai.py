@@ -7,9 +7,9 @@ import logging
 import asyncio
 import os
 import random
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from aiogram.types import Message
-from datetime import datetime
+from datetime import datetime, date
 from modules.name_tracker import name_tracker
 
 try:
@@ -26,6 +26,9 @@ class RealYukiAI:
     
     def __init__(self):
         self.gemini_client = None
+        self.current_key_index = 0
+        self.exhausted_keys: Dict[int, date] = {}
+        self.last_reset_date = date.today()
         self.setup_gemini()
         
         # النصوص الأساسية لتوجيه الذكاء الاصطناعي  
@@ -52,32 +55,104 @@ class RealYukiAI:
         ]
     
     def setup_gemini(self):
-        """إعداد Google Gemini"""
+        """إعداد Google Gemini مع نظام إدارة المفاتيح المتقدم"""
         try:
             if not GEMINI_AVAILABLE:
                 logging.error("Google Gemini SDK not available")
                 return
                 
-            # أولاً، محاولة تحميل من ملف api.txt
             from utils.api_loader import api_loader
-            api_key = api_loader.get_random_ai_key()
+            self.api_loader = api_loader
+            all_keys = self.api_loader.get_all_ai_keys()
             
-            # إذا لم نجد، نحاول من متغيرات البيئة
-            if not api_key:
-                api_key = os.getenv('GEMINI_API_KEY')
-                
-            if not api_key:
-                logging.error("لم يتم العثور على مفتاح Gemini في api.txt أو متغيرات البيئة")
+            if not all_keys:
+                logging.error("❌ لم يتم العثور على مفاتيح Gemini API")
                 return
+            
+            # إعادة تعيين قائمة المفاتيح المستنزفة في يوم جديد
+            self._reset_daily_exhausted_keys()
+            
+            # اختيار أفضل مفتاح متوفر
+            best_key_index = self._get_best_available_key(all_keys)
+            
+            if best_key_index is not None:
+                self.current_key_index = best_key_index
+                current_key = all_keys[self.current_key_index]
+                self.gemini_client = genai.Client(api_key=current_key)
                 
-            # إعداد العميل
-            if genai:
-                self.gemini_client = genai.Client(api_key=api_key)
-                logging.info("🧠 تم تهيئة Google Gemini بنجاح!")
+                exhausted_count = len(self.exhausted_keys)
+                available_count = len(all_keys) - exhausted_count
+                logging.info(f"✅ تم تهيئة Gemini للذكاء الحقيقي - المفتاح {self.current_key_index + 1}/{len(all_keys)} (متوفر: {available_count}, مستنزف: {exhausted_count})")
+            else:
+                logging.warning("⚠️ جميع المفاتيح مستنزفة لليوم - سيتم المحاولة بالمفتاح الأول")
+                self.current_key_index = 0
+                current_key = all_keys[0]
+                self.gemini_client = genai.Client(api_key=current_key)
             
         except Exception as e:
             logging.error(f"خطأ في إعداد Gemini: {e}")
             self.gemini_client = None
+    
+    def _reset_daily_exhausted_keys(self):
+        """إعادة تعيين قائمة المفاتيح المستنزفة في يوم جديد"""
+        today = date.today()
+        if today != self.last_reset_date:
+            logging.info(f"🔄 يوم جديد ({today}) - إعادة تعيين قائمة المفاتيح المستنزفة لنظام الذكاء الحقيقي")
+            self.exhausted_keys.clear()
+            self.last_reset_date = today
+    
+    def _get_best_available_key(self, all_keys: List[str]) -> Optional[int]:
+        """اختيار أفضل مفتاح متوفر (غير مستنزف)"""
+        available_keys = []
+        for i in range(len(all_keys)):
+            if i not in self.exhausted_keys:
+                available_keys.append(i)
+        
+        if available_keys:
+            return available_keys[0]  # أول مفتاح متوفر
+        return None  # جميع المفاتيح مستنزفة
+    
+    def switch_to_next_key(self) -> bool:
+        """التبديل للمفتاح التالي المتوفر (غير المستنزف)"""
+        try:
+            all_keys = self.api_loader.get_all_ai_keys()
+            
+            # تسجيل المفتاح الحالي كمستنزف
+            self._mark_key_exhausted(self.current_key_index)
+            
+            # البحث عن أفضل مفتاح متوفر
+            best_key_index = self._get_best_available_key(all_keys)
+            
+            if best_key_index is not None:
+                self.current_key_index = best_key_index
+                current_key = all_keys[self.current_key_index]
+                self.gemini_client = genai.Client(api_key=current_key)
+                
+                exhausted_count = len(self.exhausted_keys)
+                available_count = len(all_keys) - exhausted_count
+                logging.info(f"🔄 تم التبديل للمفتاح {self.current_key_index + 1}/{len(all_keys)} في النظام الذكي (متوفر: {available_count}, مستنزف: {exhausted_count})")
+                return True
+            else:
+                logging.warning("⚠️ تم استنزاف جميع مفاتيح الذكاء الحقيقي المتاحة لليوم")
+                return False
+                
+        except Exception as e:
+            logging.error(f"❌ خطأ في تبديل المفتاح: {e}")
+            return False
+    
+    def _mark_key_exhausted(self, key_index: int):
+        """تسجيل مفتاح كمستنزف لليوم"""
+        self.exhausted_keys[key_index] = date.today()
+        logging.warning(f"🚫 تم تسجيل المفتاح {key_index + 1} للذكاء الحقيقي كمستنزف لليوم")
+    
+    def handle_quota_exceeded(self, error_message: str) -> bool:
+        """معالجة خطأ استنزاف الحصة والتبديل للمفتاح التالي"""
+        error_str = str(error_message)
+        # معالجة أخطاء الحصة وزحمة الخدمة
+        if any(code in error_str for code in ["429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "overloaded"]):
+            logging.warning(f"⚠️ مشكلة في خدمة الذكاء الحقيقي: {error_str[:100]}... محاولة التبديل للمفتاح التالي")
+            return self.switch_to_next_key()
+        return False
     
     async def get_comprehensive_player_data(self, user_id: int) -> str:
         """جمع معلومات اللاعب الشاملة من قاعدة البيانات لاستخدامها في الذكاء الاصطناعي"""
@@ -681,18 +756,34 @@ class RealYukiAI:
             
             full_prompt = f"{self.system_prompt}{special_prompt}{full_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
             
-            # استدعاء Gemini بإعدادات محسّنة
-            if genai:
-                response = self.gemini_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=full_prompt,
-                    config=genai.types.GenerateContentConfig(
-                        temperature=0.7,
-                        max_output_tokens=2000
-                    )
-                )
-            else:
-                response = None
+            # استدعاء Gemini بإعدادات محسّنة مع معالجة الأخطاء
+            response = None
+            retry_count = 0
+            max_retries = 2
+            
+            while response is None and retry_count < max_retries:
+                if genai and self.gemini_client:
+                    try:
+                        response = self.gemini_client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=full_prompt,
+                            config=genai.types.GenerateContentConfig(
+                                temperature=0.7,
+                                max_output_tokens=2000
+                            )
+                        )
+                        logging.info(f"✅ تم إرسال الطلب لـ Gemini بنجاح (محاولة {retry_count + 1})")
+                    except Exception as gemini_error:
+                        logging.error(f"❌ خطأ في استدعاء Gemini API (محاولة {retry_count + 1}): {gemini_error}")
+                        
+                        # محاولة التبديل للمفتاح التالي إذا كان هناك مشكلة في المفتاح
+                        error_str = str(gemini_error)
+                        if self.handle_quota_exceeded(error_str):
+                            logging.info("🔄 تم التبديل للمفتاح التالي، محاولة مرة أخرى...")
+                        else:
+                            break
+                        
+                retry_count += 1
             
             # التحقق من وجود الرد بعدة طرق مع تسجيل مفصل
             ai_response = None
@@ -713,7 +804,9 @@ class RealYukiAI:
                 else:
                     logging.warning(f"⚠️ لا يوجد محتوى في candidate.content.parts")
             else:
-                logging.error(f"❌ لا يوجد candidates أو response صالح")
+                # تعامل مع الاستجابة الفارغة بإعطاء رد احتياطي
+                logging.warning(f"⚠️ لا يوجد candidates أو response صالح - سيتم إعطاء رد احتياطي")
+                ai_response = f"عذراً {arabic_name}، حصل خطأ تقني بسيط في النظام الذكي، لكن يوكي يشتغل بكامل قوته! جرب اسأل مرة ثانية 🤖✨"
             
             if ai_response and len(ai_response.strip()) > 0:
                 # تحسين الرد - تحديد الحد الأقصى للردود

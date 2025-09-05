@@ -476,16 +476,19 @@ class MediaAnalyzer:
         """تحليل محتوى المستند"""
         try:
             # فحص إذا كان الملف ملصق مرسل كمستند
-            if doc_path.lower().endswith('.tgs') or 'tgs' in doc_path.lower():
+            if doc_path.lower().endswith('.tgs') or ('tgs' in doc_path.lower() and not doc_path.lower().endswith(('.mp4', '.webm', '.mov'))):
                 logging.info(f"🎭 اكتشاف ملصق متحرك TGS مرسل كمستند: {doc_path}")
                 return await self.analyze_sticker_content(doc_path, "animated_sticker")
-            elif doc_path.lower().endswith('.webp') or 'webp' in doc_path.lower():
+            elif doc_path.lower().endswith('.webp') or ('webp' in doc_path.lower() and not doc_path.lower().endswith(('.mp4', '.webm', '.mov'))):
                 # ملصقات WebP - قد تكون ثابتة أو متحركة
                 logging.info(f"🎭 اكتشاف ملصق WebP مرسل كمستند: {doc_path}")
                 return await self.analyze_sticker_content(doc_path, "sticker")
-            elif doc_path.lower().endswith(('.gif')) or 'gif' in doc_path.lower():
+            elif doc_path.lower().endswith(('.gif')) or ('gif' in doc_path.lower() and not doc_path.lower().endswith(('.mp4', '.webm', '.mov'))):
                 logging.info(f"🎬 اكتشاف صورة متحركة مرسلة كمستند: {doc_path}")
                 return await self.analyze_animation_content(doc_path)
+            elif doc_path.lower().endswith(('.mp4', '.webm', '.mov', '.avi')):
+                logging.info(f"🎬 اكتشاف ملف فيديو مرسل كمستند: {doc_path}")
+                return await self.analyze_video_content(doc_path)
             
             # للمستندات النصية، نقرأ المحتوى ونحلله
             content = ""

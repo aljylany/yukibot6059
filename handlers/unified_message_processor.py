@@ -4,6 +4,7 @@
 """
 
 import logging
+import asyncio
 from aiogram import Router, F, Bot
 from aiogram.types import Message
 from utils.decorators import group_only
@@ -201,9 +202,30 @@ class UnifiedMessageProcessor:
                 is_safe = analysis_result.get("is_safe", True)
                 
                 if not is_safe:
-                    # محتوى مخالف - حذف الملف وإرسال تحذير
+                    # محتوى مخالف - عرض التحليل أولاً ثم الحذف
                     violations = analysis_result.get("violations", [])
                     severity = analysis_result.get("severity", "medium")
+                    description = analysis_result.get("description", "محتوى مخالف")
+                    confidence = analysis_result.get("confidence", 0.8)
+                    gesture_analysis = analysis_result.get("gesture_analysis", "")
+                    
+                    # رسالة تحليل مفصلة قبل الحذف
+                    user_display_name = getattr(message.from_user, 'first_name', None) or "مجهول"
+                    warning_msg = f"🔍 **نتيجة تحليل المحتوى:**\n\n"
+                    warning_msg += f"👤 **المستخدم:** {user_display_name}\n"
+                    warning_msg += f"📝 **الوصف:** {description}\n"
+                    if gesture_analysis:
+                        warning_msg += f"🤲 **تحليل الإيماءات:** {gesture_analysis}\n"
+                    warning_msg += f"📋 **المخالفات المكتشفة:** {', '.join(violations)}\n"
+                    warning_msg += f"⚖️ **درجة الخطورة:** {severity}\n"
+                    warning_msg += f"🎯 **درجة الثقة:** {confidence:.0%}\n\n"
+                    warning_msg += f"⚠️ **تم اكتشاف محتوى مخالف!**\n"
+                    warning_msg += f"🗑️ **سيتم حذف الملف تلقائياً خلال 10 ثواني**"
+                    
+                    await loading_message.edit_text(warning_msg)
+                    
+                    # انتظار 10 ثواني قبل الحذف ليتمكن المستخدم من قراءة التحليل
+                    await asyncio.sleep(10)
                     
                     # حذف الرسالة المخالفة
                     try:
@@ -211,15 +233,9 @@ class UnifiedMessageProcessor:
                     except:
                         pass
                     
-                    # رسالة تحذير
-                    user_display_name = getattr(message.from_user, 'first_name', None) or "مجهول"
-                    warning_msg = f"⚠️ **تم اكتشاف محتوى مخالف!**\n\n"
-                    warning_msg += f"👤 **المستخدم:** {user_display_name}\n"
-                    warning_msg += f"📋 **نوع المخالفة:** {', '.join(violations)}\n"
-                    warning_msg += f"⚖️ **درجة الخطورة:** {severity}\n"
-                    warning_msg += f"🗑️ **تم حذف الملف تلقائياً**"
-                    
-                    await loading_message.edit_text(warning_msg)
+                    # تحديث الرسالة لتظهر أنه تم الحذف
+                    final_msg = warning_msg.replace("سيتم حذف الملف تلقائياً خلال 10 ثواني", "تم حذف الملف تلقائياً ✅")
+                    await loading_message.edit_text(final_msg)
                     
                     # إشعار المشرفين
                     if message.bot:
