@@ -11,7 +11,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from database.operations import execute_query
+from database.operations import execute_query, get_user
 from utils.helpers import format_number
 
 # إعداد التوجيه
@@ -97,12 +97,8 @@ BANK_TYPES = {
 async def is_user_registered(user_id: int) -> bool:
     """التحقق من تسجيل المستخدم"""
     try:
-        result = await execute_query(
-            "SELECT is_registered FROM users WHERE user_id = ?",
-            (user_id,),
-            fetch_one=True
-        )
-        return result.get('is_registered', False) if result else False
+        user = await get_user(user_id)
+        return user.get('is_registered', False) if user else False
     except Exception as e:
         logging.error(f"خطأ في فحص تسجيل المستخدم {user_id}: {e}")
         return False
@@ -111,14 +107,20 @@ async def is_user_registered(user_id: int) -> bool:
 async def create_unregistered_user(user_id: int, username: str = "", first_name: str = "") -> bool:
     """إنشاء مستخدم غير مسجل (للتتبع الأساسي فقط)"""
     try:
-        await execute_query(
-            """
-            INSERT OR IGNORE INTO users (user_id, username, first_name, is_registered, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (user_id, username or "", first_name or "", False, 
-             datetime.now().isoformat(), datetime.now().isoformat())
-        )
+        import aiosqlite
+        # استخدام قاعدة البيانات المحلية مباشرة
+        DATABASE_URL = "bot_database.db"
+        
+        async with aiosqlite.connect(DATABASE_URL) as db:
+            await db.execute(
+                """
+                INSERT OR IGNORE INTO users (user_id, username, first_name, is_registered, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, username or "", first_name or "", False, 
+                 datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            await db.commit()
         return True
     except Exception as e:
         logging.error(f"خطأ في إنشاء المستخدم غير المسجل {user_id}: {e}")
@@ -131,27 +133,36 @@ async def complete_user_registration(user_id: int, full_name: str, gender: str,
     try:
         bank_info = BANK_TYPES[bank_type]
         
-        await execute_query(
-            """
-            UPDATE users SET 
-                first_name = ?, gender = ?, country = ?, bank_type = ?,
-                is_registered = ?, balance = ?, bank_balance = ?,
-                updated_at = ?
-            WHERE user_id = ?
-            """,
-            (full_name, gender, country, bank_type, True, 
-             bank_info['initial_bonus'], 0, 
-             datetime.now().isoformat(), user_id)
-        )
+        import aiosqlite
+        # استخدام قاعدة البيانات المحلية مباشرة
+        DATABASE_URL = "bot_database.db"
+        
+        async with aiosqlite.connect(DATABASE_URL) as db:
+            await db.execute(
+                """
+                UPDATE users SET 
+                    first_name = ?, gender = ?, country = ?, bank_type = ?,
+                    is_registered = ?, balance = ?, bank_balance = ?,
+                    updated_at = ?
+                WHERE user_id = ?
+                """,
+                (full_name, gender, country, bank_type, True, 
+                 bank_info['initial_bonus'], 0, 
+                 datetime.now().isoformat(), user_id)
+            )
+            await db.commit()
         
         # إضافة معاملة المكافأة
-        from database.operations import add_transaction
-        await add_transaction(
-            user_id=user_id,
-            transaction_type="registration_bonus", 
-            amount=bank_info['initial_bonus'],
-            description=f"مكافأة التسجيل - {bank_info['name']}"
-        )
+        try:
+            from database.operations import add_transaction
+            await add_transaction(
+                user_id=user_id,
+                transaction_type="registration_bonus", 
+                amount=bank_info['initial_bonus'],
+                description=f"مكافأة التسجيل - {bank_info['name']}"
+            )
+        except Exception as trans_error:
+            logging.warning(f"تعذر إضافة معاملة التسجيل: {trans_error}")
         
         logging.info(f"تم إكمال تسجيل المستخدم: {user_id} - {full_name}")
         return True
@@ -176,15 +187,21 @@ async def update_user_missing_data(user_id: int, full_name: str = None,
         updated_gender = gender if gender else current_user.get('gender', '')
         updated_country = country if country else current_user.get('country', '')
         
-        await execute_query(
-            """
-            UPDATE users SET 
-                first_name = ?, gender = ?, country = ?, is_registered = ?, updated_at = ?
-            WHERE user_id = ?
-            """,
-            (updated_name, updated_gender, updated_country, True, 
-             datetime.now().isoformat(), user_id)
-        )
+        import aiosqlite
+        # استخدام قاعدة البيانات المحلية مباشرة
+        DATABASE_URL = "bot_database.db"
+        
+        async with aiosqlite.connect(DATABASE_URL) as db:
+            await db.execute(
+                """
+                UPDATE users SET 
+                    first_name = ?, gender = ?, country = ?, is_registered = ?, updated_at = ?
+                WHERE user_id = ?
+                """,
+                (updated_name, updated_gender, updated_country, True, 
+                 datetime.now().isoformat(), user_id)
+            )
+            await db.commit()
         
         logging.info(f"تم تحديث بيانات المستخدم: {user_id} - {updated_name}")
         return True
@@ -333,12 +350,11 @@ async def handle_name_input(message: Message, state: FSMContext):
         
         if is_completion:
             # إكمال البيانات - نحتاج للتحقق من البيانات الناقصة الأخرى
-            from database.operations import get_user
             user = await get_user(message.from_user.id)
-            gender = user.get('gender', '')
-            country = user.get('country', '')
+            gender = user.get('gender', '') if user else ''
+            country = user.get('country', '') if user else ''
             
-            if not gender or gender.strip() == '':
+            if not gender or str(gender).strip() == '':
                 await message.reply(
                     f"✅ **تم حفظ الاسم:** {full_name}\n\n"
                     "👤 **البيانات الناقصة: الجنس**\n\n"
@@ -346,9 +362,13 @@ async def handle_name_input(message: Message, state: FSMContext):
                     reply_markup=create_gender_keyboard()
                 )
                 await state.set_state(RegistrationStates.choosing_gender)
-            elif not country or country.strip() == '':
+            elif not country or str(country).strip() == '':
                 # حفظ الاسم وانتقال للبلد
-                await update_user_missing_data(message.from_user.id, full_name=full_name)
+                success = await update_user_missing_data(message.from_user.id, full_name=full_name)
+                if not success:
+                    await message.reply("❌ حدث خطأ في حفظ البيانات")
+                    await state.clear()
+                    return
                 await message.reply(
                     f"✅ **تم حفظ الاسم:** {full_name}\n\n"
                     "🌍 **البيانات الناقصة: البلد**\n\n"
@@ -455,9 +475,9 @@ async def handle_bank_selection(callback: CallbackQuery, state: FSMContext):
         
         # الحصول على بيانات التسجيل
         data = await state.get_data()
-        full_name = data.get('full_name')
-        gender = data.get('gender')
-        country = data.get('country')
+        full_name = data.get('full_name', '')
+        gender = data.get('gender', '')
+        country = data.get('country', '')
         
         await callback.answer(f"تم اختيار: {bank_info['name']}")
         
@@ -478,8 +498,8 @@ async def handle_bank_selection(callback: CallbackQuery, state: FSMContext):
                     country_flag = flag
                     break
             
-            gender_emoji = GENDER_OPTIONS[gender]['emoji']
-            gender_text = GENDER_OPTIONS[gender]['text']
+            gender_emoji = GENDER_OPTIONS.get(gender, {}).get('emoji', '🧑')
+            gender_text = GENDER_OPTIONS.get(gender, {}).get('text', 'غير محدد')
             
             success_message = f"""
 🎉 **تم إنشاء حسابك بنجاح!**
@@ -545,7 +565,6 @@ async def start_completion_process(callback: CallbackQuery, state: FSMContext):
         await callback.answer("🔄 بدء إكمال البيانات...")
         
         # الحصول على بيانات المستخدم الحالية
-        from database.operations import get_user
         user = await get_user(callback.from_user.id)
         
         if not user:
@@ -553,12 +572,12 @@ async def start_completion_process(callback: CallbackQuery, state: FSMContext):
             return
         
         # فحص البيانات الناقصة
-        full_name = user.get('first_name', '')
-        gender = user.get('gender', '')
-        country = user.get('country', '')
+        full_name = user.get('first_name', '') if user else ''
+        gender = user.get('gender', '') if user else ''
+        country = user.get('country', '') if user else ''
         
         # تحديد الخطوة الأولى المطلوبة
-        if not full_name or full_name.strip() == '':
+        if not full_name or str(full_name).strip() == '':
             # البدء بطلب الاسم
             await callback.message.edit_text(
                 "📝 **إكمال البيانات - الاسم الكامل**\n\n"
@@ -578,7 +597,7 @@ async def start_completion_process(callback: CallbackQuery, state: FSMContext):
                 reply_markup=create_gender_keyboard()
             )
             await state.set_state(RegistrationStates.choosing_gender)
-        elif not country or country.strip() == '':
+        elif not country or str(country).strip() == '':
             # طلب البلد
             await callback.message.edit_text(
                 "🌍 **إكمال البيانات - البلد**\n\n"

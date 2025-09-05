@@ -8,7 +8,8 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 import aiosqlite
 
-from config.database import DATABASE_URL
+# استخدام قاعدة البيانات المحلية مباشرة لتجنب المشاكل الدائرية
+DATABASE_URL = "bot_database.db"
 
 
 async def get_user(user_id: int) -> Optional[Dict[str, Any]]:
