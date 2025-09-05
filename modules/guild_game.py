@@ -708,9 +708,18 @@ async def show_guild_main_menu(message: Message, state: FSMContext):
     try:
         user_id = message.from_user.id
         
+        # محاولة تحميل اللاعب من قاعدة البيانات إذا لم يكن في الذاكرة
         if user_id not in GUILD_PLAYERS:
-            await start_guild_registration(message, state)
-            return
+            from modules.guild_database import load_guild_player
+            player_data = await load_guild_player(user_id)
+            if player_data:
+                # إضافة اللاعب للذاكرة
+                GUILD_PLAYERS[user_id] = player_data
+                logging.info(f"✅ تم تحميل بيانات اللاعب {user_id} من قاعدة البيانات")
+            else:
+                # إذا لم يوجد في قاعدة البيانات، ابدأ التسجيل
+                await start_guild_registration(message, state)
+                return
         
         player = GUILD_PLAYERS[user_id]
         guild_name = GUILDS[player.guild]
