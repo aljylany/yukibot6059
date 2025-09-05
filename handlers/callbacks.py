@@ -17,6 +17,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     """معالج شامل لجميع الـ callbacks"""
     try:
         data = callback.data
+        logging.info(f"🔍 CALLBACK DEBUG: تم استقبال callback_data: '{data}' من المستخدم {callback.from_user.id}")
         
         # معالجة callbacks نطاق الردود المخصصة
         if data in ["scope_group", "scope_global", "scope_cancel"]:
@@ -275,10 +276,14 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             data.startswith("missions_") or 
             data.startswith("shop_") or 
             data.startswith("buy_") or 
+            data.startswith("cant_buy_") or
+            data.startswith("start_mission_") or
+            data.startswith("locked_mission_") or
             data.startswith("change_class_") or 
             data.startswith("gender_select_") or 
             data.startswith("class_select_") or 
-            data == "current_class"):
+            data == "current_class" or
+            data == "mission_status"):
             from modules.guild_game import (
                 handle_guild_selection, handle_gender_selection, handle_class_selection,
                 show_guild_main_menu, show_personal_code
@@ -326,7 +331,16 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             elif data == "missions_collect":
                 await show_collect_missions(callback)
             
-            elif data.startswith("start_mission_"):
+            elif data == "missions_medium":
+                await show_medium_missions(callback)
+            
+            elif data == "missions_legendary":
+                await show_legendary_missions(callback)
+            
+            elif (data.startswith("start_mission_normal_") or 
+                  data.startswith("start_mission_collect_") or 
+                  data.startswith("start_mission_medium_") or 
+                  data.startswith("start_mission_legendary_")):
                 await start_mission(callback)
             
             elif data == "mission_status":
@@ -351,7 +365,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             elif data == "shop_inventory":
                 await show_inventory(callback)
             
-            elif data.startswith("buy_"):
+            elif (data.startswith("buy_weapon_") or 
+                  data.startswith("buy_badge_") or 
+                  data.startswith("buy_title_") or 
+                  data.startswith("buy_potion_") or 
+                  data.startswith("buy_ring_") or 
+                  data.startswith("buy_animal_")):
                 await buy_item(callback)
             
             elif data.startswith("cant_buy_"):

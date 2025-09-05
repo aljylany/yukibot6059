@@ -73,11 +73,11 @@ async def main():
     from modules.manual_registration import router as registration_router
     dp.include_router(registration_router)
     
-    # تسجيل معالج النقابة المتخصص قبل المعالج العام للأزرار
+    # تسجيل معالج النقابة المتخصص أولاً لتجنب التداخل
     from handlers.guild_handler import guild_router
     dp.include_router(guild_router)
     
-    # معالج الأزرار العام (بعد النقابة لتجنب التداخل)
+    # معالج الأزرار العام (بعد النقابة بأولوية أقل)
     dp.include_router(callbacks.router)
     
     dp.include_router(smart_commands.router)
