@@ -58,7 +58,9 @@ async def start_royal_game(message: Message):
             'message_id': None,
             'confirmed_players': set(),
             'eliminated_players': [],
-            'total_pot': 0
+            'total_pot': 0,
+            'invited_players': [message.from_user.id],  # المنشئ مدعو تلقائياً
+            'is_private': True  # اللعبة خاصة بالمدعوين فقط
         }
         
         ACTIVE_ROYAL_GAMES[group_id] = game_data
@@ -152,6 +154,12 @@ async def handle_royal_join(callback_query: CallbackQuery):
         if game_data['phase'] != 'registration':
             await callback_query.answer("❌ انتهى وقت التسجيل", show_alert=True)
             return
+        
+        # التحقق من أن اللاعب مدعو (إذا كانت اللعبة خاصة)
+        if game_data.get('is_private', False):
+            if user_id not in game_data.get('invited_players', []):
+                await callback_query.answer("❌ لست مدعواً لهذه اللعبة الخاصة", show_alert=True)
+                return
         
         # التحقق من أن اللاعب غير مسجل مسبقاً
         if any(player['id'] == user_id for player in game_data['players']):
