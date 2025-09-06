@@ -238,7 +238,7 @@ async def get_telegram_admin_level(bot: Bot, user_id: int, group_id: int) -> Adm
 
 async def has_telegram_permission(bot: Bot, user_id: int, required_level: AdminLevel, group_id: Optional[int] = None) -> bool:
     """
-    التحقق من امتلاك المستخدم للصلاحية المطلوبة باستخدام تليجرام API
+    التحقق من امتلاك المستخدم للصلاحية المطلوبة باستخدام تليجرام API مع مزامنة تلقائية
     
     Args:
         bot: كائن البوت
@@ -254,9 +254,25 @@ async def has_telegram_permission(bot: Bot, user_id: int, required_level: AdminL
             # إذا لم تُحدد المجموعة، فحص الصلاحيات العامة فقط
             user_level = get_user_admin_level(user_id)
         else:
+            # فحص النظام المحلي أولاً
+            local_level = get_user_admin_level(user_id, group_id)
+            
+            # إذا كان المستخدم ليس أدمن في النظام المحلي، جرب مزامنة الصلاحيات من تليجرام
+            if local_level == AdminLevel.MEMBER:
+                try:
+                    # فحص صلاحيات تليجرام مباشرة
+                    member = await bot.get_chat_member(group_id, user_id)
+                    if member.status in [ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR]:
+                        # المستخدم أدمن في تليجرام لكن ليس في النظام المحلي - نحتاج مزامنة
+                        logging.info(f"اكتشاف أدمن جديد في تليجرام - مزامنة المجموعة {group_id}")
+                        await sync_telegram_admins_to_local(bot, group_id)
+                        # إعادة فحص المستوى بعد المزامنة
+                        local_level = get_user_admin_level(user_id, group_id)
+                except Exception as sync_error:
+                    logging.warning(f"فشل في مزامنة صلاحيات المجموعة {group_id}: {sync_error}")
+            
             # فحص الصلاحيات من تليجرام + النظام المحلي
             telegram_level = await get_telegram_admin_level(bot, user_id, group_id)
-            local_level = get_user_admin_level(user_id, group_id)
             
             # أخذ أعلى مستوى من الاثنين
             user_level = max(telegram_level, local_level, key=lambda x: x.value)
@@ -337,6 +353,59 @@ async def remove_rank_from_database(user_id: int, group_id: int,
         )
     except Exception as e:
         logging.error(f"خطأ في حذف الرتبة: {e}")
+
+
+async def sync_telegram_admins_to_local(bot: Bot, group_id: int) -> None:
+    """
+    مزامنة أدمن تليجرام مع النظام المحلي
+    
+    Args:
+        bot: كائن البوت
+        group_id: معرف المجموعة
+    """
+    try:
+        # الحصول على قائمة الأدمن من تليجرام
+        admins = await bot.get_chat_administrators(group_id)
+        
+        # مسح الأدمن السابقين لهذه المجموعة من النظام المحلي
+        if group_id in GROUP_OWNERS:
+            GROUP_OWNERS[group_id].clear()
+        else:
+            GROUP_OWNERS[group_id] = []
+            
+        if group_id in MODERATORS:
+            MODERATORS[group_id].clear()
+        else:
+            MODERATORS[group_id] = []
+        
+        # إضافة الأدمن الجدد
+        for admin in admins:
+            user_id = admin.user.id
+            
+            # تجاهل البوتات (عدا البوت نفسه إذا كان أدمن)
+            if admin.user.is_bot and user_id != bot.id:
+                continue
+                
+            if admin.status == ChatMemberStatus.CREATOR:
+                # مالك المجموعة
+                GROUP_OWNERS[group_id].append(user_id)
+                # حفظ في قاعدة البيانات
+                await sync_rank_to_database(user_id, group_id, "مالك")
+                logging.info(f"تم تحديد مالك المجموعة {group_id}: {user_id}")
+                
+            elif admin.status == ChatMemberStatus.ADMINISTRATOR:
+                # مشرف
+                MODERATORS[group_id].append(user_id)
+                # حفظ في قاعدة البيانات
+                await sync_rank_to_database(user_id, group_id, "مشرف")
+                logging.info(f"تم تحديد مشرف في المجموعة {group_id}: {user_id}")
+        
+        logging.info(f"تم تحديث صلاحيات المجموعة {group_id} من تليجرام")
+        logging.info(f"المالكون: {GROUP_OWNERS.get(group_id, [])}")
+        logging.info(f"المشرفون: {MODERATORS.get(group_id, [])}")
+        
+    except Exception as e:
+        logging.error(f"خطأ في مزامنة أدمن تليجرام للمجموعة {group_id}: {e}")
 
 
 async def load_ranks_from_database():
