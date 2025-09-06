@@ -1373,13 +1373,26 @@ async def is_entertainment_enabled(chat_id: int) -> bool:
         return True
 
 
-async def has_admin_permission(user_id: int, chat_id: int) -> bool:
-    """التحقق من صلاحيات الإدارة"""
+async def has_admin_permission(user_id: int, chat_id: int, bot=None) -> bool:
+    """التحقق من صلاحيات الإدارة باستخدام تليجرام API + النظام المحلي"""
     try:
         from config.settings import ADMINS
+        from config.hierarchy import has_telegram_permission, AdminLevel
+        
+        # فحص قائمة الأدمن المحلية أولاً
         if user_id in ADMINS:
             return True
-            
+        
+        # إذا كان البوت متوفر، فحص صلاحيات تليجرام
+        if bot:
+            try:
+                has_perm = await has_telegram_permission(bot, user_id, AdminLevel.MODERATOR, chat_id)
+                if has_perm:
+                    return True
+            except Exception as e:
+                logging.warning(f"فشل فحص صلاحيات تليجرام: {e}")
+        
+        # فحص قاعدة البيانات المحلية كحل احتياطي
         user_rank = await execute_query(
             "SELECT rank_type FROM group_ranks WHERE user_id = ? AND chat_id = ?",
             (user_id, chat_id),

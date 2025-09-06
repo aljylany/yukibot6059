@@ -1415,8 +1415,21 @@ async def enable_filter_command(message: Message):
         user_id = message.from_user.id
         chat_id = message.chat.id
         
-        if not has_permission(user_id, AdminLevel.GROUP_OWNER, chat_id):
-            await message.reply("❌ هذا الأمر متاح لمالكي المجموعات والسادة فقط")
+        # استخدام النظام المحدث للتحقق من الصلاحيات
+        from config.hierarchy import has_telegram_permission
+        try:
+            has_perm = await has_telegram_permission(message.bot, user_id, AdminLevel.GROUP_OWNER, chat_id)
+        except Exception as e:
+            logging.warning(f"فشل فحص صلاحيات تليجرام: {e}")
+            has_perm = has_permission(user_id, AdminLevel.GROUP_OWNER, chat_id)
+        
+        if not has_perm:
+            from modules.permission_responses import get_permission_denial_response
+            denial_response = get_permission_denial_response(user_id, chat_id, AdminLevel.GROUP_OWNER)
+            if denial_response:
+                await message.reply(denial_response)
+            else:
+                await message.reply("❌ هذا الأمر متاح لمالكي المجموعات والسادة فقط")
             return
         if content_filter.is_enabled():
             await message.reply(
@@ -1454,8 +1467,21 @@ async def disable_filter_command(message: Message):
         user_id = message.from_user.id
         chat_id = message.chat.id
         
-        if not has_permission(user_id, AdminLevel.GROUP_OWNER, chat_id):
-            await message.reply("❌ هذا الأمر متاح لمالكي المجموعات والسادة فقط")
+        # استخدام النظام المحدث للتحقق من الصلاحيات
+        from config.hierarchy import has_telegram_permission
+        try:
+            has_perm = await has_telegram_permission(message.bot, user_id, AdminLevel.GROUP_OWNER, chat_id)
+        except Exception as e:
+            logging.warning(f"فشل فحص صلاحيات تليجرام: {e}")
+            has_perm = has_permission(user_id, AdminLevel.GROUP_OWNER, chat_id)
+        
+        if not has_perm:
+            from modules.permission_responses import get_permission_denial_response
+            denial_response = get_permission_denial_response(user_id, chat_id, AdminLevel.GROUP_OWNER)
+            if denial_response:
+                await message.reply(denial_response)
+            else:
+                await message.reply("❌ هذا الأمر متاح لمالكي المجموعات والسادة فقط")
             return
         if not content_filter.is_enabled():
             await message.reply(

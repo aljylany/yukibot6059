@@ -7,6 +7,9 @@ import logging
 import asyncio
 from typing import List, Dict, Optional
 from enum import Enum
+from aiogram import Bot
+from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramAPIError
 
 
 class AdminLevel(Enum):
@@ -177,6 +180,91 @@ def remove_group_owner(group_id: int, user_id: int) -> bool:
         return False
     except Exception as e:
         logging.error(f"خطأ في remove_group_owner: {e}")
+        return False
+
+
+async def get_telegram_admin_level(bot: Bot, user_id: int, group_id: int) -> AdminLevel:
+    """
+    الحصول على مستوى الإدارة للمستخدم من تليجرام API مباشرة
+    
+    Args:
+        bot: كائن البوت
+        user_id: معرف المستخدم
+        group_id: معرف المجموعة
+        
+    Returns:
+        مستوى الإدارة الفعلي من تليجرام
+    """
+    try:
+        # فحص الأسياد والملوك أولاً (لهم صلاحيات مطلقة)
+        if is_supreme_master(user_id):
+            if user_id in ROYALTY["KINGS"]:
+                return AdminLevel.KING
+            elif user_id in ROYALTY["QUEENS"]:
+                return AdminLevel.QUEEN
+            else:
+                return AdminLevel.MASTER
+        
+        # فحص الملكات والملوك
+        if user_id in ROYALTY["QUEENS"]:
+            return AdminLevel.QUEEN
+        if user_id in ROYALTY["KINGS"]:
+            return AdminLevel.KING
+        if user_id in MASTERS:
+            return AdminLevel.MASTER
+        
+        # فحص صلاحيات تليجرام الفعلية
+        try:
+            member = await bot.get_chat_member(group_id, user_id)
+            
+            # مالك المجموعة
+            if member.status == ChatMemberStatus.CREATOR:
+                return AdminLevel.GROUP_OWNER
+            
+            # مشرف مع صلاحيات
+            elif member.status == ChatMemberStatus.ADMINISTRATOR:
+                return AdminLevel.MODERATOR
+                
+        except TelegramAPIError as e:
+            logging.warning(f"فشل في الحصول على معلومات العضو من تليجرام: {e}")
+        
+        # عضو عادي
+        return AdminLevel.MEMBER
+        
+    except Exception as e:
+        logging.error(f"خطأ في get_telegram_admin_level: {e}")
+        return AdminLevel.MEMBER
+
+
+async def has_telegram_permission(bot: Bot, user_id: int, required_level: AdminLevel, group_id: Optional[int] = None) -> bool:
+    """
+    التحقق من امتلاك المستخدم للصلاحية المطلوبة باستخدام تليجرام API
+    
+    Args:
+        bot: كائن البوت
+        user_id: معرف المستخدم
+        required_level: المستوى المطلوب
+        group_id: معرف المجموعة
+        
+    Returns:
+        True إذا كان لديه الصلاحية
+    """
+    try:
+        if not group_id:
+            # إذا لم تُحدد المجموعة، فحص الصلاحيات العامة فقط
+            user_level = get_user_admin_level(user_id)
+        else:
+            # فحص الصلاحيات من تليجرام + النظام المحلي
+            telegram_level = await get_telegram_admin_level(bot, user_id, group_id)
+            local_level = get_user_admin_level(user_id, group_id)
+            
+            # أخذ أعلى مستوى من الاثنين
+            user_level = max(telegram_level, local_level, key=lambda x: x.value)
+        
+        return user_level.value >= required_level.value
+        
+    except Exception as e:
+        logging.error(f"خطأ في has_telegram_permission: {e}")
         return False
 
 
