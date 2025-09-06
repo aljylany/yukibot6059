@@ -11,7 +11,7 @@ from aiogram.fsm.context import FSMContext
 from database.operations import execute_query
 from utils.decorators import admin_required, group_only
 from config.settings import SYSTEM_MESSAGES
-from config.hierarchy import has_permission, AdminLevel
+from config.hierarchy import has_telegram_permission, AdminLevel
 
 # إعدادات القفل والفتح
 LOCK_SETTINGS = {
@@ -62,7 +62,7 @@ TOGGLE_SETTINGS = {
 async def handle_lock_command(message: Message, setting: str, action: str):
     """معالج أوامر القفل والفتح"""
     try:
-        if not has_permission(message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -97,7 +97,7 @@ async def handle_lock_command(message: Message, setting: str, action: str):
 async def handle_toggle_command(message: Message, setting: str, action: str):
     """معالج أوامر التفعيل والتعطيل"""
     try:
-        if not has_permission(message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -185,7 +185,7 @@ async def show_group_settings(message: Message):
 async def handle_delete_messages(message: Message, count: int = 1):
     """معالج حذف الرسائل"""
     try:
-        if not await has_admin_permission(message.from_user.id, message.chat.id):
+        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -229,7 +229,7 @@ async def handle_delete_messages(message: Message, count: int = 1):
 async def set_group_welcome(message: Message, welcome_text: str):
     """تعيين رسالة الترحيب"""
     try:
-        if not await has_admin_permission(message.from_user.id, message.chat.id):
+        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -248,7 +248,7 @@ async def set_group_welcome(message: Message, welcome_text: str):
 async def set_group_rules(message: Message, rules_text: str):
     """تعيين قوانين المجموعة"""
     try:
-        if not await has_admin_permission(message.from_user.id, message.chat.id):
+        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -288,7 +288,7 @@ async def show_group_rules(message: Message):
 async def handle_forbidden_word(message: Message, word: str, action: str):
     """معالج إضافة/إزالة الكلمات المحظورة"""
     try:
-        if not await has_admin_permission(message.from_user.id, message.chat.id):
+        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -353,26 +353,8 @@ async def show_group_info(message: Message):
 
 
 # دوال مساعدة
-async def has_admin_permission(user_id: int, chat_id: int) -> bool:
-    """التحقق من صلاحيات الإدارة"""
-    try:
-        # التحقق من الأدمن العام
-        from config.settings import ADMINS
-        if user_id in ADMINS:
-            return True
-            
-        # التحقق من رتبة المستخدم في المجموعة
-        user_rank = await execute_query(
-            "SELECT rank_type FROM group_ranks WHERE user_id = ? AND chat_id = ?",
-            (user_id, chat_id),
-            fetch_one=True
-        )
-        
-        return user_rank is not None
-        
-    except Exception as e:
-        logging.error(f"خطأ في التحقق من صلاحيات الإدارة: {e}")
-        return False
+# استيراد has_admin_permission من entertainment module
+from modules.entertainment import has_admin_permission
 
 
 async def get_setting_value(chat_id: int, setting_key: str, default_value: str = "False") -> str:
