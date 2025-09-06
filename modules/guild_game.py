@@ -483,7 +483,7 @@ SHOP_ITEMS = {
 }
 
 async def start_guild_registration(message: Message, state: FSMContext):
-    """بدء تسجيل في لعبة النقابة"""
+    """بدء تسجيل في لعبة النقابة مع فحص البيانات المحفوظة"""
     try:
         user_id = message.from_user.id
         username = message.from_user.username or ""
@@ -525,6 +525,31 @@ async def start_guild_registration(message: Message, state: FSMContext):
             await show_guild_main_menu(message, state)
             return
         
+        # فحص بيانات المستخدم في النظام الرئيسي
+        from database.operations import get_user
+        user_data = await get_user(user_id)
+        
+        # التحقق من اكتمال بيانات المستخدم
+        if user_data:
+            user_gender = user_data.get('gender', '')
+            user_country = user_data.get('country', '')
+            is_registered = user_data.get('is_registered', False)
+            
+            # إذا كان المستخدم غير مسجل أو ناقص البيانات
+            if not is_registered or not user_gender or not user_country:
+                await message.reply(
+                    "❌ **يجب إكمال تسجيل حسابك أولاً!**\n\n"
+                    "📝 لديك حساب غير مكتمل في النظام\n"
+                    "🔧 يجب إكمال البيانات التالية للوصول للعبة النقابة:\n"
+                    "• الجنس (ذكر/أنثى)\n"
+                    "• البلد\n\n"
+                    "💡 **اكتب 'تسجيل' لإكمال بياناتك الناقصة**"
+                )
+                return
+            
+            # حفظ الجنس من النظام الرئيسي في حالة FSM للاستخدام لاحقاً
+            await state.update_data(saved_gender=user_gender, saved_country=user_country)
+        
         # إنشاء لوحة مفاتيح النقابات
         keyboard = []
         for guild_id, guild_name in GUILDS.items():
@@ -549,26 +574,56 @@ async def start_guild_registration(message: Message, state: FSMContext):
         await message.reply("❌ حدث خطأ في بدء اللعبة")
 
 async def handle_guild_selection(callback: CallbackQuery, state: FSMContext):
-    """معالجة اختيار النقابة"""
+    """معالجة اختيار النقابة مع تخطي الجنس إذا كان محفوظاً"""
     try:
         guild_id = callback.data.split("_")[2]
         await state.update_data(guild=guild_id)
         
-        # إنشاء لوحة مفاتيح الأجناس
-        keyboard = []
-        for gender_id, gender_name in GENDERS.items():
-            keyboard.append([InlineKeyboardButton(
-                text=gender_name,
-                callback_data=f"gender_select_{gender_id}"
-            )])
+        # فحص إذا كان الجنس محفوظاً من النظام الرئيسي
+        data = await state.get_data()
+        saved_gender = data.get('saved_gender')
         
-        await callback.message.edit_text(
-            f"✅ **اخترت {GUILDS[guild_id]}!**\n\n"
-            "👶 **اختر جنسك لتجسد هويتك:**",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        if saved_gender and saved_gender in GENDERS:
+            # استخدام الجنس المحفوظ وتخطي خطوة اختيار الجنس
+            await state.update_data(gender=saved_gender)
+            
+            # عرض خيارات الفئات مباشرة
+            keyboard = []
+            for class_id, class_name in CLASSES.items():
+                keyboard.append([InlineKeyboardButton(
+                    text=class_name,
+                    callback_data=f"class_select_{class_id}"
+                )])
+            
+            gender_text = "ذكر" if saved_gender == "male" else "أنثى"
+            await callback.message.edit_text(
+                f"✅ **اخترت {GUILDS[guild_id]}!**\n"
+                f"✅ **تم استخدام جنسك المحفوظ:** {gender_text}\n\n"
+                "🧙‍♂️ **اختر فئتك لتجسد قوتك:**\n\n"
+                "⚔️ **محارب** - قوة في المعارك القريبة\n"
+                "🧙‍♂️ **ساحر** - قوة السحر والعناصر\n"
+                "💚 **معالج** - قوة الشفاء والدعم\n"
+                "👹 **غول** - قوة الظلام والرعب\n"
+                "🔮 **مستدعي** - قوة استدعاء المخلوقات",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+            )
+            await state.set_state(GuildStates.choosing_class)
+        else:
+            # إذا لم يكن الجنس محفوظاً، اعرض خيارات الجنس
+            keyboard = []
+            for gender_id, gender_name in GENDERS.items():
+                keyboard.append([InlineKeyboardButton(
+                    text=gender_name,
+                    callback_data=f"gender_select_{gender_id}"
+                )])
+            
+            await callback.message.edit_text(
+                f"✅ **اخترت {GUILDS[guild_id]}!**\n\n"
+                "👶 **اختر جنسك لتجسد هويتك:**",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+            )
+            await state.set_state(GuildStates.choosing_gender)
         
-        await state.set_state(GuildStates.choosing_gender)
         await callback.answer()
         
     except Exception as e:
