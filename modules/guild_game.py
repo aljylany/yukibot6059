@@ -491,6 +491,7 @@ async def start_guild_registration(message: Message, state: FSMContext):
         
         # فحص إذا كان اللاعب مسجل بالفعل في الذاكرة
         if user_id in GUILD_PLAYERS:
+            logging.info(f"🎮 GUILD DEBUG: اللاعب {user_id} مسجل بالفعل، عرض القائمة الرئيسية")
             await show_guild_main_menu(message, state)
             return
         
@@ -577,12 +578,21 @@ async def handle_guild_selection(callback: CallbackQuery, state: FSMContext):
 async def handle_gender_selection(callback: CallbackQuery, state: FSMContext):
     """معالجة اختيار الجنس"""
     try:
+        logging.info(f"🔍 GENDER DEBUG: استقبال بيانات الجنس: '{callback.data}'")
+        
+        # التحقق من أن البيانات تحتوي على gender_select
+        if not callback.data.startswith("gender_select_"):
+            logging.error(f"بيانات غير صحيحة في اختيار الجنس: {callback.data}")
+            await callback.answer("❌ بيانات غير صحيحة")
+            return
+            
         parts = callback.data.split("_")
         if len(parts) < 3:
             logging.error(f"بيانات غير صحيحة في اختيار الجنس: {callback.data}")
             await callback.answer("❌ بيانات غير صحيحة")
             return
         gender_id = parts[2]
+        logging.info(f"🔍 GENDER DEBUG: تم تحليل الجنس: '{gender_id}'")
         await state.update_data(gender=gender_id)
         
         # إنشاء لوحة مفاتيح الفئات
