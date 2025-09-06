@@ -62,7 +62,7 @@ TOGGLE_SETTINGS = {
 async def handle_lock_command(message: Message, setting: str, action: str):
     """معالج أوامر القفل والفتح"""
     try:
-        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not message.bot or not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -97,7 +97,7 @@ async def handle_lock_command(message: Message, setting: str, action: str):
 async def handle_toggle_command(message: Message, setting: str, action: str):
     """معالج أوامر التفعيل والتعطيل"""
     try:
-        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not message.bot or not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -185,7 +185,7 @@ async def show_group_settings(message: Message):
 async def handle_delete_messages(message: Message, count: int = 1):
     """معالج حذف الرسائل"""
     try:
-        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not message.bot or not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -197,12 +197,13 @@ async def handle_delete_messages(message: Message, count: int = 1):
         current_message_id = message.message_id
 
         # حذف الرسائل
-        for i in range(count):
-            try:
-                await message.bot.delete_message(message.chat.id, current_message_id - i)
-                deleted_count += 1
-            except:
-                continue
+        if message.bot:
+            for i in range(count):
+                try:
+                    await message.bot.delete_message(message.chat.id, current_message_id - i)
+                    deleted_count += 1
+                except:
+                    continue
 
         # حذف رسالة الأمر نفسها
         try:
@@ -229,7 +230,7 @@ async def handle_delete_messages(message: Message, count: int = 1):
 async def set_group_welcome(message: Message, welcome_text: str):
     """تعيين رسالة الترحيب"""
     try:
-        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not message.bot or not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -248,7 +249,7 @@ async def set_group_welcome(message: Message, welcome_text: str):
 async def set_group_rules(message: Message, rules_text: str):
     """تعيين قوانين المجموعة"""
     try:
-        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not message.bot or not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -277,7 +278,12 @@ async def show_group_rules(message: Message):
             await message.reply("📜 لم يتم تعيين قوانين للمجموعة بعد")
             return
 
-        rules_text = rules[0] if isinstance(rules, tuple) else rules['setting_value']
+        if isinstance(rules, tuple):
+            rules_text = rules[0]
+        elif isinstance(rules, dict):
+            rules_text = rules.get('setting_value', '')
+        else:
+            rules_text = str(rules)
         await message.reply(f"📜 **قوانين المجموعة:**\n\n{rules_text}")
 
     except Exception as e:
@@ -288,7 +294,7 @@ async def show_group_rules(message: Message):
 async def handle_forbidden_word(message: Message, word: str, action: str):
     """معالج إضافة/إزالة الكلمات المحظورة"""
     try:
-        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+        if not message.bot or not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
             await message.reply("❌ هذا الأمر للإدارة فقط")
             return
 
@@ -319,7 +325,12 @@ async def show_group_info(message: Message):
         chat = message.chat
         
         # إحصائيات المجموعة
-        members_count = await message.bot.get_chat_member_count(chat.id)
+        members_count = 0
+        if message.bot:
+            try:
+                members_count = await message.bot.get_chat_member_count(chat.id)
+            except Exception:
+                members_count = 0
         
         # عدد الإدارة
         admins_count = await execute_query(
@@ -328,7 +339,12 @@ async def show_group_info(message: Message):
             fetch_one=True
         )
         
-        admin_count = admins_count[0] if admins_count else 0
+        if isinstance(admins_count, tuple):
+            admin_count = admins_count[0] if admins_count else 0
+        elif isinstance(admins_count, dict):
+            admin_count = admins_count.get('COUNT(*)', 0)
+        else:
+            admin_count = admins_count or 0
         
         # معلومات أساسية
         info_text = f"""
@@ -367,7 +383,12 @@ async def get_setting_value(chat_id: int, setting_key: str, default_value: str =
         )
         
         if setting:
-            return setting[0] if isinstance(setting, tuple) else setting['setting_value']
+            if isinstance(setting, tuple):
+                return setting[0]
+            elif isinstance(setting, dict):
+                return setting.get('setting_value', default_value)
+            else:
+                return str(setting)
         return default_value
         
     except Exception as e:
