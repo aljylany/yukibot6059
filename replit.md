@@ -47,7 +47,16 @@ The Yuki Bot is built with a modular and extensible architecture, emphasizing sm
 - **Simplified Dependencies:** Reduced complexity by removing non-essential systems and focusing on core functionality.
 - **Database Integration:** Complete user context awareness with full access to all database tables for personalized AI responses.
 
-## Recent Changes (September 05, 2025)
+## Recent Changes (September 07, 2025)
+- **Critical System Fixes:** Fixed major permission and response issues:
+  - **Permission System Fix:** Updated permission recognition to properly identify actual group owners and moderators from Telegram API using `has_telegram_permission` function
+  - **Response Context Fix:** Eliminated hardcoded names like "O" in AI responses, now uses dynamic user names from message.from_user.first_name
+  - **Protection Commands Restoration:** Re-added basic protection commands (تفعيل الحماية، تعطيل الحماية، حالة الحماية) with proper permission checking
+  - **Admin Identification Feature:** Added "يوكي من هو المالك" command to display real Telegram owners and moderators
+  - **System Prompt Update:** Updated AI system prompt to use real usernames instead of hardcoded aliases
+  - **User Context Improvement:** Fixed mixed responses by ensuring AI uses actual user names from Telegram messages
+
+## Previous Changes (September 05, 2025)
 - **Enhanced Yuki AI System:** Developed comprehensive AI system with full database access:
   - **Complete User Context:** AI now accesses full user profile including gender, country, financial status, marriage status, properties, and gaming progress
   - **Personalized Greetings:** Gender-appropriate addressing (أخي/أختي) and country-specific cultural references
