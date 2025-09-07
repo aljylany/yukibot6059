@@ -355,6 +355,51 @@ async def remove_rank_from_database(user_id: int, group_id: int,
         logging.error(f"خطأ في حذف الرتبة: {e}")
 
 
+async def get_real_telegram_admins(bot: Bot, group_id: int) -> Dict[str, List[Dict[str, any]]]:
+    """
+    الحصول على قائمة المالكين والمشرفين الفعليين من تليجرام
+    
+    Args:
+        bot: كائن البوت
+        group_id: معرف المجموعة
+        
+    Returns:
+        قاموس يحتوي على المالكين والمشرفين مع تفاصيلهم
+    """
+    try:
+        admins = await bot.get_chat_administrators(group_id)
+        
+        owners = []
+        moderators = []
+        
+        for admin in admins:
+            user_info = {
+                "id": admin.user.id,
+                "first_name": admin.user.first_name or "",
+                "last_name": admin.user.last_name or "",
+                "username": admin.user.username or "",
+                "is_bot": admin.user.is_bot
+            }
+            
+            # تجاهل البوتات (عدا البوت نفسه إذا كان أدمن)
+            if admin.user.is_bot and admin.user.id != bot.id:
+                continue
+                
+            if admin.status == ChatMemberStatus.CREATOR:
+                owners.append(user_info)
+            elif admin.status == ChatMemberStatus.ADMINISTRATOR:
+                moderators.append(user_info)
+        
+        return {
+            "owners": owners,
+            "moderators": moderators
+        }
+        
+    except Exception as e:
+        logging.error(f"خطأ في الحصول على أدمن تليجرام للمجموعة {group_id}: {e}")
+        return {"owners": [], "moderators": []}
+
+
 async def sync_telegram_admins_to_local(bot: Bot, group_id: int) -> None:
     """
     مزامنة أدمن تليجرام مع النظام المحلي

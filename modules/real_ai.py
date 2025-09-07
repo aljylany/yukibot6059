@@ -991,6 +991,105 @@ async def handle_real_yuki_ai_message(message: Message):
                 await message.reply(category_guide)
                 return
         
+        # فحص السؤال عن المالك والمشرفين
+        if any(phrase in text_lower for phrase in ["من هو المالك", "مين المالك", "من المالك", "اظهر المالك", "المالكين", "المشرفين", "من هم المشرفين"]):
+            from config.hierarchy import get_real_telegram_admins
+            try:
+                if message.bot and message.chat.type != 'private':
+                    admins_data = await get_real_telegram_admins(message.bot, message.chat.id)
+                    owners = admins_data.get("owners", [])
+                    moderators = admins_data.get("moderators", [])
+                    
+                    response = "👑 **مالكي ومشرفي المجموعة:**\n\n"
+                    
+                    if owners:
+                        response += "🏰 **المالكين:**\n"
+                        for owner in owners:
+                            name = owner.get("first_name", "") + (" " + owner.get("last_name", "") if owner.get("last_name") else "")
+                            username = f"@{owner['username']}" if owner.get("username") else f"#{owner['id']}"
+                            response += f"• {name.strip()} ({username})\n"
+                        response += "\n"
+                    
+                    if moderators:
+                        response += "👨‍💼 **المشرفين:**\n"
+                        for moderator in moderators:
+                            name = moderator.get("first_name", "") + (" " + moderator.get("last_name", "") if moderator.get("last_name") else "")
+                            username = f"@{moderator['username']}" if moderator.get("username") else f"#{moderator['id']}"
+                            response += f"• {name.strip()} ({username})\n"
+                    
+                    if not owners and not moderators:
+                        response += "❌ لم يتم العثور على مالكين أو مشرفين في هذه المجموعة"
+                    
+                    await message.reply(response)
+                    return
+                else:
+                    await message.reply("❌ هذا الأمر يعمل في المجموعات فقط!")
+                    return
+            except Exception as e:
+                logging.error(f"خطأ في عرض المالكين: {e}")
+                await message.reply("❌ حدث خطأ في الحصول على معلومات المالكين والمشرفين")
+        
+        # فحص أوامر الحماية والإعدادات
+        protection_commands = {
+            "تفعيل الحماية": "enable_protection",
+            "تعطيل الحماية": "disable_protection", 
+            "حالة الحماية": "protection_status",
+            "تفعيل الحمايه": "enable_protection",
+            "تعطيل الحمايه": "disable_protection"
+        }
+        
+        for command_text, command_type in protection_commands.items():
+            if command_text in text_lower:
+                from config.hierarchy import has_telegram_permission, AdminLevel
+                try:
+                    # التحقق من الصلاحيات - يحتاج مشرف على الأقل
+                    if message.bot and message.chat.type != 'private':
+                        if not await has_telegram_permission(message.bot, message.from_user.id, AdminLevel.MODERATOR, message.chat.id):
+                            # رسالة مهذبة بدلاً من الإهانة للمالك الحقيقي
+                            await message.reply("❌ هذا الأمر متاح للمشرفين ومالكي المجموعات فقط")
+                            return
+                        
+                        # تنفيذ الأمر
+                        from database.operations import execute_query
+                        from datetime import datetime
+                        
+                        if command_type == "enable_protection":
+                            await execute_query(
+                                "INSERT OR REPLACE INTO group_settings (chat_id, setting_key, setting_value, updated_at) VALUES (?, ?, ?, ?)",
+                                (message.chat.id, "protection_enabled", "True", datetime.now().isoformat())
+                            )
+                            user_name = message.from_user.first_name or "المشرف"
+                            await message.reply(f"✅ تم تفعيل نظام الحماية بواسطة {user_name}!\n🛡️ المجموعة الآن محمية من المحتوى المخالف")
+                            
+                        elif command_type == "disable_protection":
+                            await execute_query(
+                                "INSERT OR REPLACE INTO group_settings (chat_id, setting_key, setting_value, updated_at) VALUES (?, ?, ?, ?)",
+                                (message.chat.id, "protection_enabled", "False", datetime.now().isoformat())
+                            )
+                            user_name = message.from_user.first_name or "المشرف"
+                            await message.reply(f"⚠️ تم تعطيل نظام الحماية بواسطة {user_name}\n🔓 المجموعة بدون حماية الآن")
+                            
+                        elif command_type == "protection_status":
+                            setting = await execute_query(
+                                "SELECT setting_value FROM group_settings WHERE chat_id = ? AND setting_key = 'protection_enabled'",
+                                (message.chat.id,),
+                                fetch_one=True
+                            )
+                            
+                            if setting and setting[0] == "True":
+                                await message.reply("🛡️ **حالة الحماية: مفعلة** ✅\nالمجموعة محمية من المحتوى المخالف")
+                            else:
+                                await message.reply("🔓 **حالة الحماية: معطلة** ❌\nالمجموعة بدون حماية")
+                        
+                        return
+                    else:
+                        await message.reply("❌ أوامر الحماية تعمل في المجموعات فقط!")
+                        return
+                        
+                except Exception as e:
+                    logging.error(f"خطأ في أمر الحماية: {e}")
+                    await message.reply("❌ حدث خطأ في تنفيذ أمر الحماية")
+        
         user_message = ""
         found_trigger = False
         
