@@ -539,6 +539,8 @@ async def start_guild_registration(message: Message, state: FSMContext):
             user_country = user_data.get('country', '')
             is_registered = user_data.get('is_registered', False)
             
+            logging.info(f"🔍 USER DATA DEBUG: user_id={user_id}, gender='{user_gender}', country='{user_country}', registered={is_registered}")
+            
             # إذا كان المستخدم غير مسجل أو ناقص البيانات
             if not is_registered or not user_gender or not user_country:
                 await message.reply(
@@ -553,6 +555,7 @@ async def start_guild_registration(message: Message, state: FSMContext):
             
             # حفظ الجنس من النظام الرئيسي في حالة FSM للاستخدام لاحقاً
             await state.update_data(saved_gender=user_gender, saved_country=user_country)
+            logging.info(f"🔍 SAVED DATA DEBUG: saved_gender='{user_gender}', saved_country='{user_country}'")
         
         # إنشاء لوحة مفاتيح النقابات
         keyboard = []
