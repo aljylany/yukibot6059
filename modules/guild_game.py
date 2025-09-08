@@ -485,6 +485,10 @@ SHOP_ITEMS = {
 async def start_guild_registration(message: Message, state: FSMContext):
     """بدء تسجيل في لعبة النقابة مع فحص البيانات المحفوظة"""
     try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في بيانات المستخدم")
+            return
+        
         user_id = message.from_user.id
         username = message.from_user.username or ""
         name = message.from_user.first_name or "اللاعب"
@@ -576,7 +580,16 @@ async def start_guild_registration(message: Message, state: FSMContext):
 async def handle_guild_selection(callback: CallbackQuery, state: FSMContext):
     """معالجة اختيار النقابة مع تخطي الجنس إذا كان محفوظاً"""
     try:
-        guild_id = callback.data.split("_")[2]
+        if not callback.data:
+            await callback.answer("❌ بيانات غير صحيحة")
+            return
+        
+        parts = callback.data.split("_")
+        if len(parts) < 3:
+            await callback.answer("❌ بيانات غير صحيحة")
+            return
+        
+        guild_id = parts[2]
         await state.update_data(guild=guild_id)
         
         # فحص إذا كان الجنس محفوظاً من النظام الرئيسي
@@ -596,17 +609,18 @@ async def handle_guild_selection(callback: CallbackQuery, state: FSMContext):
                 )])
             
             gender_text = "ذكر" if saved_gender == "male" else "أنثى"
-            await callback.message.edit_text(
-                f"✅ **اخترت {GUILDS[guild_id]}!**\n"
-                f"✅ **تم استخدام جنسك المحفوظ:** {gender_text}\n\n"
-                "🧙‍♂️ **اختر فئتك لتجسد قوتك:**\n\n"
-                "⚔️ **محارب** - قوة في المعارك القريبة\n"
-                "🧙‍♂️ **ساحر** - قوة السحر والعناصر\n"
-                "💚 **معالج** - قوة الشفاء والدعم\n"
-                "👹 **غول** - قوة الظلام والرعب\n"
-                "🔮 **مستدعي** - قوة استدعاء المخلوقات",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-            )
+            if callback.message:
+                await callback.message.edit_text(
+                    f"✅ **اخترت {GUILDS[guild_id]}!**\n"
+                    f"✅ **تم استخدام جنسك المحفوظ:** {gender_text}\n\n"
+                    "🧙‍♂️ **اختر فئتك لتجسد قوتك:**\n\n"
+                    "⚔️ **محارب** - قوة في المعارك القريبة\n"
+                    "🧙‍♂️ **ساحر** - قوة السحر والعناصر\n"
+                    "💚 **معالج** - قوة الشفاء والدعم\n"
+                    "👹 **غول** - قوة الظلام والرعب\n"
+                    "🔮 **مستدعي** - قوة استدعاء المخلوقات",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
             await state.set_state(GuildStates.choosing_class)
         else:
             # إذا لم يكن الجنس محفوظاً، اعرض خيارات الجنس
@@ -617,11 +631,12 @@ async def handle_guild_selection(callback: CallbackQuery, state: FSMContext):
                     callback_data=f"gender_select_{gender_id}"
                 )])
             
-            await callback.message.edit_text(
-                f"✅ **اخترت {GUILDS[guild_id]}!**\n\n"
-                "👶 **اختر جنسك لتجسد هويتك:**",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-            )
+            if callback.message:
+                await callback.message.edit_text(
+                    f"✅ **اخترت {GUILDS[guild_id]}!**\n\n"
+                    "👶 **اختر جنسك لتجسد هويتك:**",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
             await state.set_state(GuildStates.choosing_gender)
         
         await callback.answer()
@@ -636,7 +651,7 @@ async def handle_gender_selection(callback: CallbackQuery, state: FSMContext):
         logging.info(f"🔍 GENDER DEBUG: استقبال بيانات الجنس: '{callback.data}'")
         
         # التحقق من أن البيانات تحتوي على gender_select
-        if not callback.data.startswith("gender_select_"):
+        if not callback.data or not callback.data.startswith("gender_select_"):
             logging.error(f"بيانات غير صحيحة في اختيار الجنس: {callback.data}")
             await callback.answer("❌ بيانات غير صحيحة")
             return
@@ -658,16 +673,17 @@ async def handle_gender_selection(callback: CallbackQuery, state: FSMContext):
                 callback_data=f"class_select_{class_id}"
             )])
         
-        await callback.message.edit_text(
-            f"✅ **اخترت {GENDERS[gender_id]}!**\n\n"
-            "🧙‍♂️ **اختر فئتك لتجسد قوتك:**\n\n"
-            "⚔️ **محارب** - قوة في المعارك القريبة\n"
-            "🧙‍♂️ **ساحر** - قوة السحر والعناصر\n"
-            "💚 **معالج** - قوة الشفاء والدعم\n"
-            "👹 **غول** - قوة الظلام والرعب\n"
-            "🔮 **مستدعي** - قوة استدعاء المخلوقات",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        if callback.message:
+            await callback.message.edit_text(
+                f"✅ **اخترت {GENDERS[gender_id]}!**\n\n"
+                "🧙‍♂️ **اختر فئتك لتجسد قوتك:**\n\n"
+                "⚔️ **محارب** - قوة في المعارك القريبة\n"
+                "🧙‍♂️ **ساحر** - قوة السحر والعناصر\n"
+                "💚 **معالج** - قوة الشفاء والدعم\n"
+                "👹 **غول** - قوة الظلام والرعب\n"
+                "🔮 **مستدعي** - قوة استدعاء المخلوقات",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+            )
         
         await state.set_state(GuildStates.choosing_class)
         await callback.answer()
@@ -679,8 +695,21 @@ async def handle_gender_selection(callback: CallbackQuery, state: FSMContext):
 async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
     """معالجة اختيار الفئة وإنهاء التسجيل"""
     try:
-        class_id = callback.data.split("_")[2]
+        if not callback.data:
+            await callback.answer("❌ بيانات غير صحيحة")
+            return
+        
+        parts = callback.data.split("_")
+        if len(parts) < 3:
+            await callback.answer("❌ بيانات غير صحيحة")
+            return
+        
+        class_id = parts[2]
         data = await state.get_data()
+        
+        if not callback.from_user:
+            await callback.answer("❌ خطأ في بيانات المستخدم")
+            return
         
         user_id = callback.from_user.id
         username = callback.from_user.username or ""
@@ -741,8 +770,9 @@ async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
         gender_name = GENDERS[data['gender']]
         class_name = CLASSES[class_id]
         
-        await callback.message.edit_text(
-            f"🎉 **مبروك! لقد انضممت إلى {guild_name} كـ {class_name}!**\n\n"
+        if callback.message:
+            await callback.message.edit_text(
+                f"🎉 **مبروك! لقد انضممت إلى {guild_name} كـ {class_name}!**\n\n"
             f"🧙‍♂️ **معلوماتك الأسطورية:**\n"
             f"👶 الجنس: {gender_name}\n"
             f"⚡ الفئة: {class_name} - بداية رحلتك البطولية!\n"
@@ -771,6 +801,10 @@ async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
 async def show_guild_main_menu(message: Message, state: FSMContext):
     """عرض القائمة الرئيسية للنقابة"""
     try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في بيانات المستخدم")
+            return
+        
         user_id = message.from_user.id
         
         # محاولة تحميل اللاعب من قاعدة البيانات إذا لم يكن في الذاكرة
@@ -778,8 +812,31 @@ async def show_guild_main_menu(message: Message, state: FSMContext):
             from modules.guild_database import load_guild_player
             player_data = await load_guild_player(user_id)
             if player_data:
+                # تحويل بيانات قاعدة البيانات إلى كائن GuildPlayer
+                player = GuildPlayer(
+                    user_id=player_data['user_id'],
+                    username=player_data['username'],
+                    name=player_data['name'],
+                    guild=player_data['guild'],
+                    gender=player_data['gender'],
+                    character_class=player_data['character_class'],
+                    advanced_class=player_data['advanced_class'],
+                    level=player_data['level'],
+                    power=player_data['power'],
+                    experience=player_data['experience'],
+                    experience_needed=player_data['level'] * 600,
+                    money=player_data.get('money', 5000),
+                    weapon=player_data['weapon'],
+                    badge=player_data['badge'],
+                    title=player_data['title'],
+                    potion=player_data['potion'],
+                    ring=player_data['ring'],
+                    animal=player_data['animal'],
+                    personal_code=player_data['personal_code'],
+                    created_at=datetime.fromisoformat(player_data['created_at']) if player_data['created_at'] else datetime.now()
+                )
                 # إضافة اللاعب للذاكرة
-                GUILD_PLAYERS[user_id] = player_data
+                GUILD_PLAYERS[user_id] = player
                 logging.info(f"✅ تم تحميل بيانات اللاعب {user_id} من قاعدة البيانات")
             else:
                 # إذا لم يوجد في قاعدة البيانات، ابدأ التسجيل
@@ -819,6 +876,10 @@ async def show_guild_main_menu(message: Message, state: FSMContext):
 async def show_personal_code(callback: CallbackQuery):
     """عرض الرمز الشخصي"""
     try:
+        if not callback.from_user:
+            await callback.answer("❌ خطأ في بيانات المستخدم")
+            return
+        
         user_id = callback.from_user.id
         
         if user_id not in GUILD_PLAYERS:
@@ -827,13 +888,14 @@ async def show_personal_code(callback: CallbackQuery):
         
         player = GUILD_PLAYERS[user_id]
         
-        await callback.message.edit_text(
-            f"🆔 **رمز {player.name}: {player.personal_code} - مفتاح هويته!**\n\n"
-            f"💡 استخدم هذا الرمز للتعريف بنفسك في المهام الخاصة!",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")
-            ]])
-        )
+        if callback.message:
+            await callback.message.edit_text(
+                f"🆔 **رمز {player.name}: {player.personal_code} - مفتاح هويته!**\n\n"
+                f"💡 استخدم هذا الرمز للتعريف بنفسك في المهام الخاصة!",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")
+                ]])
+            )
         
         await callback.answer()
         
