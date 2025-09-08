@@ -68,11 +68,12 @@ async def init_database():
             
             # إضافة عمود last_active إذا لم يكن موجوداً
             try:
-                await db.execute('ALTER TABLE users ADD COLUMN last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+                await db.execute('ALTER TABLE users ADD COLUMN last_active TIMESTAMP')
                 logging.info("✅ تم إضافة عمود last_active بنجاح")
             except Exception as e:
-                if "duplicate column name" not in str(e):
+                if "duplicate column name" not in str(e) and "Cannot add a column with non-constant default" not in str(e):
                     logging.error(f"خطأ في إضافة عمود last_active: {e}")
+                # إذا كان العمود موجود بالفعل أو هناك مشكلة في DEFAULT، نتابع
             
             # إنشاء جدول المستويات (نظام XP)
             await db.execute('''
