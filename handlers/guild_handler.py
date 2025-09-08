@@ -68,15 +68,16 @@ async def guild_command(message: Message, state: FSMContext):
         await message.reply("❌ حدث خطأ في بدء لعبة النقابة")
 
 # ===== الأوامر النصية المتخصصة للنقابة =====
-@guild_router.message(F.text.in_(["نقابة", "لعبة النقابة", "انضمام نقابة"]))
-@user_required
-async def guild_text_command(message: Message, state: FSMContext):
-    """أوامر نصية لبدء النقابة"""
-    try:
-        await start_guild_registration(message, state)
-    except Exception as e:
-        logging.error(f"خطأ في أمر النقابة النصي: {e}")
-        await message.reply("❌ حدث خطأ في بدء لعبة النقابة")
+# تم تعطيل هذا المعالج لتجنب التداخل مع المعالج الرئيسي في handlers/messages.py
+# @guild_router.message(F.text.in_(["نقابة", "لعبة النقابة", "انضمام نقابة"]))
+# @user_required
+# async def guild_text_command(message: Message, state: FSMContext):
+#     """أوامر نصية لبدء النقابة"""
+#     try:
+#         await start_guild_registration(message, state)
+#     except Exception as e:
+#         logging.error(f"خطأ في أمر النقابة النصي: {e}")
+#         await message.reply("❌ حدث خطأ في بدء لعبة النقابة")
 
 # أمر حذف حساب النقابة
 @guild_router.message(F.text.in_(["حذف حساب النقابة", "حذف حساب نقابة", "حذف بيانات النقابة"]))
