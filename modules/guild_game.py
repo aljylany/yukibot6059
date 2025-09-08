@@ -651,7 +651,7 @@ async def handle_gender_selection(callback: CallbackQuery, state: FSMContext):
         logging.info(f"🔍 GENDER DEBUG: استقبال بيانات الجنس: '{callback.data}'")
         
         # التحقق من أن البيانات تحتوي على gender_select
-        if not callback.data or not callback.data.startswith("gender_select_"):
+        if not callback.data or callback.data == "select" or not callback.data.startswith("gender_select_"):
             logging.error(f"بيانات غير صحيحة في اختيار الجنس: {callback.data}")
             await callback.answer("❌ بيانات غير صحيحة")
             return
@@ -1029,6 +1029,26 @@ async def cancel_delete_guild_account(callback: CallbackQuery):
         logging.error(f"خطأ في إلغاء حذف حساب النقابة: {e}")
         await callback.answer("❌ حدث خطأ")
 
+async def start_guild_registration_callback(callback: CallbackQuery, state: FSMContext):
+    """بدء تسجيل النقابة من callback"""
+    try:
+        if not callback.from_user:
+            await callback.answer("❌ خطأ في بيانات المستخدم")
+            return
+        
+        # إنشاء رسالة جديدة بدلاً من تعديل الموجودة لضمان العمل الصحيح
+        message_text = "🏰 **مرحباً بك في بداية رحلة النقابة!**\n\n🔄 اكتب **نقابة** للبدء من جديد"
+        
+        if callback.message:
+            await callback.message.edit_text(message_text)
+        
+        await callback.answer("🔄 تم العودة للبداية")
+        await state.clear()  # تنظيف حالة FSM
+        
+    except Exception as e:
+        logging.error(f"خطأ في العودة لبداية النقابة: {e}")
+        await callback.answer("❌ حدث خطأ")
+
 # تصدير الدوال المطلوبة
 __all__ = [
     'start_guild_registration',
@@ -1041,6 +1061,7 @@ __all__ = [
     'delete_guild_account',
     'confirm_delete_guild_account',
     'cancel_delete_guild_account',
+    'start_guild_registration_callback',
     'GUILD_PLAYERS',
     'ACTIVE_MISSIONS'
 ]

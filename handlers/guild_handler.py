@@ -18,7 +18,7 @@ from modules.guild_game import (
     start_guild_registration, handle_guild_selection, handle_gender_selection,
     handle_class_selection, show_guild_main_menu, show_personal_code,
     GUILD_PLAYERS, ACTIVE_MISSIONS, create_new_player, delete_guild_account,
-    confirm_delete_guild_account, cancel_delete_guild_account
+    confirm_delete_guild_account, cancel_delete_guild_account, start_guild_registration_callback
 )
 from modules.guild_database import init_guild_database, load_guild_player, delete_guild_player
 from modules.guild_missions import (
@@ -422,6 +422,10 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         
         elif data == "cancel_delete_guild":
             await cancel_delete_guild_account(callback)
+        
+        # العودة لبداية النقابة
+        elif data == "guild_start":
+            await start_guild_registration_callback(callback, state)
         
         # معالجة callbacks قديمة بـ user_id (توافق للخلف)
         elif ":" in data:

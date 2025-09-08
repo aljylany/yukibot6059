@@ -64,7 +64,7 @@ async def show_missions_menu(callback: CallbackQuery):
                     callback,
                     f"⏳ **انتظر {remaining} ثانية قبل بدء مهمة جديدة!**",
                     reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                        InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")
+                        InlineKeyboardButton(text="🔙 رجوع للبداية", callback_data="guild_start")
                     ]])
                 )
                 await callback.answer()
