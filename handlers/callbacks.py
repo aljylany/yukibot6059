@@ -283,10 +283,13 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             data.startswith("gender_select_") or 
             data.startswith("class_select_") or 
             data == "current_class" or
-            data == "mission_status"):
+            data == "mission_status" or
+            data == "confirm_delete_guild" or
+            data == "cancel_delete_guild"):
             from modules.guild_game import (
                 handle_guild_selection, handle_gender_selection, handle_class_selection,
-                show_guild_main_menu, show_personal_code
+                show_guild_main_menu, show_personal_code, confirm_delete_guild_account,
+                cancel_delete_guild_account
             )
             from modules.guild_missions import (
                 show_missions_menu, show_normal_missions, show_collect_missions,
@@ -395,6 +398,13 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             # تغيير الفئة العادية
             elif data == "guild_change_class":
                 await callback.answer("🔧 هذه الميزة ستكون متاحة قريباً!")
+            
+            # معالجة حذف حساب النقابة
+            elif data == "confirm_delete_guild":
+                await confirm_delete_guild_account(callback)
+            
+            elif data == "cancel_delete_guild":
+                await cancel_delete_guild_account(callback)
             
             else:
                 await callback.answer("❓ أمر نقابة غير معروف")
