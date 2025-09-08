@@ -64,7 +64,7 @@ async def show_missions_menu(callback: CallbackQuery):
                     callback,
                     f"⏳ **انتظر {remaining} ثانية قبل بدء مهمة جديدة!**",
                     reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                        InlineKeyboardButton(text="🔙 رجوع للبداية", callback_data="guild_start")
+                        InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")
                     ]])
                 )
                 await callback.answer()
@@ -79,7 +79,7 @@ async def show_missions_menu(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔥 أسطورية", callback_data="missions_legendary")],
             [InlineKeyboardButton(text="💎 جمع", callback_data="missions_collect")],
             [InlineKeyboardButton(text="👹 قتل وحوش", callback_data="missions_kill")],
-            [InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_missions")]
+            [InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")]
         ]
         
         await safe_edit_text(
@@ -137,7 +137,7 @@ async def show_normal_missions(callback: CallbackQuery):
                 f"🎯 الحالة: {status}\n\n"
             )
         
-        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")])
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
         await safe_edit_text(
             callback,
@@ -195,7 +195,7 @@ async def show_collect_missions(callback: CallbackQuery):
                 f"🎯 الحالة: {status}\n\n"
             )
         
-        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")])
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
         await safe_edit_text(
             callback,
@@ -253,7 +253,7 @@ async def show_medium_missions(callback: CallbackQuery):
                 f"🎯 الحالة: {status}\n\n"
             )
         
-        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")])
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
         await safe_edit_text(
             callback,
@@ -311,7 +311,7 @@ async def show_legendary_missions(callback: CallbackQuery):
                 f"🎯 الحالة: {status}\n\n"
             )
         
-        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")])
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
         await safe_edit_text(
             callback,
@@ -657,7 +657,7 @@ async def show_advanced_missions(callback: CallbackQuery):
                 f"🎯 الحالة: {status}\n\n"
             )
         
-        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")])
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
         await safe_edit_text(
             callback,
@@ -746,7 +746,7 @@ async def show_kill_missions(callback: CallbackQuery):
                 f"🎯 الحالة: {status}\n\n"
             )
         
-        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للقائمة الرئيسية", callback_data="guild_main_menu")])
+        keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمهام", callback_data="guild_missions")])
         
         await safe_edit_text(
             callback,
