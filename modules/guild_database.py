@@ -340,6 +340,30 @@ async def get_guild_leaderboard(limit: int = 10) -> List[Dict[str, Any]]:
         logging.error(f"خطأ في الحصول على ترتيب النقابة: {e}")
         return []
 
+async def delete_guild_player(user_id: int) -> bool:
+    """حذف بيانات لاعب النقابة بالكامل"""
+    try:
+        async with aiosqlite.connect(DATABASE_URL) as db:
+            # حذف من جدول اللاعبين الرئيسي
+            await db.execute("DELETE FROM guild_players WHERE user_id = ?", (user_id,))
+            
+            # حذف من جدول الإحصائيات
+            await db.execute("DELETE FROM guild_stats WHERE user_id = ?", (user_id,))
+            
+            # حذف من جدول المخزون
+            await db.execute("DELETE FROM guild_inventory WHERE user_id = ?", (user_id,))
+            
+            # حذف من جدول المهام النشطة
+            await db.execute("DELETE FROM active_guild_missions WHERE user_id = ?", (user_id,))
+            
+            await db.commit()
+            logging.info(f"✅ تم حذف بيانات لاعب النقابة {user_id} بنجاح")
+            return True
+            
+    except Exception as e:
+        logging.error(f"❌ خطأ في حذف بيانات لاعب النقابة {user_id}: {e}")
+        return False
+
 # تصدير الدوال
 __all__ = [
     'init_guild_database',
@@ -352,5 +376,6 @@ __all__ = [
     'add_inventory_item',
     'get_player_inventory',
     'equip_item',
-    'get_guild_leaderboard'
+    'get_guild_leaderboard',
+    'delete_guild_player'
 ]

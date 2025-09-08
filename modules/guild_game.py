@@ -939,6 +939,96 @@ async def create_new_player(user_id: int, name: str):
         logging.error(f"خطأ في إنشاء لاعب جديد: {e}")
         return None
 
+async def delete_guild_account(message: Message, state: FSMContext):
+    """حذف حساب النقابة بالكامل"""
+    try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في بيانات المستخدم")
+            return
+        
+        user_id = message.from_user.id
+        
+        # التحقق من وجود اللاعب في النقابة
+        if user_id not in GUILD_PLAYERS:
+            # محاولة تحميل من قاعدة البيانات
+            from modules.guild_database import load_guild_player
+            player_data = await load_guild_player(user_id)
+            if not player_data:
+                await message.reply("❌ أنت غير مسجل في النقابة!")
+                return
+        
+        player_name = GUILD_PLAYERS.get(user_id, {}).name if user_id in GUILD_PLAYERS else message.from_user.first_name
+        
+        keyboard = [
+            [InlineKeyboardButton(text="✅ نعم، احذف حسابي", callback_data="confirm_delete_guild")],
+            [InlineKeyboardButton(text="❌ لا، أريد الإلغاء", callback_data="cancel_delete_guild")]
+        ]
+        
+        await message.reply(
+            f"⚠️ **تحذير! حذف حساب النقابة نهائي!**\n\n"
+            f"👤 **{player_name}**، ستفقد:\n"
+            f"🏅 جميع المستويات والخبرة\n"
+            f"💰 جميع الأموال والعناصر\n"
+            f"🎯 تقدم المهام والإحصائيات\n"
+            f"🛒 المخزون والعناصر المشتراة\n"
+            f"🏰 جميع بيانات النقابة\n\n"
+            f"❓ **هل أنت متأكد من الحذف؟**",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
+        
+    except Exception as e:
+        logging.error(f"خطأ في طلب حذف حساب النقابة: {e}")
+        await message.reply("❌ حدث خطأ في طلب حذف الحساب")
+
+async def confirm_delete_guild_account(callback: CallbackQuery):
+    """تأكيد حذف حساب النقابة"""
+    try:
+        if not callback.from_user:
+            await callback.answer("❌ خطأ في بيانات المستخدم")
+            return
+        
+        user_id = callback.from_user.id
+        
+        # حذف من الذاكرة
+        if user_id in GUILD_PLAYERS:
+            del GUILD_PLAYERS[user_id]
+        
+        # حذف من قاعدة البيانات
+        from modules.guild_database import delete_guild_player
+        success = await delete_guild_player(user_id)
+        
+        if success:
+            if callback.message:
+                await callback.message.edit_text(
+                    f"✅ **تم حذف حساب النقابة بنجاح!**\n\n"
+                    f"🗑️ تم حذف جميع بياناتك من النقابة\n"
+                    f"💔 تم فقدان جميع المستويات والعناصر\n\n"
+                    f"🔄 يمكنك الانضمام مرة أخرى باستخدام: **نقابة**"
+                )
+            await callback.answer("✅ تم حذف الحساب بنجاح")
+        else:
+            await callback.answer("❌ حدث خطأ في الحذف")
+            
+    except Exception as e:
+        logging.error(f"خطأ في تأكيد حذف حساب النقابة: {e}")
+        await callback.answer("❌ حدث خطأ في الحذف")
+
+async def cancel_delete_guild_account(callback: CallbackQuery):
+    """إلغاء حذف حساب النقابة"""
+    try:
+        if callback.message:
+            await callback.message.edit_text(
+                f"✅ **تم إلغاء عملية الحذف!**\n\n"
+                f"🛡️ حسابك في النقابة آمن\n"
+                f"🎮 يمكنك الاستمرار في اللعب\n\n"
+                f"🏰 اكتب **نقابة** للعودة للقائمة الرئيسية"
+            )
+        await callback.answer("✅ تم إلغاء الحذف")
+        
+    except Exception as e:
+        logging.error(f"خطأ في إلغاء حذف حساب النقابة: {e}")
+        await callback.answer("❌ حدث خطأ")
+
 # تصدير الدوال المطلوبة
 __all__ = [
     'start_guild_registration',
@@ -948,6 +1038,9 @@ __all__ = [
     'show_guild_main_menu',
     'show_personal_code',
     'create_new_player',
+    'delete_guild_account',
+    'confirm_delete_guild_account',
+    'cancel_delete_guild_account',
     'GUILD_PLAYERS',
     'ACTIVE_MISSIONS'
 ]

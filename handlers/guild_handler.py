@@ -17,9 +17,10 @@ from aiogram.fsm.context import FSMContext
 from modules.guild_game import (
     start_guild_registration, handle_guild_selection, handle_gender_selection,
     handle_class_selection, show_guild_main_menu, show_personal_code,
-    GUILD_PLAYERS, ACTIVE_MISSIONS, create_new_player
+    GUILD_PLAYERS, ACTIVE_MISSIONS, create_new_player, delete_guild_account,
+    confirm_delete_guild_account, cancel_delete_guild_account
 )
-from modules.guild_database import init_guild_database, load_guild_player
+from modules.guild_database import init_guild_database, load_guild_player, delete_guild_player
 from modules.guild_missions import (
     show_missions_menu, show_normal_missions, show_collect_missions,
     show_medium_missions, show_legendary_missions,
@@ -76,6 +77,17 @@ async def guild_text_command(message: Message, state: FSMContext):
     except Exception as e:
         logging.error(f"خطأ في أمر النقابة النصي: {e}")
         await message.reply("❌ حدث خطأ في بدء لعبة النقابة")
+
+# أمر حذف حساب النقابة
+@guild_router.message(F.text.in_(["حذف حساب النقابة", "حذف حساب نقابة", "حذف بيانات النقابة"]))
+@user_required
+async def delete_guild_account_command(message: Message, state: FSMContext):
+    """أمر حذف حساب النقابة"""
+    try:
+        await delete_guild_account(message, state)
+    except Exception as e:
+        logging.error(f"خطأ في أمر حذف حساب النقابة: {e}")
+        await message.reply("❌ حدث خطأ في حذف حساب النقابة")
 
 @guild_router.message(F.text.in_(["مهام", "مهمة", "المهام"]))
 @user_required  
@@ -403,6 +415,13 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         # تغيير الفئة العادية
         elif data == "guild_change_class":
             await callback.answer("🔧 هذه الميزة ستكون متاحة قريباً!")
+        
+        # معالجة حذف الحساب
+        elif data == "confirm_delete_guild":
+            await confirm_delete_guild_account(callback)
+        
+        elif data == "cancel_delete_guild":
+            await cancel_delete_guild_account(callback)
         
         # معالجة callbacks قديمة بـ user_id (توافق للخلف)
         elif ":" in data:
