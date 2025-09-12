@@ -138,7 +138,7 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
             if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
                 from aiogram.types import Message
                 if isinstance(callback.message, Message):
-                    await show_guild_main_menu(callback.message, state, user_id=callback.from_user.id)
+                    await show_guild_main_menu(callback.message, state, user_id=callback.from_user.id, is_callback=True)
                 else:
                     # إنشاء رسالة بديلة للعرض
                     await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")

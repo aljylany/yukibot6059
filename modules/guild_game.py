@@ -801,7 +801,7 @@ async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
         logging.error(f"خطأ في اختيار الفئة: {e}")
         await callback.answer("❌ حدث خطأ")
 
-async def show_guild_main_menu(message: Message, state: FSMContext, user_id: Optional[int] = None):
+async def show_guild_main_menu(message: Message, state: FSMContext, user_id: Optional[int] = None, is_callback: bool = False):
     """عرض القائمة الرئيسية للنقابة"""
     try:
         # إذا تم تمرير user_id، استخدمه، وإلا استخدم معرف المرسل
@@ -861,7 +861,7 @@ async def show_guild_main_menu(message: Message, state: FSMContext, user_id: Opt
             [InlineKeyboardButton(text="⚡ تغيير فئة", callback_data="guild_change_class")]
         ]
         
-        await message.reply(
+        menu_text = (
             f"🏰 **قائمة {guild_name}**\n\n"
             f"👤 **{player.name}** ({gender_name})\n"
             f"⚡ **الفئة:** {class_name}\n"
@@ -869,9 +869,20 @@ async def show_guild_main_menu(message: Message, state: FSMContext, user_id: Opt
             f"🏅 **المستوى:** {player.level}\n"
             f"⚔️ **القوة:** {format_number(player.power)}\n"
             f"⭐ **الخبرة:** {format_number(player.experience)}/{format_number(player.get_experience_for_next_level())}\n\n"
-            f"🎮 **اختر ما تريد فعله:**",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+            f"🎮 **اختر ما تريد فعله:**"
         )
+        
+        # إذا كان callback، حدث الرسالة الموجودة، وإلا أنشئ رسالة جديدة
+        if is_callback:
+            await message.edit_text(
+                menu_text,
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+            )
+        else:
+            await message.reply(
+                menu_text,
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+            )
         
     except Exception as e:
         logging.error(f"خطأ في عرض القائمة الرئيسية: {e}")

@@ -278,7 +278,7 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
             if callback.message:
                 from aiogram.types import Message
                 if isinstance(callback.message, Message):
-                    await show_guild_main_menu(callback.message, state, user_id=user_id_from_data)
+                    await show_guild_main_menu(callback.message, state, user_id=user_id_from_data, is_callback=True)
                 else:
                     await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
             else:
@@ -289,7 +289,7 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
             if callback.message:
                 from aiogram.types import Message
                 if isinstance(callback.message, Message):
-                    await show_guild_main_menu(callback.message, state, user_id=callback.from_user.id)
+                    await show_guild_main_menu(callback.message, state, user_id=callback.from_user.id, is_callback=True)
                 else:
                     await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
             else:
