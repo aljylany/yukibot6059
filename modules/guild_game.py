@@ -801,14 +801,15 @@ async def handle_class_selection(callback: CallbackQuery, state: FSMContext):
         logging.error(f"خطأ في اختيار الفئة: {e}")
         await callback.answer("❌ حدث خطأ")
 
-async def show_guild_main_menu(message: Message, state: FSMContext):
+async def show_guild_main_menu(message: Message, state: FSMContext, user_id: Optional[int] = None):
     """عرض القائمة الرئيسية للنقابة"""
     try:
-        if not message.from_user:
-            await message.reply("❌ خطأ في بيانات المستخدم")
-            return
-        
-        user_id = message.from_user.id
+        # إذا تم تمرير user_id، استخدمه، وإلا استخدم معرف المرسل
+        if user_id is None:
+            if not message.from_user:
+                await message.reply("❌ خطأ في بيانات المستخدم")
+                return
+            user_id = message.from_user.id
         
         # محاولة تحميل اللاعب من قاعدة البيانات إذا لم يكن في الذاكرة
         if user_id not in GUILD_PLAYERS:

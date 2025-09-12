@@ -275,21 +275,21 @@ async def handle_guild_callbacks(callback: CallbackQuery, state: FSMContext):
         # القوائم الرئيسية
         elif data.startswith("guild_main_menu:"):
             user_id_from_data = int(data.split(":")[1])
-            if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
+            if callback.message:
                 from aiogram.types import Message
                 if isinstance(callback.message, Message):
-                    await show_guild_main_menu(callback.message, state)
+                    await show_guild_main_menu(callback.message, state, user_id=user_id_from_data)
                 else:
                     await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
             else:
                 await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
         
         elif data == "guild_main_menu":
-            # معالجة زر الرجوع بدون user_id
-            if callback.message and hasattr(callback.message, 'chat') and hasattr(callback.message, 'from_user'):
+            # معالجة زر الرجوع باستخدام معرف المستخدم الصحيح من callback
+            if callback.message:
                 from aiogram.types import Message
                 if isinstance(callback.message, Message):
-                    await show_guild_main_menu(callback.message, state)
+                    await show_guild_main_menu(callback.message, state, user_id=callback.from_user.id)
                 else:
                     await callback.answer("✅ تم فتح القائمة الرئيسية للنقابة")
             else:
