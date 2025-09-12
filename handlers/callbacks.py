@@ -17,6 +17,12 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
     """معالج شامل لجميع الـ callbacks"""
     try:
         data = callback.data
+        
+        # التحقق من أن data ليس None
+        if not data:
+            await callback.answer("❌ بيانات الزر غير صحيحة")
+            return
+            
         logging.info(f"🔍 CALLBACK DEBUG: تم استقبال callback_data: '{data}' من المستخدم {callback.from_user.id}")
         
         # معالجة callbacks نطاق الردود المخصصة
@@ -231,15 +237,9 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             await handle_specific_plant_callback(callback)
             return
         
-        # معالجة callbacks العقارات
-        if data.startswith('property_buy_'):
-            from modules.real_estate import handle_property_buy_callback
-            await handle_property_buy_callback(callback)
-            return
-            
-        if data.startswith('property_sell_'):
-            from modules.real_estate import handle_property_sell_callback
-            await handle_property_sell_callback(callback)
+        # معالجة callbacks العقارات (معطلة مؤقتاً)
+        if data.startswith('property_buy_') or data.startswith('property_sell_'):
+            await callback.answer("🏠 نظام العقارات قيد الصيانة حالياً")
             return
         
         # معالجة callbacks نظام التقرير  
@@ -335,10 +335,10 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
                 await show_collect_missions(callback)
             
             elif data == "missions_medium":
-                await show_medium_missions(callback)
+                await callback.answer("🔧 مهام المستوى المتوسط قيد التطوير")
             
             elif data == "missions_legendary":
-                await show_legendary_missions(callback)
+                await callback.answer("🔧 المهام الأسطورية قيد التطوير")
             
             elif (data.startswith("start_mission_normal_") or 
                   data.startswith("start_mission_collect_") or 
