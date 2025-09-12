@@ -659,6 +659,96 @@ class RealYukiAI:
                 logging.error(f"خطأ في جلب بيانات المال: {e}")
                 return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن في مشكلة تقنية مؤقتة في الوصول لقاعدة البيانات. 😅"
         
+        # أسئلة عن أعلى الثروات والترتيب
+        if user_id and any(word in message_lower for word in ['اعلى', 'أعلى', 'اكبر', 'أكبر', 'اغنى', 'أغنى', 'ترتيب', 'قائمة']):
+            if any(word in message_lower for word in ['ثروة', 'فلوس', 'مال', 'رصيد', 'لاعب', 'عضو']):
+                try:
+                    # يوكي المدير يعرض قائمة أعلى الثروات
+                    from database.operations import execute_query
+                    top_players_query = """
+                        SELECT user_id, first_name, username, 
+                               (COALESCE(balance, 0) + COALESCE(bank_balance, 0)) as total_wealth
+                        FROM users 
+                        WHERE first_name IS NOT NULL 
+                        ORDER BY total_wealth DESC 
+                        LIMIT 10
+                    """
+                    top_players = await execute_query(top_players_query, fetch_all=True)
+                    
+                    if top_players:
+                        response = f"أهلاً {user_name}! 😊\n\nكمدير النظام، أقدر أعرض لك قائمة أعلى الثروات! 👑\n\n🏆 قائمة الأثرياء في النظام:\n\n"
+                        
+                        for i, player in enumerate(top_players, 1):
+                            name = player.get('first_name', 'مجهول')
+                            username = player.get('username', '')
+                            total_wealth = player.get('total_wealth', 0) or 0
+                            
+                            # تحديد الأيقونة
+                            if i == 1:
+                                icon = "🥇"
+                            elif i == 2:
+                                icon = "🥈"
+                            elif i == 3:
+                                icon = "🥉"
+                            elif i <= 5:
+                                icon = "🏆"
+                            else:
+                                icon = "⭐"
+                            
+                            username_display = f"(@{username})" if username else ""
+                            response += f"{icon} **{i}.** {name} {username_display}\n"
+                            response += f"   💰 الثروة: {total_wealth:,.0f}$\n\n"
+                        
+                        response += "هذه بيانات حقيقية من قاعدة البيانات لأني مدير النظام! 📊"
+                        return response
+                    else:
+                        return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن ما لقيت بيانات لاعبين في قاعدة البيانات حالياً."
+                        
+                except Exception as e:
+                    logging.error(f"خطأ في جلب قائمة أعلى الثروات: {e}")
+                    return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن في مشكلة تقنية مؤقتة في جلب البيانات."
+        
+        # أسئلة عن جميع الأعضاء والإحصائيات
+        if any(word in message_lower for word in ['جميع', 'كل']) and any(word in message_lower for word in ['اعضاء', 'أعضاء', 'لاعبين', 'المسجلين']):
+            if chat_id and bot:
+                try:
+                    # يوكي المدير يعرض إحصائيات شاملة عن الأعضاء
+                    from database.operations import execute_query
+                    
+                    # إحصائيات أساسية
+                    total_users = await execute_query("SELECT COUNT(*) as count FROM users", fetch_one=True)
+                    active_users = await execute_query("SELECT COUNT(*) as count FROM users WHERE last_seen > datetime('now', '-7 days')", fetch_one=True)
+                    total_wealth = await execute_query("SELECT SUM(COALESCE(balance, 0) + COALESCE(bank_balance, 0)) as total FROM users", fetch_one=True)
+                    
+                    total_count = total_users.get('count', 0) if total_users else 0
+                    active_count = active_users.get('count', 0) if active_users else 0
+                    wealth_total = total_wealth.get('total', 0) if total_wealth and total_wealth.get('total') else 0
+                    
+                    # معلومات المجموعة من التليجرام
+                    member_count = await bot.get_chat_member_count(chat_id)
+                    chat = await bot.get_chat(chat_id)
+                    
+                    response = f"أهلاً {user_name}! 😊\n\nكمدير النظام، إليك تقرير شامل عن الأعضاء! 👑\n\n"
+                    response += f"📋 المجموعة: {chat.title or 'غير محدد'}\n"
+                    response += f"👥 إجمالي أعضاء التليجرام: {member_count:,} عضو\n"
+                    response += f"✅ مسجلون في النظام: {total_count:,} عضو\n"
+                    response += f"🟢 نشطون (آخر 7 أيام): {active_count:,} عضو\n"
+                    response += f"💰 إجمالي الثروة في النظام: {wealth_total:,.0f}$\n"
+                    
+                    if member_count > 0:
+                        registration_rate = (total_count / member_count) * 100
+                        response += f"📈 معدل التسجيل: {registration_rate:.1f}%\n"
+                    
+                    response += f"\n📊 هذه إحصائيات حقيقية ومباشرة من قاعدة البيانات!"
+                    
+                    return response
+                    
+                except Exception as e:
+                    logging.error(f"خطأ في جلب إحصائيات الأعضاء: {e}")
+                    return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن في مشكلة تقنية مؤقتة في جلب الإحصائيات."
+            else:
+                return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن أحتاج معلومات المجموعة لأعرض الإحصائيات الكاملة."
+        
         # أسئلة عن عدد أعضاء المجموعة
         if any(word in message_lower for word in ['اعضاء المجموعة', 'عدد الاعضاء', 'كم عضو']):
             try:
