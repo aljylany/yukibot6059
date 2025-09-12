@@ -477,13 +477,13 @@ async def handle_marriage(message: Message, action: str):
             current_marriage_proposer = await execute_query(
                 "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
                 (user_id, user_id, message.chat.id),
-                fetch=True
+                fetch_one=True
             )
             
             current_marriage_target = await execute_query(
                 "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
                 (target_user.id, target_user.id, message.chat.id),
-                fetch=True
+                fetch_one=True
             )
             
             if current_marriage_proposer:
@@ -697,7 +697,7 @@ async def show_marriage_status(message: Message):
         marriage = await execute_query(
             "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
             (user_id, user_id, message.chat.id),
-            fetch=True
+            fetch_one=True
         )
         
         # تسجيل لمراقبة حالة الزواج
@@ -760,7 +760,7 @@ async def handle_marriage_response(message: Message, response_type: str):
         proposal = await execute_query(
             "SELECT * FROM marriage_proposals WHERE target_id = ? AND chat_id = ? AND status = 'pending' ORDER BY proposed_at DESC LIMIT 1",
             (user_id, message.chat.id),
-            fetch=True
+            fetch_one=True
         )
         
         if not proposal:
@@ -1149,7 +1149,7 @@ async def handle_wedding_dance(message: Message):
         marriage = await execute_query(
             "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
             (user_id, user_id, message.chat.id),
-            fetch=True
+            fetch_one=True
         )
         
         # اختيار رسالة رقص عشوائية
@@ -1272,7 +1272,7 @@ async def start_royal_ceremony(message: Message):
         marriage = await execute_query(
             "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
             (user_id, user_id, message.chat.id),
-            fetch=True
+            fetch_one=True
         )
         
         if not marriage:
@@ -1361,7 +1361,7 @@ async def is_entertainment_enabled(chat_id: int) -> bool:
         setting = await execute_query(
             "SELECT setting_value FROM group_settings WHERE chat_id = ? AND setting_key = 'enable_entertainment'",
             (chat_id,),
-            fetch=True
+            fetch_one=True
         )
         
         if setting:
@@ -1396,7 +1396,7 @@ async def has_admin_permission(user_id: int, chat_id: int, bot=None) -> bool:
         user_rank = await execute_query(
             "SELECT rank_type FROM group_ranks WHERE user_id = ? AND chat_id = ?",
             (user_id, chat_id),
-            fetch=True
+            fetch_one=True
         )
         
         return user_rank is not None
