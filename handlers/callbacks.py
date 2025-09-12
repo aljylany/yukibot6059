@@ -319,7 +319,7 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             # القوائم الرئيسية
             elif data == "guild_main_menu":
                 if callback.message:
-                    await show_guild_main_menu(callback.message, state)
+                    await show_guild_main_menu(callback.message, state, user_id=callback.from_user.id)
             
             elif data == "guild_code":
                 await show_personal_code(callback)
