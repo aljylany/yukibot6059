@@ -392,6 +392,8 @@ async def handle_marriage(message: Message, action: str):
             await message.reply("❌ التسلية معطلة في هذه المجموعة")
             return
 
+        # استيراد دالة قاعدة البيانات في البداية
+        from database.config.database import execute_query
         user_id = message.from_user.id
         
         # فحص إذا كان المستخدم من العائلة الملكية
@@ -473,7 +475,6 @@ async def handle_marriage(message: Message, action: str):
                     return
 
             # التحقق من الزواج الحالي للطرفين
-            from database.config.database import execute_query
             current_marriage_proposer = await execute_query(
                 "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
                 (user_id, user_id, message.chat.id),
