@@ -392,8 +392,8 @@ async def handle_marriage(message: Message, action: str):
             await message.reply("❌ التسلية معطلة في هذه المجموعة")
             return
 
-        # استيراد دالة قاعدة البيانات في البداية
-        from database.config.database import execute_query
+        # استيراد دالة قاعدة البيانات في البداية  
+        from database.operations import execute_query
         user_id = message.from_user.id
         
         # فحص إذا كان المستخدم من العائلة الملكية
