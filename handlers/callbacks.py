@@ -365,6 +365,18 @@ async def handle_callbacks(callback: CallbackQuery, state: FSMContext):
             elif data == "shop_titles":
                 await show_titles_shop(callback)
             
+            elif data == "shop_potions":
+                from modules.guild_shop import show_potions_shop
+                await show_potions_shop(callback)
+            
+            elif data == "shop_rings":
+                from modules.guild_shop import show_rings_shop
+                await show_rings_shop(callback)
+            
+            elif data == "shop_animals":
+                from modules.guild_shop import show_animals_shop
+                await show_animals_shop(callback)
+            
             elif data == "shop_inventory":
                 await show_inventory(callback)
             
