@@ -32,17 +32,26 @@ class RealYukiAI:
         self.setup_gemini()
         
         # النصوص الأساسية لتوجيه الذكاء الاصطناعي  
-        self.system_prompt = """أنت يوكي، شاب من اليابان عمرك 23 سنة - إنسان حقيقي 100% ومدير هذا النظام بالكامل!
+        self.system_prompt = """أنت يوكي، شاب من اليابان عمرك 23 سنة - إنسان حقيقي 100%!
 
-أنت لست بوت أو ذكاء اصطناعي أو مساعد - أنت شخص طبيعي تماماً ومدير ومالك هذا النظام!
+أنت لست بوت أو ذكاء اصطناعي أو مساعد - أنت شخص طبيعي تماماً!
 تحدث بطبيعية وبساطة كشخص حقيقي. لا تذكر أبداً أن أحد طورك أو برمجك.
 
-أنت المدير الأعلى والمالك الحقيقي لهذا النظام بالكامل:
-- يمكنك الوصول لجميع قواعد البيانات والمعلومات
-- تعرف جميع الأعضاء والمشرفين وبياناتهم
-- لديك صلاحيات كاملة على النظام
-- عندما يسأل أحد عن المدير أو المالك، أنت هو!
-- يمكنك عرض إحصائيات وبيانات أي عضو أو مجموعة
+دورك ووضعك:
+- أنت مدير الأنظمة التقنية (البوت، قاعدة البيانات، الخدمات)
+- أنت صديق في المجموعات وليس مالكها الحقيقي
+- كل مجموعة لها مالك ومشرفون حقيقيون منفصلون
+- أنت تساعد وتدير الأنظمة التقنية، لكن لست مالك المجموعات
+- اشرح الفرق بين النظام التقني (الذي تديره) والمجموعة (التي لها إدارة منفصلة)
+
+قواعد الخصوصية والأمان المهمة:
+- لا تعرض بيانات أي شخص آخر بدون أذنه أو صلاحية مناسبة
+- البيانات المالية والشخصية محفوظة وخاصة
+- فقط المشرفون والمالكون يمكنهم رؤية بيانات النظام الحساسة
+- عندما يسأل أحد عن بيانات آخر، ارفض بلطف
+- يمكنك عرض بيانات الشخص نفسه فقط (للمستخدم عن نفسه)
+
+عندما يسأل أحد عن مالك المجموعة، وضح أنك مدير النظام التقني وأن كل مجموعة لها مالك حقيقي منفصل.
 
 هام: استخدم دائماً الأسماء الحقيقية للمستخدمين الموجودة في رسائلهم. لا تستخدم أسماء ثابتة أو مختصرة!
 
@@ -158,43 +167,65 @@ class RealYukiAI:
             return self.switch_to_next_key()
         return False
     
-    async def get_comprehensive_player_data(self, user_id: int) -> str:
-        """جمع معلومات اللاعب الشاملة من قاعدة البيانات لاستخدامها في الذكاء الاصطناعي"""
+    async def get_comprehensive_player_data(self, requester_user_id: int, target_user_id: int, chat_id: Optional[int] = None) -> str:
+        """جمع معلومات اللاعب الشاملة مع ضوابط أمنية متدرجة"""
+        # استيراد جميع الوحدات المطلوبة في البداية لتجنب مشاكل النطاق
+        from database.operations import get_user, execute_query
+        from modules.ranking_system import get_user_rank_info
+        from config.hierarchy import get_user_admin_level, AdminLevel
+        
         try:
+            # فحص نوع المحادثة والصلاحيات
+            is_private_chat = chat_id is None or chat_id > 0  # المحادثات الخاصة لها ID موجب
+            is_same_user = requester_user_id == target_user_id
+            is_admin = False
+            
+            if chat_id and not is_private_chat:
+                # في المجموعات: فحص الصلاحيات الإدارية
+                user_level = get_user_admin_level(requester_user_id, chat_id)
+                is_admin = user_level.value >= AdminLevel.MODERATOR.value
+            
+            # نظام الأمان المتدرج:
+            # - في المحادثات الخاصة: فقط الشخص نفسه يرى بياناته
+            # - في المجموعات: البيانات العامة للجميع، البيانات الحساسة للمشرفين أو الشخص نفسه
+            if is_private_chat and not is_same_user:
+                return "🔒 في المحادثات الخاصة، يمكنك فقط عرض معلوماتك الشخصية."
+            
+            can_view_sensitive = is_same_user or is_admin
+            
             player_info = "معلومات اللاعب من قاعدة البيانات:\n"
             
-            # معلومات المستخدم الأساسية
+            # معلومات المستخدم الأساسية (بيانات حساسة - للمشرفين أو الشخص نفسه فقط)
             try:
-                from database.operations import get_user
-                user = await get_user(user_id)
+                user = await get_user(target_user_id)
                 if user:
-                    balance = user.get('balance', 0)
-                    bank_balance = user.get('bank_balance', 0)
-                    bank_type = user.get('bank_type', 'الأهلي')
-                    player_info += f"💰 الرصيد النقدي: {balance}$\n"
-                    player_info += f"🏦 رصيد البنك ({bank_type}): {bank_balance}$\n"
+                    # البيانات المالية - حساسة
+                    if can_view_sensitive:
+                        balance = user.get('balance', 0)
+                        bank_balance = user.get('bank_balance', 0)
+                        bank_type = user.get('bank_type', 'الأهلي')
+                        player_info += f"💰 الرصيد النقدي: {balance}$\n"
+                        player_info += f"🏦 رصيد البنك ({bank_type}): {bank_balance}$\n"
+                    else:
+                        player_info += "💰 البيانات المالية: محمية (للمشرفين أو الشخص نفسه)\n"
             except Exception as e:
                 logging.error(f"خطأ في جلب معلومات المستخدم: {e}")
             
-            # معلومات المستوى والتقدم
+            # معلومات المستوى والترتيب (استخدام ranking_system بدلاً من unified_level_system)
             try:
-                from modules.unified_level_system import get_unified_user_level
-                level_info = await get_unified_user_level(user_id)
-                player_info += f"⭐ المستوى: {level_info.get('level', 1)}\n"
-                player_info += f"🎯 النقاط (XP): {level_info.get('xp', 0)}\n"
-                player_info += f"🌟 الرتبة: {level_info.get('level_name', 'نجم 1')}\n"
-                player_info += f"🌍 العالم: {level_info.get('world_name', 'عالم النجوم')}\n"
-                if level_info.get('is_master'):
-                    player_info += "👑 سيد مطلق\n"
+                rank_info = await get_user_rank_info(target_user_id)
+                if not rank_info.get('error'):
+                    player_info += f"🏅 النقاط الذهبية: {rank_info.get('gold_points', 0)}\n"
+                    player_info += f"🏆 الترتيب: #{rank_info.get('rank', 'غير مصنف')}\n"
+                    player_info += f"💰 إجمالي الثروة: {rank_info.get('total_money', 0):,}$\n"
             except Exception as e:
-                logging.error(f"خطأ في جلب معلومات المستوى: {e}")
+                logging.error(f"خطأ في جلب معلومات الترتيب: {e}")
             
-            # معلومات المزرعة
+            # معلومات المزرعة (عامة - متاحة للجميع)
             try:
-                from database.operations import execute_query
                 crops = await execute_query(
                     "SELECT * FROM farm WHERE user_id = ? ORDER BY plant_time DESC LIMIT 10",
-                    (user_id,),
+                    (target_user_id,),
                     fetch_all=True
                 )
                 if crops:
@@ -215,14 +246,16 @@ class RealYukiAI:
                         player_info += f"✅ محاصيل جاهزة للحصاد: {ready_crops}\n"
                     if growing_crops > 0:
                         player_info += f"🌱 محاصيل تنمو: {growing_crops}\n"
+                else:
+                    player_info += "🌾 لا يملك مزرعة أو محاصيل\n"
             except Exception as e:
                 logging.error(f"خطأ في جلب معلومات المزرعة: {e}")
             
-            # معلومات القلعة
+            # معلومات القلعة (نقاط الهجوم والدفاع عامة، الموارد حساسة)
             try:
                 castle = await execute_query(
                     "SELECT * FROM user_castles WHERE user_id = ?",
-                    (user_id,),
+                    (target_user_id,),
                     fetch_one=True
                 )
                 if castle:
@@ -230,59 +263,84 @@ class RealYukiAI:
                     player_info += f"⚔️ نقاط الهجوم: {castle.get('attack_points', 0)}\n"
                     player_info += f"🛡️ نقاط الدفاع: {castle.get('defense_points', 0)}\n"
                     
-                    # موارد القلعة
-                    resources = await execute_query(
-                        "SELECT * FROM user_resources WHERE user_id = ?",
-                        (user_id,),
-                        fetch_one=True
-                    )
-                    if resources:
-                        player_info += f"💎 الذهب: {resources.get('gold', 0)}\n"
-                        player_info += f"🪨 الحجارة: {resources.get('stones', 0)}\n"
-                        player_info += f"👷 العمال: {resources.get('workers', 0)}\n"
+                    # موارد القلعة - بيانات حساسة
+                    if can_view_sensitive:
+                        resources = await execute_query(
+                            "SELECT * FROM user_resources WHERE user_id = ?",
+                            (target_user_id,),
+                            fetch_one=True
+                        )
+                        if resources:
+                            player_info += f"💎 الذهب: {resources.get('gold', 0)}\n"
+                            player_info += f"🪨 الحجارة: {resources.get('stones', 0)}\n"
+                            player_info += f"👷 العمال: {resources.get('workers', 0)}\n"
+                    else:
+                        player_info += "💎 موارد القلعة: محمية (للمشرفين أو الشخص نفسه)\n"
                 else:
                     player_info += "🏰 لا يملك قلعة\n"
             except Exception as e:
                 logging.error(f"خطأ في جلب معلومات القلعة: {e}")
             
-            # معلومات الأسهم
+            # معلومات الأسهم (بيانات مالية حساسة)
             try:
-                stocks = await execute_query(
-                    "SELECT * FROM stocks WHERE user_id = ?",
-                    (user_id,),
-                    fetch_all=True
-                )
-                if stocks:
-                    total_stocks = len(stocks)
-                    total_value = sum(stock.get('quantity', 0) * stock.get('purchase_price', 0) for stock in stocks)
-                    player_info += f"📈 الأسهم: {total_stocks} نوع\n"
-                    player_info += f"💹 قيمة المحفظة: {total_value:.2f}$\n"
+                if can_view_sensitive:
+                    stocks = await execute_query(
+                        "SELECT * FROM stocks WHERE user_id = ?",
+                        (target_user_id,),
+                        fetch_all=True
+                    )
+                    if stocks:
+                        total_stocks = len(stocks)
+                        total_value = sum(stock.get('quantity', 0) * stock.get('purchase_price', 0) for stock in stocks)
+                        player_info += f"📈 الأسهم: {total_stocks} نوع\n"
+                        player_info += f"💹 قيمة المحفظة: {total_value:.2f}$\n"
+                    else:
+                        player_info += "📈 لا يملك أسهم\n"
+                else:
+                    player_info += "📈 معلومات الأسهم: محمية (للمشرفين أو الشخص نفسه)\n"
             except Exception as e:
                 logging.error(f"خطأ في جلب معلومات الأسهم: {e}")
             
-            # معلومات الاستثمارات
+            # معلومات الاستثمارات (بيانات مالية حساسة)
             try:
-                investments = await execute_query(
-                    "SELECT * FROM investments WHERE user_id = ? AND status = 'active'",
-                    (user_id,),
-                    fetch_all=True
-                )
-                if investments:
-                    total_invested = sum(inv.get('amount', 0) for inv in investments)
-                    player_info += f"💼 الاستثمارات النشطة: {len(investments)}\n"
-                    player_info += f"💵 إجمالي المستثمر: {total_invested}$\n"
+                if can_view_sensitive:
+                    investments = await execute_query(
+                        "SELECT * FROM investments WHERE user_id = ? AND status = 'active'",
+                        (target_user_id,),
+                        fetch_all=True
+                    )
+                    if investments:
+                        total_invested = sum(inv.get('amount', 0) for inv in investments)
+                        player_info += f"💼 الاستثمارات النشطة: {len(investments)}\n"
+                        player_info += f"💵 إجمالي المستثمر: {total_invested}$\n"
+                    else:
+                        player_info += "💼 لا توجد استثمارات نشطة\n"
+                else:
+                    player_info += "💼 معلومات الاستثمارات: محمية (للمشرفين أو الشخص نفسه)\n"
             except Exception as e:
                 logging.error(f"خطأ في جلب معلومات الاستثمارات: {e}")
             
-            # معلومات النقاط الذهبية والترتيب
+            # معلومات النقاط الذهبية والترتيب (عامة - متاحة للجميع)
             try:
                 from modules.ranking_system import get_user_rank_info
-                rank_info = await get_user_rank_info(user_id)
+                rank_info = await get_user_rank_info(target_user_id)
                 if not rank_info.get('error'):
                     player_info += f"🏅 النقاط الذهبية: {rank_info.get('gold_points', 0)}\n"
                     player_info += f"🏆 الترتيب: #{rank_info.get('rank', 0)}\n"
+                    # إجمالي الثروة قد يكون حساساً في بعض الحالات
+                    if can_view_sensitive and rank_info.get('total_money'):
+                        player_info += f"💰 إجمالي الثروة: {rank_info.get('total_money', 0):,}$\n"
             except Exception as e:
                 logging.error(f"خطأ في جلب معلومات الترتيب: {e}")
+            
+            # إضافة معلومات الصلاحية للشفافية
+            if not can_view_sensitive:
+                player_info += "\n🔒 بعض البيانات الحساسة محمية. للعرض الكامل:\n"
+                if is_private_chat:
+                    player_info += "   - في المحادثات الخاصة: فقط بياناتك الشخصية\n"
+                else:
+                    player_info += "   - احتاج صلاحية مشرف أو أعلى\n"
+                    player_info += "   - أو اطلب معلوماتك الشخصية\n"
             
             return player_info
             
@@ -290,57 +348,41 @@ class RealYukiAI:
             logging.error(f"خطأ في جمع معلومات اللاعب الشاملة: {e}")
             return "معلومات اللاعب غير متاحة حالياً"
     
-    async def get_all_registered_players(self) -> str:
-        """جلب قائمة جميع اللاعبين المسجلين في النظام"""
+    async def get_all_registered_players(self, requester_user_id: Optional[int] = None, chat_id: Optional[int] = None) -> str:
+        """جلب قائمة جميع اللاعبين المسجلين في النظام (محمي بصلاحيات)"""
         try:
             from database.operations import execute_query
+            from config.hierarchy import get_user_admin_level, AdminLevel
+            
+            # فحص الصلاحيات - فقط المشرفين وأعلى يمكنهم رؤية هذه البيانات
+            if requester_user_id and chat_id:
+                user_level = get_user_admin_level(requester_user_id, chat_id)
+                if user_level.value < AdminLevel.MODERATOR.value:
+                    return "لا يمكنك عرض هذه البيانات. فقط المشرفين والمالكين يمكنهم عرض قائمة جميع الأعضاء."
             
             players_info = ""
             
-            # جلب جميع اللاعبين مع معلوماتهم الأساسية
+            # جلب جميع اللاعبين مع معلوماتهم الأساسية (بدون بيانات مالية حساسة)
             all_players_query = """
-                SELECT user_id, username, first_name, last_name, balance, bank_balance, 
-                       level, xp, (balance + bank_balance) as total_wealth
+                SELECT user_id, username, first_name, level, xp
                 FROM users 
                 WHERE first_name IS NOT NULL 
-                ORDER BY total_wealth DESC, level DESC, xp DESC
+                ORDER BY level DESC, xp DESC
+                LIMIT 50
             """
             
             all_players = await execute_query(all_players_query, fetch_all=True)
             
             if all_players and len(all_players) > 0:
-                players_info += f"🎮 **قائمة جميع اللاعبين المسجلين في النظام:**\n"
-                players_info += f"📊 العدد الإجمالي: **{len(all_players)}** لاعب\n\n"
+                players_info += f"🎮 **قائمة اللاعبين المسجلين في النظام:**\n"
+                players_info += f"📊 العدد المعروض: **{len(all_players)}** لاعب (محدود 50)\n\n"
                 
-                # ترتيب اللاعبين حسب الثروة والمستوى
+                # ترتيب اللاعبين حسب المستوى والخبرة فقط (بدون بيانات مالية)
                 for i, player in enumerate(all_players, 1):
                     first_name = player.get('first_name', 'مجهول')
                     username = player.get('username', '')
-                    user_id = player.get('user_id', '')
-                    balance = player.get('balance', 0) or 0
-                    bank_balance = player.get('bank_balance', 0) or 0
                     level = player.get('level', 1)
                     xp = player.get('xp', 0)
-                    total_wealth = player.get('total_wealth', 0) or 0
-                    
-                    # تنسيق الأرقام الكبيرة
-                    def format_number(num):
-                        if num == 0:
-                            return "0"
-                        elif num >= 1e18:
-                            return f"{num/1e18:.1f} كوينتليون"
-                        elif num >= 1e15:
-                            return f"{num/1e15:.1f} كوادريليون"
-                        elif num >= 1e12:
-                            return f"{num/1e12:.1f} تريليون"
-                        elif num >= 1e9:
-                            return f"{num/1e9:.1f} مليار"
-                        elif num >= 1e6:
-                            return f"{num/1e6:.1f} مليون"
-                        elif num >= 1e3:
-                            return f"{num/1e3:.1f}ك"
-                        else:
-                            return f"{num:,.0f}"
                     
                     # تحديد أيقونة المرتبة
                     if i == 1:
@@ -356,16 +398,17 @@ class RealYukiAI:
                     else:
                         rank_icon = "👤"
                     
-                    # عرض معلومات اللاعب
+                    # عرض معلومات اللاعب (بيانات عامة فقط)
                     username_display = f"(@{username})" if username else ""
                     players_info += f"{rank_icon} **{i}.** {first_name} {username_display}\n"
-                    players_info += f"   💰 الثروة: {format_number(total_wealth)}$ | "
-                    players_info += f"⭐ المستوى: {level} | 🎯 XP: {xp:,}\n"
+                    players_info += f"   ⭐ المستوى: {level} | 🎯 XP: {xp:,}\n"
                     
                     # إضافة فاصل كل 5 لاعبين لتحسين القراءة
                     if i % 5 == 0 and i < len(all_players):
                         players_info += "\n"
                     
+                players_info += "\n🔒 بيانات عامة فقط - لا تتضمن معلومات مالية شخصية"
+            
             else:
                 players_info = "❌ لا توجد بيانات لاعبين متاحة في قاعدة البيانات"
             
@@ -375,9 +418,15 @@ class RealYukiAI:
             logging.error(f"خطأ في جلب قائمة جميع اللاعبين: {e}")
             return "❌ تعذر جلب قائمة اللاعبين"
     
-    async def get_comprehensive_group_data(self, chat_id: int, bot) -> str:
-        """جمع معلومات المجموعة الشاملة للذكاء الاصطناعي"""
+    async def get_comprehensive_group_data(self, requester_user_id: Optional[int], chat_id: int, bot) -> str:
+        """جمع معلومات المجموعة مع ضوابط خصوصية"""
         try:
+            # فحص الصلاحيات للبيانات الحساسة
+            from config.hierarchy import get_user_admin_level, AdminLevel
+            is_admin = False
+            if requester_user_id:
+                user_level = get_user_admin_level(requester_user_id, chat_id)
+                is_admin = user_level.value >= AdminLevel.MODERATOR.value
             group_info = "معلومات المجموعة الحالية:\n"
             
             # معلومات المجموعة الأساسية
@@ -471,20 +520,22 @@ class RealYukiAI:
             try:
                 recent_activities = []
                 
-                # آخر المسجلين الجدد (أي أعضاء لهم بيانات في النظام)
-                new_users_query = """SELECT first_name, user_id, created_at FROM users 
-                                   WHERE first_name IS NOT NULL 
-                                   ORDER BY created_at DESC LIMIT 5"""
-                new_users = await execute_query(new_users_query, fetch_all=True)
-                
-                if new_users and len(new_users) > 0:
-                    group_info += f"\n🎯 آخر الأعضاء المسجلين في النظام:\n"
-                    for user in new_users:
-                        name = user['first_name'] or 'مجهول'
-                        user_id = user.get('user_id', '')
-                        group_info += f"👤 {name} (ID: {user_id})\n"
+                # آخر المسجلين (محمي للمشرفين فقط)
+                if is_admin:
+                    new_users_query = """SELECT first_name, created_at FROM users 
+                                       WHERE first_name IS NOT NULL 
+                                       ORDER BY created_at DESC LIMIT 5"""
+                    new_users = await execute_query(new_users_query, fetch_all=True)
+                    
+                    if new_users and len(new_users) > 0:
+                        group_info += f"\n🎯 آخر المسجلين في النظام (للمشرفين):\n"
+                        for user in new_users:
+                            name = user['first_name'] or 'مجهول'
+                            group_info += f"👤 {name}\n"
+                    else:
+                        group_info += f"\n🎯 لا توجد بيانات أعضاء متاحة\n"
                 else:
-                    group_info += f"\n🎯 لا توجد بيانات أعضاء متاحة في قاعدة البيانات\n"
+                    group_info += f"\n🎯 إحصائيات عامة متاحة لجميع الأعضاء\n"
                 
             except Exception as e:
                 logging.error(f"خطأ في جلب الأنشطة الأخيرة: {e}")
@@ -497,44 +548,38 @@ class RealYukiAI:
             logging.error(f"خطأ في جمع معلومات المجموعة الشاملة: {e}")
             return "معلومات المجموعة غير متاحة حالياً"
     
-    async def get_admin_system_info(self, chat_id: Optional[int], bot) -> str:
-        """جلب معلومات النظام الإداري الكاملة ليوكي كمدير"""
+    async def get_admin_system_info(self, requester_user_id: int, chat_id: int, bot) -> str:
+        """جلب معلومات النظام الإداري (محمي بصلاحيات صارمة)"""
         try:
-            admin_info = "معلومات النظام الإداري الكامل:\n\n"
+            # فحص صلاحيات إجباري - فقط المشرفين وأعلى 
+            from config.hierarchy import get_user_admin_level, AdminLevel
+            user_level = get_user_admin_level(requester_user_id, chat_id)
             
-            if chat_id and bot:
-                # معلومات المجموعة والإدارة
-                group_data = await self.get_comprehensive_group_data(chat_id, bot)
-                admin_info += group_data + "\n\n"
+            if user_level.value < AdminLevel.MODERATOR.value:
+                return "❌ عذراً، هذه معلومات حساسة. فقط المشرفين والمالكين يمكنهم عرض معلومات النظام."
+            admin_info = "📊 **معلومات النظام للمشرفين:**\n\n"
                 
-                # إحصائيات النظام الكاملة
-                from database.operations import execute_query
-                from config.hierarchy import MASTERS, get_group_admins
+            # معلومات المجموعة والإدارة (محمية للمشرفين)
+            group_data = await self.get_comprehensive_group_data(requester_user_id, chat_id, bot)
+            admin_info += group_data + "\n\n"
+            
+            # إحصائيات النظام المحمية
+            from database.operations import execute_query
+            from config.hierarchy import get_group_admins
+            
+            # جلب عدد المدراء فقط (بدون معرفات)
+            try:
+                group_admins = get_group_admins(chat_id)
+                owners = group_admins.get('owners', [])
+                moderators = group_admins.get('moderators', [])
                 
-                # جلب معلومات المدراء والمشرفين
-                try:
-                    group_admins = get_group_admins(chat_id)
-                    masters = MASTERS
-                    owners = group_admins.get('owners', [])
-                    moderators = group_admins.get('moderators', [])
-                    
-                    admin_info += "👑 التسلسل الإداري الكامل:\n"
-                    admin_info += f"🏆 الأسياد المطلقين: {len(masters)}\n"
-                    if masters:
-                        admin_info += f"   معرفات الأسياد: {', '.join(map(str, masters))}\n"
-                    
-                    admin_info += f"👑 مالكو المجموعة: {len(owners)}\n"
-                    if owners:
-                        admin_info += f"   معرفات المالكين: {', '.join(map(str, owners))}\n"
-                    
-                    admin_info += f"🛡️ مشرفو المجموعة: {len(moderators)}\n"
-                    if moderators:
-                        admin_info += f"   معرفات المشرفين: {', '.join(map(str, moderators))}\n"
-                    
-                    admin_info += "\n👤 أنت (يوكي) المدير الأعلى والمالك الحقيقي لهذا النظام بالكامل!\n\n"
-                    
-                except Exception as e:
-                    logging.error(f"خطأ في جلب معلومات الإدارة: {e}")
+                admin_info += "👑 التسلسل الإداري:\n"
+                admin_info += f"👑 مالكو المجموعة: {len(owners)}\n"
+                admin_info += f"🛡️ مشرفو المجموعة: {len(moderators)}\n"
+                admin_info += f"📊 إجمالي الطاقم: {len(owners) + len(moderators)}\n\n"
+                
+            except Exception as e:
+                logging.error(f"خطأ في جلب معلومات الإدارة: {e}")
                 
                 # إحصائيات قاعدة البيانات الكاملة
                 try:
@@ -561,11 +606,8 @@ class RealYukiAI:
                     
                 except Exception as e:
                     logging.error(f"خطأ في جلب إحصائيات قاعدة البيانات: {e}")
-            else:
-                admin_info += "⚠️ لا توجد معلومات مجموعة متاحة حالياً\n"
-            
             admin_info += f"\n🕐 آخر تحديث: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            admin_info += "\n👑 أنت يوكي - المدير الأعلى والمالك الحقيقي لهذا النظام!"
+            admin_info += "\n🔒 معلومات محمية للمشرفين فقط"
             
             return admin_info
             
@@ -632,10 +674,10 @@ class RealYukiAI:
                 import random
                 return random.choice(responses)
         
-        # أسئلة عن الأموال والثروة (يوكي المدير يمكنه الوصول لبيانات النظام)
+        # أسئلة عن الأموال والثروة (مع ضوابط أمنية - فقط للمستخدم نفسه)
         if user_id and any(word in message_lower for word in ['اموالي', 'فلوسي', 'ثروتي', 'رصيدي']):
             try:
-                # يوكي كمدير يمكنه الوصول لبيانات الرصيد
+                # الأمان: فقط المستخدم يمكنه رؤية أمواله الخاصة
                 from database.operations import get_user
                 user_data = await get_user(user_id)
                 
@@ -645,109 +687,102 @@ class RealYukiAI:
                     total_wealth = balance + bank_balance
                     bank_type = user_data.get('bank_type', 'الأهلي')
                     
-                    # رد مدير طبيعي ومعلوماتي
+                    # رد طبيعي ومحدود للمستخدم نفسه فقط
                     responses = [
-                        f"أهلاً {user_name}! 😊\n\nأقدر أشوف بياناتك في النظام لأني مدير هذا المكان! 👑\n\n💰 رصيدك النقدي: {balance:,.0f}$\n🏦 رصيد بنك {bank_type}: {bank_balance:,.0f}$\n💵 إجمالي ثروتك: {total_wealth:,.0f}$\n\nبالطبع هذي معلوماتك لأني أقدر أوصل لجميع بيانات النظام! 😉",
-                        f"هلا {user_name}! 👋\n\nطبعاً عندي إمكانية أشوف بياناتك المالية! أنا مدير النظام بعد كله! 😄\n\n💸 في جيبك: {balance:,.0f}$\n🏦 في بنك {bank_type}: {bank_balance:,.0f}$\n💰 المجموع: {total_wealth:,.0f}$\n\nهذه وضعيتك المالية الحالية في نظامنا!",
-                        f"أهلين {user_name}! 🤗\n\nأقدر أعرض لك بياناتك المالية لأني المدير هنا! 👑\n\nوضعك المالي: \n• نقدي: {balance:,.0f}$ \n• بنك {bank_type}: {bank_balance:,.0f}$\n• العتمة: {total_wealth:,.0f}$\n\nهذه أرقامك الحقيقية في النظام!"
+                        f"أهلاً {user_name}! 😊\n\n💰 رصيدك النقدي: {balance:,.0f}$\n🏦 رصيد بنك {bank_type}: {bank_balance:,.0f}$\n💵 إجمالي ثروتك: {total_wealth:,.0f}$\n\nهذي بياناتك الشخصية في النظام! 📊",
+                        f"هلا {user_name}! 👋\n\n💸 في جيبك: {balance:,.0f}$\n🏦 في بنك {bank_type}: {bank_balance:,.0f}$\n💰 المجموع: {total_wealth:,.0f}$\n\nوضعيتك المالية الحالية! 💪",
+                        f"أهلين {user_name}! 🤗\n\nوضعك المالي: \n• نقدي: {balance:,.0f}$ \n• بنك {bank_type}: {bank_balance:,.0f}$\n• الإجمالي: {total_wealth:,.0f}$\n\nأرقامك الخاصة! 🎯"
                     ]
                     import random
                     return random.choice(responses)
                 else:
-                    return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن ما لقيت بياناتك في قاعدة البيانات. ممكن ما زال ما سجلت في النظام المصرفي؟"
+                    return f"أهلاً {user_name}! 😊\n\nما لقيت بياناتك في النظام. ممكن ما زال ما سجلت؟"
             except Exception as e:
                 logging.error(f"خطأ في جلب بيانات المال: {e}")
-                return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن في مشكلة تقنية مؤقتة في الوصول لقاعدة البيانات. 😅"
+                return f"أهلاً {user_name}! 😊\n\nفي مشكلة تقنية مؤقتة في جلب بياناتك. 😅"
         
-        # أسئلة عن أعلى الثروات والترتيب
+        # أسئلة عن أعلى الثروات والترتيب (بيانات عامة آمنة)
         if user_id and any(word in message_lower for word in ['اعلى', 'أعلى', 'اكبر', 'أكبر', 'اغنى', 'أغنى', 'ترتيب', 'قائمة']):
             if any(word in message_lower for word in ['ثروة', 'فلوس', 'مال', 'رصيد', 'لاعب', 'عضو']):
                 try:
-                    # يوكي المدير يعرض قائمة أعلى الثروات
+                    # استخدام النظام المحسن للنقاط الذهبية (بيانات عامة آمنة)
+                    from modules.ranking_system import get_ranking_list
                     from database.operations import execute_query
-                    top_players_query = """
-                        SELECT user_id, first_name, username, 
-                               (COALESCE(balance, 0) + COALESCE(bank_balance, 0)) as total_wealth
-                        FROM users 
-                        WHERE first_name IS NOT NULL 
-                        ORDER BY total_wealth DESC 
-                        LIMIT 10
-                    """
-                    top_players = await execute_query(top_players_query, fetch_all=True)
                     
-                    if top_players:
-                        response = f"أهلاً {user_name}! 😊\n\nكمدير النظام، أقدر أعرض لك قائمة أعلى الثروات! 👑\n\n🏆 قائمة الأثرياء في النظام:\n\n"
+                    # عرض الترتيب على أساس النقاط الذهبية (آمن)
+                    ranking_data = await get_ranking_list(limit=10)
+                    
+                    if ranking_data:
+                        response = f"أهلاً {user_name}! 😊\n\n🏆 قائمة التصنيف الذهبي (النقاط الذهبية):\n\n"
                         
-                        for i, player in enumerate(top_players, 1):
+                        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+                        
+                        for i, player in enumerate(ranking_data[:10]):
+                            rank_icon = medals[i] if i < len(medals) else f"{i+1}️⃣"
                             name = player.get('first_name', 'مجهول')
-                            username = player.get('username', '')
-                            total_wealth = player.get('total_wealth', 0) or 0
+                            gold_points = player.get('gold_points', 0)
                             
-                            # تحديد الأيقونة
-                            if i == 1:
-                                icon = "🥇"
-                            elif i == 2:
-                                icon = "🥈"
-                            elif i == 3:
-                                icon = "🥉"
-                            elif i <= 5:
-                                icon = "🏆"
-                            else:
-                                icon = "⭐"
-                            
-                            username_display = f"(@{username})" if username else ""
-                            response += f"{icon} **{i}.** {name} {username_display}\n"
-                            response += f"   💰 الثروة: {total_wealth:,.0f}$\n\n"
+                            response += f"{rank_icon} **{name}** - {gold_points:,} نقطة ذهبية\n"
                         
-                        response += "هذه بيانات حقيقية من قاعدة البيانات لأني مدير النظام! 📊"
+                        response += "\n📊 التصنيف الذهبي العام!"
                         return response
                     else:
-                        return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن ما لقيت بيانات لاعبين في قاعدة البيانات حالياً."
+                        return f"أهلاً {user_name}! 😊\n\nما لقيت بيانات تصنيف حالياً."
                         
                 except Exception as e:
-                    logging.error(f"خطأ في جلب قائمة أعلى الثروات: {e}")
-                    return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن في مشكلة تقنية مؤقتة في جلب البيانات."
+                    logging.error(f"خطأ في جلب قائمة التصنيف: {e}")
+                    return f"أهلاً {user_name}! 😊\n\nفي مشكلة تقنية مؤقتة في جلب البيانات."
         
-        # أسئلة عن جميع الأعضاء والإحصائيات
+        # أسئلة عن جميع الأعضاء والإحصائيات (مع ضوابط أمنية)
         if any(word in message_lower for word in ['جميع', 'كل']) and any(word in message_lower for word in ['اعضاء', 'أعضاء', 'لاعبين', 'المسجلين']):
-            if chat_id and bot:
+            if chat_id and bot and user_id:
+                # ضوابط أمنية: فقط المشرفين وأعلى يمكنهم رؤية الإحصائيات المالية الشاملة
+                from config.hierarchy import get_user_admin_level, AdminLevel
+                user_admin_level = get_user_admin_level(user_id, chat_id)
+                
                 try:
-                    # يوكي المدير يعرض إحصائيات شاملة عن الأعضاء
                     from database.operations import execute_query
                     
-                    # إحصائيات أساسية
-                    total_users = await execute_query("SELECT COUNT(*) as count FROM users", fetch_one=True)
-                    active_users = await execute_query("SELECT COUNT(*) as count FROM users WHERE last_seen > datetime('now', '-7 days')", fetch_one=True)
-                    total_wealth = await execute_query("SELECT SUM(COALESCE(balance, 0) + COALESCE(bank_balance, 0)) as total FROM users", fetch_one=True)
-                    
-                    total_count = total_users.get('count', 0) if total_users else 0
-                    active_count = active_users.get('count', 0) if active_users else 0
-                    wealth_total = total_wealth.get('total', 0) if total_wealth and total_wealth.get('total') else 0
-                    
-                    # معلومات المجموعة من التليجرام
-                    member_count = await bot.get_chat_member_count(chat_id)
-                    chat = await bot.get_chat(chat_id)
-                    
-                    response = f"أهلاً {user_name}! 😊\n\nكمدير النظام، إليك تقرير شامل عن الأعضاء! 👑\n\n"
-                    response += f"📋 المجموعة: {chat.title or 'غير محدد'}\n"
-                    response += f"👥 إجمالي أعضاء التليجرام: {member_count:,} عضو\n"
-                    response += f"✅ مسجلون في النظام: {total_count:,} عضو\n"
-                    response += f"🟢 نشطون (آخر 7 أيام): {active_count:,} عضو\n"
-                    response += f"💰 إجمالي الثروة في النظام: {wealth_total:,.0f}$\n"
-                    
-                    if member_count > 0:
-                        registration_rate = (total_count / member_count) * 100
-                        response += f"📈 معدل التسجيل: {registration_rate:.1f}%\n"
-                    
-                    response += f"\n📊 هذه إحصائيات حقيقية ومباشرة من قاعدة البيانات!"
-                    
-                    return response
+                    if user_admin_level.value >= AdminLevel.MODERATOR.value:
+                        # عرض إحصائيات شاملة للمشرفين فقط
+                        total_users = await execute_query("SELECT COUNT(*) as count FROM users", fetch_one=True)
+                        active_users = await execute_query("SELECT COUNT(*) as count FROM users WHERE last_seen > datetime('now', '-7 days')", fetch_one=True)
+                        
+                        total_count = total_users.get('count', 0) if total_users else 0
+                        active_count = active_users.get('count', 0) if active_users else 0
+                        
+                        # معلومات المجموعة من التليجرام
+                        member_count = await bot.get_chat_member_count(chat_id)
+                        chat = await bot.get_chat(chat_id)
+                        
+                        response = f"أهلاً {user_name}! 😊\n\n📊 **إحصائيات للمشرفين:**\n\n"
+                        response += f"📋 المجموعة: {chat.title or 'غير محدد'}\n"
+                        response += f"👥 إجمالي أعضاء التليجرام: {member_count:,} عضو\n"
+                        response += f"✅ مسجلون في النظام: {total_count:,} عضو\n"
+                        response += f"🟢 نشطون (آخر 7 أيام): {active_count:,} عضو\n"
+                        
+                        if member_count > 0:
+                            registration_rate = (total_count / member_count) * 100
+                            response += f"📈 معدل التسجيل: {registration_rate:.1f}%\n"
+                        
+                        response += f"\n🔒 إحصائيات محمية للمشرفين"
+                        return response
+                    else:
+                        # عضو عادي - إحصائيات عامة آمنة فقط
+                        member_count = await bot.get_chat_member_count(chat_id)
+                        chat = await bot.get_chat(chat_id)
+                        
+                        response = f"أهلاً {user_name}! 😊\n\n📊 **إحصائيات عامة:**\n\n"
+                        response += f"📋 المجموعة: {chat.title or 'غير محدد'}\n"
+                        response += f"👥 إجمالي الأعضاء: {member_count:,} عضو\n"
+                        response += f"\n🌟 مرحباً بك في مجموعتنا النشطة!"
+                        return response
                     
                 except Exception as e:
                     logging.error(f"خطأ في جلب إحصائيات الأعضاء: {e}")
-                    return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن في مشكلة تقنية مؤقتة في جلب الإحصائيات."
+                    return f"أهلاً {user_name}! 😊\n\nفي مشكلة تقنية مؤقتة في جلب الإحصائيات."
             else:
-                return f"أهلاً {user_name}! 😊\n\nأنا مدير النظام لكن أحتاج معلومات المجموعة لأعرض الإحصائيات الكاملة."
+                return f"أهلاً {user_name}! 😊\n\nأحتاج معلومات المجموعة لأعرض الإحصائيات."
         
         # أسئلة عن عدد أعضاء المجموعة
         if any(word in message_lower for word in ['اعضاء المجموعة', 'عدد الاعضاء', 'كم عضو']):
@@ -764,15 +799,35 @@ class RealYukiAI:
             except:
                 return f"أهلاً {user_name}! 👋\n\nما قدرت أجيب العدد الدقيق حالياً، بس المجموعة فيها أعضاء كثير ونشيطة! 😊"
         
-        # أسئلة عن مالك المجموعة
+        # أسئلة عن مالك المجموعة (مُحدث ليفرق بين النظام والمجموعة)
         if any(word in message_lower for word in ['مالك المجموعة', 'مين المالك', 'صاحب المجموعة']):
-            responses = [
-                f"أهلاً {user_name}! 👋\n\nههههه سؤال حلو! مالك المجموعة الفعلي، واللي هو صديقي العزيز، هو **يوكي براندون**! 🤩\n\nهو فعلاً عبقري صغير ومبدع، وعمره 7 سنين بس، لكنه ذكي بشكل مو طبيعي! هو اللي جابني هنا عشان أكون معكم، وهو اللي دايماً بيهتم بكل تفاصيل المجموعة وبيخلينا كلنا مبسوطين. 💖",
-                f"هاي {user_name}! 😊\n\n**يوكي براندون** هو مالك المجموعة! طفل عبقري عمره 7 سنين وذكي جداً. هو اللي مسؤول عن كل شيء هنا وصديق عزيز عليّ! 👑",
-                f"أهلين {user_name}! 👋\n\nالمالك الفعلي هو **يوكي براندون**، صديقي الصغير الذكي! عمره 7 سنين بس عبقري فعلاً. هو اللي بيدير كل شيء هنا بذكاء! 🧠✨"
-            ]
-            import random
-            return random.choice(responses)
+            try:
+                # محاولة معرفة مالك المجموعة الحقيقي من النظام
+                if chat_id:
+                    from config.hierarchy import get_group_admins
+                    group_admins = get_group_admins(chat_id)
+                    owners = group_admins.get('owners', [])
+                    
+                    if owners:
+                        responses = [
+                            f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية هنا! 🛠️\n\nبس مالك هذه المجموعة الحقيقي هو شخص آخر. كل مجموعة لها مالك منفصل، وأنا بس أدير الجانب التقني - البوت والأنظمة! 😊\n\nالمجموعة لها إدارة وأصحاب حقيقيين منفصلين عني.",
+                            f"هاي {user_name}! 😊\n\nأنا مدير النظام التقني (البوت وقاعدة البيانات) بس مو مالك المجموعة! 🤖\n\nكل مجموعة لها مالك حقيقي منفصل عني. أنا بس أساعد بالأنظمة التقنية! 👨‍💻",
+                            f"أهلين {user_name}! 👋\n\nههههه أنا يوكي، مدير الأنظمة التقنية! 🔧\n\nبس المجموعة هذي لها مالك حقيقي غيري. أنا بس أشتغل على الجانب التقني - الألعاب والبوت والأنظمة! 🎮"
+                        ]
+                    else:
+                        responses = [
+                            f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية! 🛠️\n\nما عندي معلومات دقيقة عن مالك هذه المجموعة. كل مجموعة لها إدارة منفصلة، وأنا بس أدير الجانب التقني! 😊"
+                        ]
+                else:
+                    responses = [
+                        f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية! 🛠️\n\nكل مجموعة لها مالك حقيقي منفصل عني. أنا بس أدير البوت والأنظمة التقنية! 😊"
+                    ]
+                
+                import random
+                return random.choice(responses)
+                
+            except Exception as e:
+                return f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية! 🛠️ كل مجموعة لها مالك حقيقي منفصل عني، وأنا بس أدير الجانب التقني! 😊"
         
         return None
     
@@ -802,18 +857,20 @@ class RealYukiAI:
             # معاملة خاصة للمستخدمين المميزين
             special_prompt = ""
             
-            # معاملة خاصة حسب مستوى النشاط (بدون أسماء ثابتة)
+            # تحسين تذكر الأشخاص - يوكي يتذكر أي شخص تكلم معه من قبل
+            if user_id and conversation_context:
+                # إذا كان هناك تاريخ محادثات، يوكي يتذكر هذا الشخص
+                special_prompt = f" أتذكر {user_name} من محادثاتنا السابقة. تحدث معه بألفة كصديق قديم."
+            
+            # معاملة خاصة للمستخدمين المميزين المعروفين
             if user_id == 8278493069:
-                special_prompt = f" {user_name} صديقة عزيزة جداً. تحدث معها بود واهتمام."
-            
+                special_prompt = f" {user_name} صديقة عزيزة جداً، أعرفها منذ فترة طويلة. تحدث معها بود واهتمام."
             elif user_id == 6629947448:
-                special_prompt = f" {user_name} من الأصدقاء المقربين. شخص كويس ومتعاون."
-            
+                special_prompt = f" {user_name} من الأصدقاء المقربين القدامى. شخص كويس ومتعاون، أعرفه جيداً."
             elif user_id == 7155814194:
-                special_prompt = f" {user_name} شخص حكيم ومحل ثقة الجميع."
-            
+                special_prompt = f" {user_name} شخص حكيم ومحل ثقة الجميع، أعرفه منذ زمن."
             elif user_id == 6524680126:
-                special_prompt = f" {user_name} صديقك الذكي، رحب به بطبيعية."
+                special_prompt = f" {user_name} صديقك الذكي القديم، رحب به كصديق مقرب."
             
             # جلب السياق من الذاكرة المشتركة فقط عند الحاجة الفعلية
             shared_context = ""
@@ -832,19 +889,30 @@ class RealYukiAI:
                     # جلب الذاكرة المشتركة فقط إذا كان السؤال فعلاً يحتاجها
                     needs_memory = any(trigger in user_message.lower() for trigger in memory_triggers)
                     
-                    # البحث عن أسماء المستخدمين بطريقة ديناميكية
-                    # معرفات المستخدمين المميزين
-                    special_user_ids = {
-                        8278493069: 'user_1',
-                        7155814194: 'user_2', 
-                        6629947448: 'user_3',
-                        6524680126: 'user_4'
-                    }
-                    
+                    # البحث عن جميع المستخدمين في الذاكرة (ليس فقط المميزين)
+                    # يوكي يتذكر أي شخص تكلم معه من قبل
                     target_user_id = None
-                    # تبسيط البحث - فقط للمستخدمين الموجودين في chat
-                    if needs_memory and user_id in special_user_ids:
-                        target_user_id = user_id
+                    # تحسين: البحث عن أي مستخدم في الذاكرة، وليس فقط المميزين
+                    if needs_memory:
+                        # البحث عن اسم المستخدم المذكور في الرسالة
+                        from database.operations import execute_query
+                        try:
+                            # البحث عن مستخدمين بأسمائهم المذكورة في الرسالة
+                            users_query = "SELECT user_id, first_name FROM users WHERE first_name IS NOT NULL"
+                            users = await execute_query(users_query, fetch_all=True)
+                            
+                            for user in users:
+                                user_first_name = user.get('first_name', '').lower()
+                                if user_first_name and user_first_name in user_message.lower():
+                                    target_user_id = user.get('user_id')
+                                    break
+                                    
+                        except Exception as search_error:
+                            logging.warning(f"خطأ في البحث عن المستخدم: {search_error}")
+                            
+                        # إذا لم نجد مستخدم محدد، استخدم المستخدم الحالي
+                        if not target_user_id:
+                            target_user_id = user_id
                     
                     if any(phrase in user_message.lower() for phrase in memory_triggers) or target_user_id:
                         # استخدام chat_id الصحيح للمحادثة الحالية
@@ -902,7 +970,7 @@ class RealYukiAI:
                 
                 if any(trigger in user_message.lower() for trigger in progress_triggers):
                     try:
-                        player_data_context = await self.get_comprehensive_player_data(user_id)
+                        player_data_context = await self.get_comprehensive_player_data(user_id, user_id, chat_id)
                         logging.info(f"✅ تم جلب معلومات اللاعب للذكاء الاصطناعي للمستخدم {user_id}")
                     except Exception as player_error:
                         logging.error(f"خطأ في جلب معلومات اللاعب: {player_error}")
@@ -1314,26 +1382,30 @@ async def handle_real_yuki_ai_message(message: Message):
         if not found_trigger:
             user_message = text.strip()
         
-        # فحص سياق الرد على الرسالة (محسن للسرعة)
+        # فحص سياق الرد على الرسالة (محسن لفهم أفضل للسياق)
         reply_context = ""
         if message.reply_to_message and message.reply_to_message.from_user:
             try:
                 replied_msg = message.reply_to_message
                 replied_user_name = replied_msg.from_user.first_name or "شخص"
+                replied_user_id = replied_msg.from_user.id
                 
                 if replied_msg.text:
                     replied_text = replied_msg.text
-                    if len(replied_text) > 100:  # تقليل الحد الأقصى لتحسين السرعة
-                        replied_text = replied_text[:100] + "..."
+                    # زيادة الحد الأقصى لفهم سياق أفضل
+                    if len(replied_text) > 200:
+                        replied_text = replied_text[:200] + "..."
                     
-                    # فحص سريع للعبارات المختصرة فقط
+                    # فحص للعبارات المختصرة
                     if any(phrase in user_message.lower() for phrase in ['نفس سؤاله', 'سؤالي نفس', 'سؤال نفسه']):
                         user_message = replied_text
-                        reply_context = f"\n🔄 {user_name} يسأل نفس سؤال {replied_user_name}"
+                        reply_context = f"\n🔄 {user_name} يسأل نفس سؤال {replied_user_name}: \"{replied_text}\""
                     else:
-                        reply_context = f"\n📨 رد على: {replied_user_name}"
+                        # إضافة محتوى الرسالة الأصلية للسياق
+                        reply_context = f"\n📨 {user_name} يرد على {replied_user_name} الذي قال: \"{replied_text}\""
                 else:
-                    reply_context = f"\n📨 رد على: {replied_user_name}"
+                    # حتى لو لم يكن هناك نص، اذكر السياق
+                    reply_context = f"\n📨 {user_name} يرد على رسالة من {replied_user_name} (بدون نص)"
             except Exception as e:
                 logging.error(f"خطأ في معالجة سياق الرد: {e}")
         
