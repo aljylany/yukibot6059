@@ -37,21 +37,29 @@ async def show_shop_menu(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 رجوع", callback_data="guild_main_menu")]
         ]
         
-        await callback.message.edit_text(
-            f"🛒 **مرحباً في المتجر الأسطوري!**\n\n"
-            f"👤 **اللاعب:** {player.name}\n"
-            f"🏅 **المستوى:** {player.level}\n"
-            f"💰 **رصيدك:** {format_number(balance)}$\n\n"
-            f"🎯 **اختر قسماً لاستكشاف الكنوز الملحمية:**\n\n"
-            f"⚔️ **الأسلحة** - أدوات القتال الفتاكة\n"
-            f"🏅 **الأوسمة** - رموز الشرف والقوة\n"
-            f"🏷️ **الألقاب** - أسماء تُخلد في التاريخ\n"
-            f"🧪 **الجرعات** - إكسيرات القوة السحرية\n"
-            f"💍 **الخواتم** - خواتم القدر الأسطورية\n"
-            f"🐾 **الحيوانات** - رفاق المعركة الأوفياء\n"
-            f"🎒 **مخزوني** - عناصرك المملوكة",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        # التحقق من إمكانية تعديل الرسالة
+        if callback.message and hasattr(callback.message, 'edit_text'):
+            try:
+                await callback.message.edit_text(
+                    f"🛒 **مرحباً في المتجر الأسطوري!**\n\n"
+                    f"👤 **اللاعب:** {player.name}\n"
+                    f"🏅 **المستوى:** {player.level}\n"
+                    f"💰 **رصيدك:** {format_number(balance)}$\n\n"
+                    f"🎯 **اختر قسماً لاستكشاف الكنوز الملحمية:**\n\n"
+                    f"⚔️ **الأسلحة** - أدوات القتال الفتاكة\n"
+                    f"🏅 **الأوسمة** - رموز الشرف والقوة\n"
+                    f"🏷️ **الألقاب** - أسماء تُخلد في التاريخ\n"
+                    f"🧪 **الجرعات** - إكسيرات القوة السحرية\n"
+                    f"💍 **الخواتم** - خواتم القدر الأسطورية\n"
+                    f"🐾 **الحيوانات** - رفاق المعركة الأوفياء\n"
+                    f"🎒 **مخزوني** - عناصرك المملوكة",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تعديل رسالة المتجر: {edit_error}")
+                await callback.answer("❌ خطأ في عرض المتجر - جرب مرة أخرى")
+        else:
+            await callback.answer("❌ لا يمكن عرض المتجر الآن - جرب كتابة 'نقابة' مرة أخرى")
         
         await callback.answer()
         
@@ -90,10 +98,18 @@ async def show_weapons_shop(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
         
-        await callback.message.edit_text(
-            shop_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        # التحقق من إمكانية تعديل الرسالة
+        if callback.message and hasattr(callback.message, 'edit_text'):
+            try:
+                await callback.message.edit_text(
+                    shop_text,
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تعديل رسالة متجر الأسلحة: {edit_error}")
+                await callback.answer("❌ خطأ في عرض المتجر - جرب مرة أخرى")
+        else:
+            await callback.answer("❌ لا يمكن عرض المتجر الآن - جرب كتابة 'نقابة' مرة أخرى")
         
         await callback.answer()
         
@@ -131,10 +147,18 @@ async def show_badges_shop(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
         
-        await callback.message.edit_text(
-            shop_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        # التحقق من إمكانية تعديل الرسالة
+        if callback.message and hasattr(callback.message, 'edit_text'):
+            try:
+                await callback.message.edit_text(
+                    shop_text,
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تعديل رسالة متجر الأسلحة: {edit_error}")
+                await callback.answer("❌ خطأ في عرض المتجر - جرب مرة أخرى")
+        else:
+            await callback.answer("❌ لا يمكن عرض المتجر الآن - جرب كتابة 'نقابة' مرة أخرى")
         
         await callback.answer()
         
@@ -172,10 +196,18 @@ async def show_potions_shop(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
         
-        await callback.message.edit_text(
-            shop_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        # التحقق من إمكانية تعديل الرسالة
+        if callback.message and hasattr(callback.message, 'edit_text'):
+            try:
+                await callback.message.edit_text(
+                    shop_text,
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تعديل رسالة متجر الأسلحة: {edit_error}")
+                await callback.answer("❌ خطأ في عرض المتجر - جرب مرة أخرى")
+        else:
+            await callback.answer("❌ لا يمكن عرض المتجر الآن - جرب كتابة 'نقابة' مرة أخرى")
         
         await callback.answer()
         
@@ -213,10 +245,18 @@ async def show_rings_shop(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
         
-        await callback.message.edit_text(
-            shop_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        # التحقق من إمكانية تعديل الرسالة
+        if callback.message and hasattr(callback.message, 'edit_text'):
+            try:
+                await callback.message.edit_text(
+                    shop_text,
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تعديل رسالة متجر الأسلحة: {edit_error}")
+                await callback.answer("❌ خطأ في عرض المتجر - جرب مرة أخرى")
+        else:
+            await callback.answer("❌ لا يمكن عرض المتجر الآن - جرب كتابة 'نقابة' مرة أخرى")
         
         await callback.answer()
         
@@ -254,10 +294,18 @@ async def show_animals_shop(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
         
-        await callback.message.edit_text(
-            shop_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        # التحقق من إمكانية تعديل الرسالة
+        if callback.message and hasattr(callback.message, 'edit_text'):
+            try:
+                await callback.message.edit_text(
+                    shop_text,
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تعديل رسالة متجر الأسلحة: {edit_error}")
+                await callback.answer("❌ خطأ في عرض المتجر - جرب مرة أخرى")
+        else:
+            await callback.answer("❌ لا يمكن عرض المتجر الآن - جرب كتابة 'نقابة' مرة أخرى")
         
         await callback.answer()
         
@@ -295,10 +343,18 @@ async def show_titles_shop(callback: CallbackQuery):
         
         keyboard.append([InlineKeyboardButton(text="🔙 رجوع للمتجر", callback_data="guild_shop")])
         
-        await callback.message.edit_text(
-            shop_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-        )
+        # التحقق من إمكانية تعديل الرسالة
+        if callback.message and hasattr(callback.message, 'edit_text'):
+            try:
+                await callback.message.edit_text(
+                    shop_text,
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+                )
+            except Exception as edit_error:
+                logging.error(f"خطأ في تعديل رسالة متجر الأسلحة: {edit_error}")
+                await callback.answer("❌ خطأ في عرض المتجر - جرب مرة أخرى")
+        else:
+            await callback.answer("❌ لا يمكن عرض المتجر الآن - جرب كتابة 'نقابة' مرة أخرى")
         
         await callback.answer()
         
