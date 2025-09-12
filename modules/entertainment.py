@@ -569,7 +569,7 @@ async def handle_marriage(message: Message, action: str):
             marriage = await execute_query(
                 "SELECT * FROM entertainment_marriages WHERE (user1_id = ? OR user2_id = ?) AND chat_id = ?",
                 (user_id, user_id, message.chat.id),
-                fetch=True
+                fetch_one=True
             )
             
             if not marriage:
@@ -581,11 +581,14 @@ async def handle_marriage(message: Message, action: str):
                 user1_id = marriage['user1_id']
                 user2_id = marriage['user2_id']
                 marriage_id = marriage['id']
-            else:
+            elif isinstance(marriage, (tuple, list)) and len(marriage) >= 3:
                 # إذا كانت النتيجة tuple أو list
                 marriage_id = marriage[0]
                 user1_id = marriage[1]
                 user2_id = marriage[2]
+            else:
+                await message.reply("❌ خطأ في قراءة بيانات الزواج")
+                return
             
             from database.operations import get_user, update_user_balance, add_transaction
             
