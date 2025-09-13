@@ -65,7 +65,12 @@ class UserAnalysisIntegration:
                 user_id = message.from_user.id
                 chat_id = message.chat.id
                 
-                await user_analysis_manager.process_message(user_id, message.text, chat_id)
+                logging.info(f"🧠 بدء تحليل رسالة للمستخدم {user_id} في المجموعة {chat_id}")
+                result = await user_analysis_manager.process_message(user_id, message.text, chat_id)
+                if result:
+                    logging.info(f"✅ تم تحليل الرسالة بنجاح للمستخدم {user_id}")
+                else:
+                    logging.debug(f"📝 تحليل الرسالة فارغ للمستخدم {user_id}")
             
             return False  # لم يتم التعامل مع الرسالة، تمرير للمعالجات الأخرى
             

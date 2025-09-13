@@ -212,13 +212,13 @@ class AdvancedUserAnalyzer:
             
             # تحديث الاهتمامات
             interests = analysis_result.get('interests', {})
-            for interest, score in interests.items():
-                await quick_interest_update(user_id, interest, score * 0.1)
+            if interests:
+                await UserAnalysisEngine.quick_interest_update(user_id, interests)
             
             # تحديث صفات الشخصية
             traits = analysis_result.get('personality_traits', {})
-            for trait, score in traits.items():
-                await quick_personality_update(user_id, trait, score * 0.05)
+            if traits:
+                await UserAnalysisEngine.quick_personality_update(user_id, traits)
             
             return True
             

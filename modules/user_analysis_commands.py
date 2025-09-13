@@ -13,17 +13,22 @@ from aiogram.types import Message, CallbackQuery
 from config.database import DATABASE_URL
 from database.user_analysis_operations import UserAnalysisOperations
 from modules.user_analysis_manager import user_analysis_manager
-from utils.permission_decorators import require_rank
+from utils.decorators import admin_required
 
 
 class UserAnalysisCommands:
     """أوامر التحكم في نظام تحليل المستخدمين"""
     
     @staticmethod
-    @require_rank(['سيد', 'مالك', 'منشئ'])
     async def toggle_group_analysis(message: Message):
         """تفعيل/إيقاف التحليل في المجموعة"""
         try:
+            # التحقق من الصلاحيات
+            from config.hierarchy import is_master, is_supreme_master, has_permission
+            if not (is_supreme_master(message.from_user.id) or is_master(message.from_user.id) or await has_permission(message.from_user.id, message.chat.id, "مالك")):
+                await message.reply("❌ ليس لديك صلاحية للتحكم بنظام التحليل")
+                return
+            
             chat_id = message.chat.id
             user_id = message.from_user.id
             
@@ -52,7 +57,7 @@ class UserAnalysisCommands:
 • التخصيص المتقدم للردود
 • تحليل العلاقات الاجتماعية
 
-🔒 **الخصوصية محمية:** البيانات مشفرة ولا تتم مشاركتها
+🔒 **الخصوصية محمية:** البيانات محفوظة محلياً ولا تتم مشاركتها
 ⚙️ **التحكم:** يمكن إيقاف الميزة في أي وقت
 
 تم التعديل بواسطة: {user_name}
@@ -69,10 +74,15 @@ class UserAnalysisCommands:
             await message.reply("❌ حدث خطأ في النظام")
     
     @staticmethod
-    @require_rank(['سيد', 'مالك', 'منشئ'])
     async def analysis_status(message: Message):
         """عرض حالة نظام التحليل"""
         try:
+            # التحقق من الصلاحيات
+            from config.hierarchy import is_master, is_supreme_master, has_permission
+            if not (is_supreme_master(message.from_user.id) or is_master(message.from_user.id) or await has_permission(message.from_user.id, message.chat.id, "مالك")):
+                await message.reply("❌ ليس لديك صلاحية لعرض حالة التحليل")
+                return
+            
             chat_id = message.chat.id
             
             # الحصول على إعدادات المجموعة
@@ -137,10 +147,15 @@ class UserAnalysisCommands:
             await message.reply("❌ حدث خطأ في الحصول على الحالة")
     
     @staticmethod
-    @require_rank(['سيد'])
     async def clear_analysis_data(message: Message):
         """مسح بيانات التحليل للمجموعة (للأسياد فقط)"""
         try:
+            # التحقق من الصلاحيات (أسياد فقط)
+            from config.hierarchy import is_master, is_supreme_master
+            if not (is_supreme_master(message.from_user.id) or is_master(message.from_user.id)):
+                await message.reply("❌ ليس لديك صلاحية لمسح بيانات التحليل (أسياد فقط)")
+                return
+            
             chat_id = message.chat.id
             
             # تأكيد الحذف
@@ -279,10 +294,15 @@ class UserAnalysisCommands:
             await message.reply("❌ حدث خطأ في تحليل العلاقة")
     
     @staticmethod
-    @require_rank(['سيد', 'مالك', 'منشئ'])
     async def group_analysis_stats(message: Message):
         """إحصائيات التحليل للمجموعة"""
         try:
+            # التحقق من الصلاحيات
+            from config.hierarchy import is_master, is_supreme_master, has_permission
+            if not (is_supreme_master(message.from_user.id) or is_master(message.from_user.id) or await has_permission(message.from_user.id, message.chat.id, "مالك")):
+                await message.reply("❌ ليس لديك صلاحية لعرض إحصائيات التحليل")
+                return
+            
             chat_id = message.chat.id
             
             # الحصول على إحصائيات شاملة
