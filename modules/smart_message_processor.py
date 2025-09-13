@@ -268,8 +268,21 @@ class SmartMessageProcessor:
             user_id = message.from_user.id
             chat_id = message.chat.id
             message_text = message.text or ""
+            user_name = message.from_user.first_name or "صديقي"
             
-            # استخدام النظام المحسن
+            # استخدام نظام real_ai المحدث
+            from modules.real_ai import RealAI
+            real_ai = RealAI()
+            
+            # محاولة معالجة أسئلة الإدارة أولاً
+            admin_response = await real_ai.handle_admin_questions(
+                message_text, user_name, user_id, chat_id, message.bot
+            )
+            
+            if admin_response:
+                return admin_response
+            
+            # إذا لم تكن سؤال إداري، استخدم النظام المحسن العادي
             response = await self.enhanced_yuki.generate_contextual_response(
                 message_text, user_id, chat_id
             )
