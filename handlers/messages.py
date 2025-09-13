@@ -1112,11 +1112,10 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # لعبة الكلمة - Word Game
     if (message.text and message.chat.type in ['group', 'supergroup']):
-        import re
         word_commands = ['الكلمة', 'كلمة', 'word']
         
-        # فحص الأوامر ككلمات مستقلة
-        is_word_command = any(re.search(rf'\b{re.escape(command)}\b', text) for command in word_commands)
+        # فحص الأوامر كأوامر منفردة فقط (النص كاملاً يجب أن يكون الأمر)
+        is_word_command = text.strip() in word_commands
         
         if is_word_command:
             try:
@@ -1129,11 +1128,10 @@ async def handle_general_message(message: Message, state: FSMContext):
     
     # لعبة الرموز - Symbols Game
     if (message.text and message.chat.type in ['group', 'supergroup']):
-        import re
         symbols_commands = ['الرموز', 'رموز', 'symbols']
         
-        # فحص الأوامر ككلمات مستقلة
-        is_symbols_command = any(re.search(rf'\b{re.escape(command)}\b', text) for command in symbols_commands)
+        # فحص الأوامر كأوامر منفردة فقط (النص كاملاً يجب أن يكون الأمر)
+        is_symbols_command = text.strip() in symbols_commands
         
         if is_symbols_command:
             try:
