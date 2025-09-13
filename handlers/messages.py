@@ -1520,7 +1520,7 @@ async def handle_general_message(message: Message, state: FSMContext):
             return
 
     # أمر المطور - عرض معلومات المطور مع خلفية مميزة
-    if (message.text and any(keyword in message.text.lower() for keyword in ['مطور', 'developer', 'dev info']) and 
+    if (message.text and any(keyword in message.text.lower() for keyword in ['مطور', 'developer', 'dev info', 'مبرمج', 'programmer', 'who created', 'من صنع', 'من مطور', 'من مبرمج', 'creator', 'صانع', 'مؤسس', 'founder', 'who made', 'من الذي صنع', 'من الذي طور']) and 
         message.chat.type in ['group', 'supergroup'] and message.from_user):
         try:
             from config.hierarchy import MASTERS
