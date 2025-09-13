@@ -2725,20 +2725,29 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'مسح الرابط':
         await clear_commands.clear_link(message)
     
-    # معالجة تخمينات الألعاب (في النهاية لضمان أن الأوامر الأخرى تأخذ الأولوية)
+    # معالجة تخمينات الألعاب (فقط عند وجود ألعاب نشطة)
     elif message.chat.type in ['group', 'supergroup']:
         try:
-            # معالجة تخمينات لعبة الكلمة
-            from modules.word_game import handle_word_guess
-            await handle_word_guess(message)
+            # فحص وجود ألعاب نشطة قبل المعالجة
+            group_id = message.chat.id
             
-            # معالجة تخمينات لعبة الرموز
-            from modules.symbols_game import handle_symbols_guess
-            await handle_symbols_guess(message)
+            # معالجة تخمينات لعبة الكلمة (فقط إذا كانت نشطة)
+            from modules.word_game import ACTIVE_WORD_GAMES
+            if group_id in ACTIVE_WORD_GAMES and not ACTIVE_WORD_GAMES[group_id].game_ended:
+                from modules.word_game import handle_word_guess
+                await handle_word_guess(message)
             
-            # معالجة تخمينات لعبة ترتيب الحروف
-            from modules.letter_shuffle_game import handle_shuffle_guess
-            await handle_shuffle_guess(message)
+            # معالجة تخمينات لعبة الرموز (فقط إذا كانت نشطة)
+            from modules.symbols_game import ACTIVE_SYMBOLS_GAMES
+            if group_id in ACTIVE_SYMBOLS_GAMES and not ACTIVE_SYMBOLS_GAMES[group_id].game_ended:
+                from modules.symbols_game import handle_symbols_guess
+                await handle_symbols_guess(message)
+            
+            # معالجة تخمينات لعبة ترتيب الحروف (فقط إذا كانت نشطة)
+            from modules.letter_shuffle_game import ACTIVE_SHUFFLE_GAMES
+            if group_id in ACTIVE_SHUFFLE_GAMES and not ACTIVE_SHUFFLE_GAMES[group_id].game_ended:
+                from modules.letter_shuffle_game import handle_shuffle_guess
+                await handle_shuffle_guess(message)
         except Exception as e:
             logging.error(f"خطأ في معالجة تخمينات الألعاب: {e}")
     
