@@ -412,7 +412,10 @@ class RealYukiAI:
             
             # التسلسل الهرمي والإدارة
             try:
-                from config.hierarchy import get_group_admins, MASTERS
+                from config.hierarchy import get_group_admins, MASTERS, sync_telegram_admins_to_local
+                
+                # مزامنة المشرفين من تليجرام أولاً
+                await sync_telegram_admins_to_local(bot, chat_id)
                 
                 # الحصول على المديرين في المجموعة
                 group_admins = get_group_admins(chat_id)
@@ -537,6 +540,11 @@ class RealYukiAI:
             
             # جلب عدد المدراء فقط (بدون معرفات)
             try:
+                from config.hierarchy import sync_telegram_admins_to_local
+                
+                # مزامنة المشرفين من تليجرام أولاً
+                await sync_telegram_admins_to_local(bot, chat_id)
+                
                 group_admins = get_group_admins(chat_id)
                 owners = group_admins.get('owners', [])
                 moderators = group_admins.get('moderators', [])
