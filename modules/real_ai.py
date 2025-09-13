@@ -184,26 +184,29 @@ class RealYukiAI:
                 user_level = get_user_admin_level(requester_user_id, chat_id)
                 is_admin = user_level.value >= AdminLevel.MODERATOR.value
             
-            # في المجموعات العامة، المعلومات متاحة للجميع (هذا ما يميز يوكي!)
-            # في المحادثات الخاصة، فقط المعلومات الشخصية
+            # ضوابط أمنية للخصوصية
             if is_private_chat and not is_same_user:
                 return "🔒 في المحادثات الخاصة، يمكنك فقط عرض معلوماتك الشخصية."
             
-            # في المجموعات العامة: جميع المعلومات متاحة للجميع
-            can_view_sensitive = True
+            # تحديد المعلومات الحساسة - فقط للشخص نفسه أو للمشرفين
+            can_view_sensitive = is_same_user or is_admin
             
             player_info = "معلومات اللاعب من قاعدة البيانات:\n"
             
-            # معلومات المستخدم الأساسية (بيانات حساسة - للمشرفين أو الشخص نفسه فقط)
+            # معلومات المستخدم الأساسية
             try:
                 user = await get_user(target_user_id)
                 if user:
-                    # البيانات المالية
-                    balance = user.get('balance', 0)
-                    bank_balance = user.get('bank_balance', 0)
-                    bank_type = user.get('bank_type', 'الأهلي')
-                    player_info += f"💰 الرصيد النقدي: {balance}$\n"
-                    player_info += f"🏦 رصيد البنك ({bank_type}): {bank_balance}$\n"
+                    # البيانات المالية - حساسة، فقط للشخص نفسه أو المشرفين
+                    if can_view_sensitive:
+                        balance = user.get('balance', 0)
+                        bank_balance = user.get('bank_balance', 0)
+                        bank_type = user.get('bank_type', 'الأهلي')
+                        player_info += f"💰 الرصيد النقدي: {balance:,}$\n"
+                        player_info += f"🏦 رصيد البنك ({bank_type}): {bank_balance:,}$\n"
+                    else:
+                        # معلومات عامة فقط للآخرين
+                        player_info += f"👤 لاعب مسجل في النظام\n"
             except Exception as e:
                 logging.error(f"خطأ في جلب معلومات المستخدم: {e}")
             
@@ -775,37 +778,243 @@ class RealYukiAI:
             except:
                 return f"أهلاً {user_name}! 👋\n\nما قدرت أجيب العدد الدقيق حالياً، بس المجموعة فيها أعضاء كثير ونشيطة! 😊"
         
-        # أسئلة عن مالك المجموعة (مُحدث ليفرق بين النظام والمجموعة)
-        if any(word in message_lower for word in ['مالك المجموعة', 'مين المالك', 'صاحب المجموعة']):
+        # أسئلة عن مالك المجموعة - نظام محسن ودقيق
+        if any(word in message_lower for word in ['مالك المجموعة', 'مين المالك', 'صاحب المجموعة', 'من المالك']):
             try:
-                # محاولة معرفة مالك المجموعة الحقيقي من النظام
                 if chat_id:
                     from config.hierarchy import get_group_admins
+                    from database.operations import get_user
+                    
                     group_admins = get_group_admins(chat_id)
                     owners = group_admins.get('owners', [])
                     
                     if owners:
-                        responses = [
-                            f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية هنا! 🛠️\n\nبس مالك هذه المجموعة الحقيقي هو شخص آخر. كل مجموعة لها مالك منفصل، وأنا بس أدير الجانب التقني - البوت والأنظمة! 😊\n\nالمجموعة لها إدارة وأصحاب حقيقيين منفصلين عني.",
-                            f"هاي {user_name}! 😊\n\nأنا مدير النظام التقني (البوت وقاعدة البيانات) بس مو مالك المجموعة! 🤖\n\nكل مجموعة لها مالك حقيقي منفصل عني. أنا بس أساعد بالأنظمة التقنية! 👨‍💻",
-                            f"أهلين {user_name}! 👋\n\nههههه أنا يوكي، مدير الأنظمة التقنية! 🔧\n\nبس المجموعة هذي لها مالك حقيقي غيري. أنا بس أشتغل على الجانب التقني - الألعاب والبوت والأنظمة! 🎮"
-                        ]
+                        # إعداد قائمة أسماء ومعرفات المالكين
+                        owner_names = []
+                        for owner_id in owners:
+                            try:
+                                owner_data = await get_user(owner_id)
+                                if owner_data:
+                                    name = owner_data.get('first_name', f'المستخدم {owner_id}')
+                                    username = owner_data.get('username', '')
+                                    if username:
+                                        owner_names.append(f"{name} (@{username}) - ID: {owner_id}")
+                                    else:
+                                        owner_names.append(f"{name} - ID: {owner_id}")
+                                else:
+                                    owner_names.append(f"المستخدم {owner_id} - ID: {owner_id}")
+                            except:
+                                owner_names.append(f"المستخدم {owner_id} - ID: {owner_id}")
+                        
+                        if len(owners) == 1:
+                            responses = [
+                                f"أهلاً {user_name}! 👋\n\n👑 **مالك هذه المجموعة:**\n{owner_names[0]}\n\nهذا هو صاحب المجموعة الأساسي! 😊",
+                                f"هاي {user_name}! 😊\n\n👑 مالك المجموعة هو: **{owner_names[0]}**\n\nهو اللي يدير الأمور هنا! 🏆",
+                                f"أهلين {user_name}! 👋\n\n👑 صاحب هذه المجموعة هو **{owner_names[0]}**!\n\nشخص رائع ومدير ممتاز! 🌟"
+                            ]
+                        else:
+                            owners_list = "\n".join([f"• {name}" for name in owner_names])
+                            responses = [
+                                f"أهلاً {user_name}! 👋\n\n👑 **مالكو هذه المجموعة:**\n{owners_list}\n\nفريق إداري رائع! 🏆",
+                                f"هاي {user_name}! 😊\n\n👑 المجموعة لها عدة مالكين:\n{owners_list}\n\nكلهم أشخاص مميزين! 🌟"
+                            ]
                     else:
                         responses = [
-                            f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية! 🛠️\n\nما عندي معلومات دقيقة عن مالك هذه المجموعة. كل مجموعة لها إدارة منفصلة، وأنا بس أدير الجانب التقني! 😊"
+                            f"أهلاً {user_name}! 👋\n\n🤔 ما قدرت أحدد مالك هذه المجموعة حالياً...\n\nيمكن ما عندي معلومات محدثة أو في مشكلة تقنية! 😅",
+                            f"هاي {user_name}! 😊\n\n🔍 مش قادر أشوف مين مالك المجموعة حالياً...\n\nممكن النظام محتاج تحديث! 🤖"
                         ]
                 else:
                     responses = [
-                        f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية! 🛠️\n\nكل مجموعة لها مالك حقيقي منفصل عني. أنا بس أدير البوت والأنظمة التقنية! 😊"
+                        f"أهلاً {user_name}! 👋\n\n📝 احتاج أعرف أي مجموعة عشان أقدر أقولك مين المالك!\n\nكل مجموعة لها مالك مختلف! 😊"
                     ]
                 
                 import random
                 return random.choice(responses)
                 
             except Exception as e:
-                return f"أهلاً {user_name}! 👋\n\nأنا يوكي، مدير الأنظمة التقنية! 🛠️ كل مجموعة لها مالك حقيقي منفصل عني، وأنا بس أدير الجانب التقني! 😊"
+                logging.error(f"خطأ في معرفة مالك المجموعة: {e}")
+                return f"أهلاً {user_name}! 👋\n\n😅 في مشكلة تقنية مؤقتة في جلب معلومات مالك المجموعة!\n\nجرب مرة ثانية بعد شوية! 🤖"
+        
+        # أسئلة عن أشخاص بأسمائهم - نظام بحث ذكي محسن
+        if any(word in message_lower for word in ['معلومات عن', 'من هو', 'من هي', 'أخبرني عن', 'معلومات', 'ابحث عن', 'اين', 'أين', 'دور على', 'دوّر على']) and len(user_message.split()) > 1:
+            return await self.handle_person_inquiry(user_message, user_name, user_id, chat_id)
         
         return None
+    
+    async def handle_person_inquiry(self, message: str, user_name: str, user_id: Optional[int], chat_id: Optional[int]) -> Optional[str]:
+        """معالجة الاستفسارات عن الأشخاص بأسمائهم"""
+        try:
+            # استخراج الاسم المطلوب من الرسالة
+            import re
+            from database.operations import execute_query
+            
+            # أنماط البحث المختلفة - محسنة
+            patterns = [
+                r'معلومات عن (.+)',
+                r'من هو (.+)',
+                r'من هي (.+)', 
+                r'أخبرني عن (.+)',
+                r'معلومات (.+)',
+                r'ابحث عن (.+)',
+                r'دور على (.+)',
+                r'دوّر على (.+)',
+                r'اين (.+)',
+                r'أين (.+)',
+                r'وين (.+)',
+                r'لاقي (.+)',
+                r'شوف (.+)'
+            ]
+            
+            search_name = None
+            for pattern in patterns:
+                match = re.search(pattern, message, re.IGNORECASE)
+                if match:
+                    search_name = match.group(1).strip()
+                    break
+            
+            if not search_name:
+                return None
+            
+            # تنظيف اسم البحث
+            search_name = search_name.replace('@', '').strip()
+            
+            # البحث في قاعدة البيانات
+            users_found = []
+            
+            # البحث بالاسم الأول
+            users_by_name = await execute_query(
+                "SELECT * FROM users WHERE LOWER(first_name) LIKE ? LIMIT 5",
+                (f"%{search_name.lower()}%",),
+                fetch_all=True
+            )
+            if users_by_name:
+                users_found.extend(users_by_name)
+            
+            # البحث بالمعرف
+            if not users_found:
+                users_by_username = await execute_query(
+                    "SELECT * FROM users WHERE LOWER(username) LIKE ? LIMIT 5",
+                    (f"%{search_name.lower()}%",),
+                    fetch_all=True
+                )
+                if users_by_username:
+                    users_found.extend(users_by_username)
+            
+            # البحث في تاريخ الأسماء
+            if not users_found:
+                name_history = await execute_query(
+                    "SELECT DISTINCT user_id FROM user_name_history WHERE LOWER(first_name) LIKE ? OR LOWER(username) LIKE ? LIMIT 5",
+                    (f"%{search_name.lower()}%", f"%{search_name.lower()}%"),
+                    fetch_all=True
+                )
+                if name_history:
+                    for record in name_history:
+                        user_data = await execute_query(
+                            "SELECT * FROM users WHERE user_id = ?",
+                            (record['user_id'],),
+                            fetch_one=True
+                        )
+                        if user_data:
+                            users_found.append(user_data)
+            
+            if not users_found:
+                responses = [
+                    f"أهلاً {user_name}! 👋\n\n🔍 ما لقيت أي شخص باسم \"{search_name}\"...\n\nيمكن الاسم مكتوب غلط أو الشخص مش مسجل في النظام! 😅",
+                    f"هاي {user_name}! 😊\n\n🤔 ما قدرت ألاقي حد اسمه \"{search_name}\"!\n\nجرب تكتب الاسم بطريقة مختلفة أو تأكد من الإملاء! 📝"
+                ]
+                import random
+                return random.choice(responses)
+            
+            # عرض النتائج
+            if len(users_found) == 1:
+                user_data = users_found[0]
+                return await self.format_user_information(user_data, user_name, user_id, chat_id)
+            else:
+                # عدة نتائج - عرض قائمة مختصرة
+                users_list = []
+                for user_data in users_found[:3]:  # أول 3 نتائج فقط
+                    name = user_data.get('first_name', 'غير معروف')
+                    username = user_data.get('username', '')
+                    user_info = f"• {name}"
+                    if username:
+                        user_info += f" (@{username})"
+                    users_list.append(user_info)
+                
+                response = f"أهلاً {user_name}! 👋\n\n🔍 **لقيت عدة أشخاص بهذا الاسم:**\n\n"
+                response += "\n".join(users_list)
+                response += f"\n\n💡 حدد الشخص اللي تبي معلوماته بذكر اسمه كامل أو معرفه!"
+                
+                return response
+                
+        except Exception as e:
+            logging.error(f"خطأ في البحث عن الشخص: {e}")
+            return f"أهلاً {user_name}! 👋\n\n😅 في مشكلة تقنية في البحث حالياً!\n\nجرب مرة ثانية بعد شوية! 🤖"
+    
+    async def format_user_information(self, user_data: dict, requester_name: str, requester_id: Optional[int], chat_id: Optional[int]) -> str:
+        """تنسيق معلومات المستخدم للعرض"""
+        try:
+            from config.hierarchy import get_user_admin_level, AdminLevel
+            
+            name = user_data.get('first_name', 'غير معروف')
+            username = user_data.get('username', '')
+            user_id = user_data.get('user_id')
+            level = user_data.get('level', 1)
+            balance = user_data.get('balance', 0)
+            
+            # تحديد الرتبة الإدارية
+            admin_level = get_user_admin_level(user_id, chat_id)
+            rank_text = ""
+            
+            if admin_level == AdminLevel.MASTER:
+                rank_text = "👑 السيد الأعظم"
+            elif admin_level == AdminLevel.KING:
+                rank_text = "🤴 الملك"
+            elif admin_level == AdminLevel.QUEEN:
+                rank_text = "👸 الملكة"
+            elif admin_level == AdminLevel.GROUP_OWNER:
+                rank_text = "👑 مالك المجموعة"
+            elif admin_level == AdminLevel.MODERATOR:
+                rank_text = "🛡 مشرف المجموعة"
+            else:
+                rank_text = "👤 عضو عادي"
+            
+            # تنسيق الاسم والمعرف
+            user_display = name
+            if username:
+                user_display += f" (@{username})"
+            
+            response = f"أهلاً {requester_name}! 👋\n\n📋 **معلومات الشخص:**\n\n"
+            response += f"👤 **الاسم:** {user_display}\n"
+            response += f"🆔 **المعرف:** {user_id}\n"
+            response += f"🏅 **الرتبة:** {rank_text}\n"
+            response += f"⭐ **المستوى:** {level}\n"
+            
+            # عرض الرصيد فقط إذا كان المطلوب هو الشخص نفسه أو مشرف
+            if requester_id == user_id or (chat_id and get_user_admin_level(requester_id, chat_id).value >= AdminLevel.MODERATOR.value):
+                response += f"💰 **الرصيد:** {balance:,}$\n"
+            
+            # معلومات إضافية حسب الصلاحيات
+            if chat_id and (requester_id == user_id or get_user_admin_level(requester_id, chat_id).value >= AdminLevel.MODERATOR.value):
+                # معلومات إضافية للشخص نفسه أو للمشرفين
+                bank_balance = user_data.get('bank_balance', 0)
+                country = user_data.get('country', '')
+                gender = user_data.get('gender', '')
+                
+                if bank_balance > 0:
+                    response += f"🏦 **رصيد البنك:** {bank_balance:,}$\n"
+                if country:
+                    response += f"🌍 **البلد:** {country}\n"
+                if gender:
+                    gender_display = "ذكر" if gender == "male" else "أنثى" if gender == "female" else gender
+                    response += f"👥 **الجنس:** {gender_display}\n"
+            
+            response += f"\n✨ شخص رائع ومميز في مجتمعنا! 🎉"
+            
+            return response
+            
+        except Exception as e:
+            logging.error(f"خطأ في تنسيق معلومات المستخدم: {e}")
+            return f"أهلاً {requester_name}! 👋\n\n😅 في مشكلة في عرض المعلومات حالياً!"
     
     async def generate_smart_response(self, user_message: str, user_name: str = "الصديق", user_id: Optional[int] = None, chat_id: Optional[int] = None, bot = None) -> str:
         """توليد رد ذكي بناءً على الذكاء الاصطناعي الحقيقي مع ذاكرة المحادثات"""
@@ -822,13 +1031,41 @@ class RealYukiAI:
             # تحضير السياق والرسالة
             arabic_name = self.convert_name_to_arabic(user_name)
             
-            # جلب المحادثات السابقة للسياق - نسخة SQLite محسنة
+            # جلب المحادثات السابقة للسياق - نسخة SQLite محسنة مع سياق المجموعة
             conversation_context = ""
+            group_context = ""
+            
             if user_id:
                 from modules.conversation_memory_sqlite import conversation_memory_sqlite
                 history = await conversation_memory_sqlite.get_conversation_history(user_id, limit=15)
                 if history:
                     conversation_context = f"\n\n{conversation_memory_sqlite.format_conversation_context(history)}\n"
+            
+            # إضافة سياق المجموعة الحالية
+            if chat_id and bot:
+                try:
+                    chat = await bot.get_chat(chat_id)
+                    group_name = chat.title or "مجموعة غير معروفة"
+                    
+                    # معلومات المجموعة
+                    from config.hierarchy import get_group_admins
+                    group_admins = get_group_admins(chat_id)
+                    owners_count = len(group_admins.get('owners', []))
+                    moderators_count = len(group_admins.get('moderators', []))
+                    
+                    group_context = f"\n🏘️ **سياق المجموعة الحالية:**\n"
+                    group_context += f"📋 اسم المجموعة: {group_name}\n"
+                    group_context += f"👑 المالكون: {owners_count}\n" 
+                    group_context += f"🛡 المشرفون: {moderators_count}\n"
+                    group_context += f"🆔 معرف المجموعة: {chat_id}\n"
+                    
+                    # إضافة معلومات إذا المستخدم كان في مجموعة أخرى من قبل
+                    if conversation_context and "📨 في المحادثة:" in conversation_context:
+                        group_context += f"\n💡 ملاحظة: {user_name} كان يتكلم معي في محادثات أخرى من قبل.\n"
+                        
+                except Exception as e:
+                    logging.error(f"خطأ في جلب سياق المجموعة: {e}")
+                    group_context = f"\n🏘️ **المجموعة الحالية:** معرف {chat_id}\n"
             
             # معاملة خاصة للمستخدمين المميزين
             special_prompt = ""
@@ -1006,7 +1243,20 @@ class RealYukiAI:
             if all_players_context:
                 full_context += f"\n\n{all_players_context}\n"
             
-            full_prompt = f"{self.system_prompt}{special_prompt}{full_context}\n\nمستخدم: {arabic_name}\nسؤال: {user_message}\n\nجواب:"
+            # إنشاء prompt محسن مع سياق المجموعة والتفريق بين المجموعات
+            full_prompt = f"""{self.system_prompt}{special_prompt}
+
+🎯 **تعليمات خاصة للسياق:**
+- إذا سأل عن مالك المجموعة، أعطه المعلومات الدقيقة من معلومات المجموعة
+- إذا ذكر اسم شخص، ابحث عنه بدقة وأعطه المعلومات المتاحة
+- تذكر أن كل مجموعة لها سياق منفصل - لا تخلط المعلومات بين المجموعات
+- إذا كان المستخدم تكلم معك من قبل، تحدث معه بألفة كصديق قديم
+{group_context}{full_context}
+
+مستخدم: {arabic_name}
+سؤال: {user_message}
+
+جواب:"""
             
             # استدعاء Gemini بإعدادات محسّنة مع معالجة الأخطاء
             response = None
