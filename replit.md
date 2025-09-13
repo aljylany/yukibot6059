@@ -44,6 +44,15 @@ The Yuki Bot features a modular and extensible architecture, emphasizing dynamic
 - **Performance Optimization:** Efficient API key management and automatic switching.
 - **Database Integration:** Full access to all database tables for personalized AI responses and user context.
 
+## Recent Changes
+
+### **September 13, 2025** - تحسينات دقة ومنطقية الردود
+- ✅ **إصلاح منطق أسئلة مالك المجموعة:** تم فصل المنطق بوضوح بين أسئلة النظام (مطور يوكي) وأسئلة مالك المجموعة لتجنب التداخل
+- ✅ **إصلاح الردود المضللة:** تم تغيير ردود Yuki ليصف نفسه كبوت مساعد ذكي بدلاً من ادعاء الملكية الكاملة للنظام  
+- ✅ **نظام ذاكرة متقدم:** تم إضافة دعم `chat_id` لحفظ المحادثات منفصلة لكل مجموعة، مع منع اختلاط السياق بين المجموعات
+- ✅ **توسيع كلمات التعرف:** تم إضافة المزيد من الكلمات المفتاحية للتعرف على أسئلة المطور مثل "مطور" و"مبرمج"
+- ✅ **إصلاحات تقنية:** تم حل مشاكل هجرة قاعدة البيانات وتحسين استعلامات SQL
+
 ## External Dependencies
 - **Telegram Bot API:** For core bot functionality.
 - **Google AI (Gemini):** For advanced AI-driven content analysis and intelligent responses.
