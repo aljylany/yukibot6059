@@ -5,7 +5,7 @@ Administrative Hierarchy System
 
 import logging
 import asyncio
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from enum import Enum
 from aiogram import Bot
 from aiogram.enums import ChatMemberStatus
@@ -355,7 +355,7 @@ async def remove_rank_from_database(user_id: int, group_id: int,
         logging.error(f"خطأ في حذف الرتبة: {e}")
 
 
-async def get_real_telegram_admins(bot: Bot, group_id: int) -> Dict[str, List[Dict[str, any]]]:
+async def get_real_telegram_admins(bot: Bot, group_id: int) -> Dict[str, List[Dict[str, Any]]]:
     """
     الحصول على قائمة المالكين والمشرفين الفعليين من تليجرام
     
@@ -463,12 +463,15 @@ async def load_ranks_from_database():
             "SELECT user_id, chat_id FROM group_ranks WHERE rank_type IN ('مالك', 'مالك اساسي', 'ادمن')",
             fetch_all=True)
 
-        if owners:
+        if owners and isinstance(owners, (list, tuple)):
             for owner in owners:
-                if isinstance(owner, tuple):
+                user_id = None
+                chat_id = None
+                
+                if isinstance(owner, tuple) and len(owner) >= 2:
                     user_id = owner[0]
                     chat_id = owner[1]
-                elif hasattr(owner, 'get'):
+                elif hasattr(owner, 'get') and callable(getattr(owner, 'get')):
                     user_id = owner.get('user_id')
                     chat_id = owner.get('chat_id')
                 else:
@@ -487,12 +490,15 @@ async def load_ranks_from_database():
             "SELECT user_id, chat_id FROM group_ranks WHERE rank_type IN ('مشرف', 'مميز')",
             fetch_all=True)
 
-        if moderators:
+        if moderators and isinstance(moderators, (list, tuple)):
             for moderator in moderators:
-                if isinstance(moderator, tuple):
+                user_id = None
+                chat_id = None
+                
+                if isinstance(moderator, tuple) and len(moderator) >= 2:
                     user_id = moderator[0]
                     chat_id = moderator[1]
-                elif hasattr(moderator, 'get'):
+                elif hasattr(moderator, 'get') and callable(getattr(moderator, 'get')):
                     user_id = moderator.get('user_id')
                     chat_id = moderator.get('chat_id')
                 else:
