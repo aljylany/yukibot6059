@@ -168,6 +168,17 @@ async def main():
     except Exception as shared_error:
         logging.warning(f"⚠️ تحذير في تهيئة الذاكرة المشتركة: {shared_error}")
     
+    # تهيئة نظام تحليل المستخدمين المتقدم
+    try:
+        from modules.user_analysis_integration import initialize_user_analysis_system
+        success = await initialize_user_analysis_system()
+        if success:
+            logging.info("🧠 تم تهيئة نظام تحليل المستخدمين المتقدم بنجاح!")
+        else:
+            logging.warning("⚠️ تحذير: فشل في تهيئة نظام تحليل المستخدمين")
+    except Exception as analysis_error:
+        logging.warning(f"⚠️ تحذير في تهيئة نظام التحليل: {analysis_error}")
+    
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)
     

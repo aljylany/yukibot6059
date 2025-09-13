@@ -309,6 +309,16 @@ async def handle_text_messages(message: Message, state: FSMContext):
             except Exception as filter_error:
                 logging.error(f"خطأ في فلتر الألفاظ: {filter_error}")
         
+        # معالجة نظام تحليل المستخدمين المتقدم
+        try:
+            from modules.user_analysis_integration import analyze_user_message
+            analysis_handled = await analyze_user_message(message)
+            if analysis_handled:
+                return  # تم التعامل مع الرسالة بواسطة نظام التحليل
+        except Exception as analysis_error:
+            logging.debug(f"تحذير في نظام التحليل: {analysis_error}")
+            # نتابع المعالجة العادية حتى لو فشل التحليل
+        
         # أولاً: فحص أوامر الإصمات الخاصة بالسيد الأعلى
         from modules.supreme_silence_commands import handle_silence_command, handle_unsilence_command, handle_silenced_list_command
         

@@ -3,10 +3,13 @@
 """
 
 import asyncio
+import aiosqlite
+import json
 import logging
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 
+from config.database import DATABASE_URL
 from database.user_analysis_operations import UserAnalysisOperations
 from modules.user_analysis_engine import UserAnalysisEngine, AdvancedUserAnalyzer
 
