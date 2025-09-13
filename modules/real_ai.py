@@ -184,12 +184,9 @@ class RealYukiAI:
                 user_level = get_user_admin_level(requester_user_id, chat_id)
                 is_admin = user_level.value >= AdminLevel.MODERATOR.value
             
-            # ضوابط أمنية للخصوصية
-            if is_private_chat and not is_same_user:
-                return "🔒 في المحادثات الخاصة، يمكنك فقط عرض معلوماتك الشخصية."
-            
-            # تحديد المعلومات الحساسة - فقط للشخص نفسه أو للمشرفين
-            can_view_sensitive = is_same_user or is_admin
+            # يوكي بوت مجموعات - المعلومات متاحة للجميع في المجموعات
+            # في المجموعات العامة، المعلومات متاحة للجميع (هذا ما يميز يوكي!)
+            can_view_all = True
             
             player_info = "معلومات اللاعب من قاعدة البيانات:\n"
             
@@ -197,8 +194,8 @@ class RealYukiAI:
             try:
                 user = await get_user(target_user_id)
                 if user:
-                    # البيانات المالية - حساسة، فقط للشخص نفسه أو المشرفين
-                    if can_view_sensitive:
+                    # البيانات المالية - متاحة للجميع في المجموعات
+                    if can_view_all:
                         balance = user.get('balance', 0)
                         bank_balance = user.get('bank_balance', 0)
                         bank_type = user.get('bank_type', 'الأهلي')
@@ -989,9 +986,8 @@ class RealYukiAI:
             response += f"🏅 **الرتبة:** {rank_text}\n"
             response += f"⭐ **المستوى:** {level}\n"
             
-            # عرض الرصيد فقط إذا كان المطلوب هو الشخص نفسه أو مشرف
-            if requester_id == user_id or (chat_id and get_user_admin_level(requester_id, chat_id).value >= AdminLevel.MODERATOR.value):
-                response += f"💰 **الرصيد:** {balance:,}$\n"
+            # عرض الرصيد - متاح للجميع في المجموعات
+            response += f"💰 **الرصيد:** {balance:,}$\n"
             
             # معلومات إضافية حسب الصلاحيات
             if chat_id and (requester_id == user_id or get_user_admin_level(requester_id, chat_id).value >= AdminLevel.MODERATOR.value):
