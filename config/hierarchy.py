@@ -458,11 +458,16 @@ async def load_ranks_from_database():
     try:
         from database.operations import execute_query
 
+        # مسح القواميس أولاً لضمان التحديث الصحيح
+        GROUP_OWNERS.clear()
+        MODERATORS.clear()
+        
         # تحميل المالكين (مالك، مالك اساسي، ادمن)
         owners = await execute_query(
             "SELECT user_id, chat_id FROM group_ranks WHERE rank_type IN ('مالك', 'مالك اساسي', 'ادمن')",
             fetch_all=True)
 
+        owners_count = 0
         if owners and isinstance(owners, (list, tuple)):
             for owner in owners:
                 user_id = None
@@ -484,12 +489,14 @@ async def load_ranks_from_database():
                     GROUP_OWNERS[chat_id] = []
                 if user_id not in GROUP_OWNERS[chat_id]:
                     GROUP_OWNERS[chat_id].append(user_id)
+                    owners_count += 1
 
         # تحميل المشرفين (مشرف، مميز)
         moderators = await execute_query(
             "SELECT user_id, chat_id FROM group_ranks WHERE rank_type IN ('مشرف', 'مميز')",
             fetch_all=True)
 
+        moderators_count = 0
         if moderators and isinstance(moderators, (list, tuple)):
             for moderator in moderators:
                 user_id = None
@@ -511,12 +518,17 @@ async def load_ranks_from_database():
                     MODERATORS[chat_id] = []
                 if user_id not in MODERATORS[chat_id]:
                     MODERATORS[chat_id].append(user_id)
+                    moderators_count += 1
 
         logging.info("تم تحميل الرتب من قاعدة البيانات بنجاح")
+        logging.info(f"تم تحميل {owners_count} مالك في {len(GROUP_OWNERS)} مجموعة")
+        logging.info(f"تم تحميل {moderators_count} مشرف في {len(MODERATORS)} مجموعة")
         logging.info(f"المالكين المحملين: {GROUP_OWNERS}")
         logging.info(f"المشرفين المحملين: {MODERATORS}")
     except Exception as e:
         logging.error(f"خطأ في تحميل الرتب من قاعدة البيانات: {e}")
+        import traceback
+        logging.error(f"تفاصيل الخطأ: {traceback.format_exc()}")
 
 
 def get_group_admins(group_id: int) -> Dict[str, List[int]]:
