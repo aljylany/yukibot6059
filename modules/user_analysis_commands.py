@@ -383,17 +383,61 @@ class UserAnalysisCommands:
         except Exception as e:
             logging.error(f"خطأ في إحصائيات المجموعة: {e}")
             await message.reply("❌ حدث خطأ في الحصول على الإحصائيات")
+    
+    @staticmethod
+    async def my_analysis(message: Message):
+        """عرض تحليل المستخدم الشخصي"""
+        try:
+            user_id = message.from_user.id
+            user_name = message.from_user.first_name or "المستخدم"
+            
+            # جلب تحليل المستخدم
+            analysis = await user_analysis_manager.get_user_profile(user_id)
+            
+            if not analysis:
+                await message.reply("📊 لا توجد بيانات تحليل شخصية كافية بعد")
+                return
+            
+            # تكوين الرد
+            response = f"""
+👤 **تحليل شخصي لـ {user_name}**
+
+😊 **المزاج الحالي:** {analysis.get('current_mood', 'غير محدد')}
+💫 **مستوى المشاعر:** {analysis.get('sentiment_score', 0.0):.1f}/1.0
+
+🎯 **الاهتمامات الرئيسية:**
+• الألعاب: {analysis.get('interests', {}).get('games_interest', 0.0)*100:.0f}%
+• المال والاستثمار: {analysis.get('interests', {}).get('money_interest', 0.0)*100:.0f}%
+• التفاعل الاجتماعي: {analysis.get('interests', {}).get('social_interest', 0.0)*100:.0f}%
+
+🧠 **صفات الشخصية:**
+• الانفتاح: {analysis.get('personality_traits', {}).get('extravert_score', 0.5)*100:.0f}%
+• المخاطرة: {analysis.get('personality_traits', {}).get('risk_taker_score', 0.5)*100:.0f}%
+• التنافسية: {analysis.get('personality_traits', {}).get('competitive_score', 0.5)*100:.0f}%
+
+📈 التحليل يتطور مع تفاعلك!
+            """
+            
+            await message.reply(response.strip())
+            
+        except Exception as e:
+            logging.error(f"خطأ في التحليل الشخصي: {e}")
+            await message.reply("❌ حدث خطأ في الحصول على التحليل الشخصي")
 
 
 # قاموس الأوامر المتاحة
 ANALYSIS_COMMANDS = {
     'تعطيل تحليل الأعضاء': UserAnalysisCommands.toggle_group_analysis,
     'تفعيل تحليل الأعضاء': UserAnalysisCommands.toggle_group_analysis,
+    'تفعيل التحليل': UserAnalysisCommands.toggle_group_analysis,
+    'ايقاف التحليل': UserAnalysisCommands.toggle_group_analysis,
+    'تعطيل التحليل': UserAnalysisCommands.toggle_group_analysis,
     'حالة التحليل': UserAnalysisCommands.analysis_status,
     'مسح بيانات التحليل': UserAnalysisCommands.clear_analysis_data,
     'حللني': UserAnalysisCommands.my_analysis,
     'تحليل العلاقة': UserAnalysisCommands.relationship_analysis,
     'إحصائيات التحليل': UserAnalysisCommands.group_analysis_stats,
+    'احصائيات التحليل': UserAnalysisCommands.group_analysis_stats,
 }
 
 
