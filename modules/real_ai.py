@@ -603,8 +603,8 @@ class RealYukiAI:
         # أسئلة عن بيانات النظام أو المعلومات
         system_keywords = ['بيانات', 'معلومات', 'إحصائيات', 'احصائيات', 'قاعدة بيانات', 'نظام']
         if any(sys_word in message_lower for sys_word in system_keywords):
-            if chat_id and bot:
-                admin_system_info = await self.get_admin_system_info(chat_id, bot)
+            if chat_id and bot and user_id:
+                admin_system_info = await self.get_admin_system_info(user_id, chat_id, bot)
                 return f"أهلاً {user_name}! 😊\n\nطبعاً أقدر أوصل لجميع بيانات ومعلومات النظام! أنا المدير هنا! 👑\n\n{admin_system_info}"
             else:
                 return f"أهلاً {user_name}! 😊\n\nطبعاً عندي وصول كامل لجميع بيانات النظام! أنا مدير هذا المكان. لكن أحتاج معلومات المجموعة عشان أعرض لك الإحصائيات الكاملة."
