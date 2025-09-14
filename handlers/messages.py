@@ -34,6 +34,8 @@ from config.hierarchy import MASTERS
 from modules.utility_commands import WhisperStates
 # استيراد نظام الذكاء الاصطناعي الشامل
 from modules.ai_integration_handler import ai_integration
+# استيراد نظام مراقبة النشاط للتفاعل التلقائي
+from modules.group_activity_monitor import group_activity_monitor
 # استيراد معالج القوائم الذكية
 from modules.smart_menu_handler import smart_menu_handler
 # استيراد نظام فلتر الألفاظ المسيئة
@@ -3229,6 +3231,17 @@ async def handle_location_messages(message: Message):
     )
 
 
+
+
+# معالج تتبع النشاط للتفاعل التلقائي
+@router.message(F.text)
+async def track_message_activity(message: Message):
+    """تتبع نشاط الرسائل لنظام التفاعل التلقائي"""
+    try:
+        # تتبع الرسالة في مراقب النشاط
+        await group_activity_monitor.track_message(message)
+    except Exception as e:
+        logging.error(f"خطأ في تتبع نشاط الرسالة: {e}")
 
 
 # معالج الذكاء الاصطناعي الشامل - يأتي كآخر معالج

@@ -179,6 +179,17 @@ async def main():
     except Exception as analysis_error:
         logging.warning(f"⚠️ تحذير في تهيئة نظام التحليل: {analysis_error}")
     
+    # تهيئة نظام التفاعل التلقائي الذكي
+    try:
+        from modules.smart_auto_interaction import initialize_auto_interaction_system
+        success = await initialize_auto_interaction_system(bot)
+        if success:
+            logging.info("🎯 تم تهيئة نظام التفاعل التلقائي الذكي بنجاح!")
+        else:
+            logging.warning("⚠️ تحذير: فشل في تهيئة نظام التفاعل التلقائي")
+    except Exception as auto_error:
+        logging.warning(f"⚠️ تحذير في تهيئة التفاعل التلقائي: {auto_error}")
+    
     # فحص إعادة التشغيل وإرسال رسالة تأكيد
     await check_restart_status(bot)
     
