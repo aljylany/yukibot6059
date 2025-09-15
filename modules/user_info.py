@@ -16,60 +16,65 @@ async def show_my_rank(message: Message):
         user_id = message.from_user.id
         chat_id = message.chat.id
         
-        # التحقق من رتبة السيد
+        # استخدام النظام الهرمي المتقدم للتحقق من الرتبة
+        from config.hierarchy import get_user_admin_level, get_admin_level_name, AdminLevel
+        
+        # الحصول على مستوى الإدارة الفعلي (يتضمن التحقق من تليجرام)
+        admin_level = get_user_admin_level(user_id, chat_id)
+        level_name = get_admin_level_name(admin_level)
+        
+        # تحديد الرمز والوصف حسب المستوى
+        rank_emoji = {
+            AdminLevel.MEMBER: '👤',
+            AdminLevel.MODERATOR: '🛡️',
+            AdminLevel.GROUP_OWNER: '👑',
+            AdminLevel.MASTER: '🔥',
+            AdminLevel.KING: '👑',
+            AdminLevel.QUEEN: '👸'
+        }
+        
+        rank_description = {
+            AdminLevel.MEMBER: 'عضو في المجموعة',
+            AdminLevel.MODERATOR: 'مشرف - صلاحيات إدارية',
+            AdminLevel.GROUP_OWNER: 'مالك المجموعة - صلاحيات كاملة',
+            AdminLevel.MASTER: 'السيد - صلاحيات مطلقة',
+            AdminLevel.KING: 'الملك - أعلى مستوى في النظام',
+            AdminLevel.QUEEN: 'الملكة - أعلى مستوى في النظام'
+        }
+        
+        emoji = rank_emoji.get(admin_level, '🎖️')
+        description = rank_description.get(admin_level, 'رتبة خاصة')
+        
+        # إضافة تمييز خاص للأسياد والملوك
+        crown_emoji = ""
         if user_id in MASTERS:
-            await message.reply(
-                "👑 **رتبتك:**\n\n"
-                "🔥 السيد - صلاحيات مطلقة\n"
-                "⚡ أعلى رتبة في النظام"
-            )
-            return
+            crown_emoji = " 👑"
         
-        # البحث عن الرتبة في قاعدة البيانات
-        rank_info = await execute_query(
-            "SELECT rank_type, promoted_at FROM group_ranks WHERE user_id = ? AND chat_id = ?",
-            (user_id, chat_id),
-            fetch_one=True
-        )
+        # البحث عن تاريخ الترقية من قاعدة البيانات (إذا كان متوفراً)
+        promoted_at = None
+        try:
+            rank_info = await execute_query(
+                "SELECT promoted_at FROM group_ranks WHERE user_id = ? AND chat_id = ?",
+                (user_id, chat_id),
+                fetch_one=True
+            )
+            if rank_info:
+                promoted_at = rank_info[0] if isinstance(rank_info, tuple) else rank_info.get('promoted_at', '')
+        except:
+            pass
         
-        if rank_info:
-            rank_type = rank_info[0] if isinstance(rank_info, tuple) else rank_info.get('rank_type', '')
-            promoted_at = rank_info[1] if isinstance(rank_info, tuple) else rank_info.get('promoted_at', '')
-            
-            # تحديد الرمز والوصف حسب الرتبة
-            rank_emoji = {
-                'مالك': '👑',
-                'مالك اساسي': '👑',
-                'مشرف': '🛡️',
-                'ادمن': '⚡',
-                'مميز': '⭐'
-            }
-            
-            rank_description = {
-                'مالك': 'مالك المجموعة - صلاحيات كاملة',
-                'مالك اساسي': 'مالك أساسي - صلاحيات كاملة',
-                'مشرف': 'مشرف - صلاحيات إدارية',
-                'ادمن': 'أدمن - صلاحيات متوسطة',
-                'مميز': 'عضو مميز - صلاحيات محدودة'
-            }
-            
-            emoji = rank_emoji.get(rank_type, '🎖️')
-            description = rank_description.get(rank_type, 'رتبة خاصة')
-            date_str = promoted_at[:10] if promoted_at else 'غير محدد'
-            
-            await message.reply(
-                f"{emoji} **رتبتك:**\n\n"
-                f"📋 الرتبة: {rank_type}\n"
-                f"📝 الوصف: {description}\n"
-                f"📅 تاريخ الترقية: {date_str}"
-            )
-        else:
-            await message.reply(
-                "👤 **رتبتك:**\n\n"
-                "📋 الرتبة: عضو عادي\n"
-                "📝 الوصف: عضو في المجموعة\n"
-                "💡 يمكن للمشرفين رفع رتبتك"
-            )
+        # تنسيق الرسالة
+        response_text = f"{emoji} **رتبتك:**{crown_emoji}\n\n"
+        response_text += f"📋 الرتبة: {level_name}\n"
+        response_text += f"📝 الوصف: {description}"
+        
+        if promoted_at:
+            date_str = promoted_at[:10] if len(promoted_at) >= 10 else promoted_at
+            response_text += f"\n📅 تاريخ الترقية: {date_str}"
+        elif admin_level == AdminLevel.MEMBER:
+            response_text += "\n💡 يمكن للمشرفين رفع رتبتك"
+        
+        await message.reply(response_text)
     
     except Exception as e:
         logging.error(f"خطأ في عرض الرتبة: {e}")
@@ -169,59 +174,63 @@ async def show_user_rank(message: Message):
         chat_id = message.chat.id
         target_name = target_user.first_name or "المستخدم"
         
-        # التحقق من رتبة السيد
+        # استخدام النظام الهرمي المتقدم للتحقق من الرتبة
+        from config.hierarchy import get_user_admin_level, get_admin_level_name, AdminLevel
+        
+        # الحصول على مستوى الإدارة الفعلي (يتضمن التحقق من تليجرام)
+        admin_level = get_user_admin_level(user_id, chat_id)
+        level_name = get_admin_level_name(admin_level)
+        
+        # تحديد الرمز والوصف حسب المستوى
+        rank_emoji = {
+            AdminLevel.MEMBER: '👤',
+            AdminLevel.MODERATOR: '🛡️',
+            AdminLevel.GROUP_OWNER: '👑',
+            AdminLevel.MASTER: '🔥',
+            AdminLevel.KING: '👑',
+            AdminLevel.QUEEN: '👸'
+        }
+        
+        rank_description = {
+            AdminLevel.MEMBER: 'عضو في المجموعة',
+            AdminLevel.MODERATOR: 'مشرف - صلاحيات إدارية',
+            AdminLevel.GROUP_OWNER: 'مالك المجموعة - صلاحيات كاملة',
+            AdminLevel.MASTER: 'السيد - صلاحيات مطلقة',
+            AdminLevel.KING: 'الملك - أعلى مستوى في النظام',
+            AdminLevel.QUEEN: 'الملكة - أعلى مستوى في النظام'
+        }
+        
+        emoji = rank_emoji.get(admin_level, '🎖️')
+        description = rank_description.get(admin_level, 'رتبة خاصة')
+        
+        # إضافة تمييز خاص للأسياد والملوك
+        crown_emoji = ""
         if user_id in MASTERS:
-            await message.reply(
-                f"👑 **رتبة {target_name}:**\n\n"
-                "🔥 السيد - صلاحيات مطلقة\n"
-                "⚡ أعلى رتبة في النظام"
-            )
-            return
+            crown_emoji = " 👑"
         
-        # البحث عن الرتبة في قاعدة البيانات
-        rank_info = await execute_query(
-            "SELECT rank_type, promoted_at FROM group_ranks WHERE user_id = ? AND chat_id = ?",
-            (user_id, chat_id),
-            fetch_one=True
-        )
+        # البحث عن تاريخ الترقية من قاعدة البيانات (إذا كان متوفراً)
+        promoted_at = None
+        try:
+            rank_info = await execute_query(
+                "SELECT promoted_at FROM group_ranks WHERE user_id = ? AND chat_id = ?",
+                (user_id, chat_id),
+                fetch_one=True
+            )
+            if rank_info:
+                promoted_at = rank_info[0] if isinstance(rank_info, tuple) else rank_info.get('promoted_at', '')
+        except:
+            pass
         
-        if rank_info:
-            rank_type = rank_info[0] if isinstance(rank_info, tuple) else rank_info.get('rank_type', '')
-            promoted_at = rank_info[1] if isinstance(rank_info, tuple) else rank_info.get('promoted_at', '')
-            
-            # تحديد الرمز والوصف حسب الرتبة
-            rank_emoji = {
-                'مالك': '👑',
-                'مالك اساسي': '👑',
-                'مشرف': '🛡️',
-                'ادمن': '⚡',
-                'مميز': '⭐'
-            }
-            
-            rank_description = {
-                'مالك': 'مالك المجموعة - صلاحيات كاملة',
-                'مالك اساسي': 'مالك أساسي - صلاحيات كاملة',
-                'مشرف': 'مشرف - صلاحيات إدارية',
-                'ادمن': 'أدمن - صلاحيات متوسطة',
-                'مميز': 'عضو مميز - صلاحيات محدودة'
-            }
-            
-            emoji = rank_emoji.get(rank_type, '🎖️')
-            description = rank_description.get(rank_type, 'رتبة خاصة')
-            date_str = promoted_at[:10] if promoted_at else 'غير محدد'
-            
-            await message.reply(
-                f"{emoji} **رتبة {target_name}:**\n\n"
-                f"📋 الرتبة: {rank_type}\n"
-                f"📝 الوصف: {description}\n"
-                f"📅 تاريخ الترقية: {date_str}"
-            )
-        else:
-            await message.reply(
-                f"👤 **رتبة {target_name}:**\n\n"
-                "📋 الرتبة: عضو عادي\n"
-                "📝 الوصف: عضو في المجموعة"
-            )
+        # تنسيق الرسالة
+        response_text = f"{emoji} **رتبة {target_name}:**{crown_emoji}\n\n"
+        response_text += f"📋 الرتبة: {level_name}\n"
+        response_text += f"📝 الوصف: {description}"
+        
+        if promoted_at:
+            date_str = promoted_at[:10] if len(promoted_at) >= 10 else promoted_at
+            response_text += f"\n📅 تاريخ الترقية: {date_str}"
+        
+        await message.reply(response_text)
     
     except Exception as e:
         logging.error(f"خطأ في عرض رتبة المستخدم: {e}")
