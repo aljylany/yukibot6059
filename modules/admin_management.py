@@ -433,12 +433,34 @@ async def show_group_ranks(message: Message, rank_type: str = None):
     """عرض قوائم الرتب"""
     try:
         if rank_type:
+            # معالجة أسماء الرتب المختلفة - تحويل من الأمر للقيم المحفوظة في قاعدة البيانات
+            rank_mappings = {
+                'المالكين': ['مالك', 'مالك اساسي'],
+                'المالكين الاساسيين': ['مالك اساسي'],
+                'المنشئين': ['منشئ'],
+                'المدراء': ['مدير'],
+                'الادمنيه': ['ادمن'],
+                'المميزين': ['مميز']
+            }
+            
+            actual_ranks = rank_mappings.get(rank_type, [rank_type])
+            
             # عرض رتبة محددة
-            ranks = await execute_query(
-                "SELECT user_id FROM group_ranks WHERE chat_id = ? AND rank_type = ?",
-                (message.chat.id, rank_type),
-                fetch_all=True
-            )
+            if len(actual_ranks) == 1:
+                ranks = await execute_query(
+                    "SELECT user_id FROM group_ranks WHERE chat_id = ? AND rank_type = ?",
+                    (message.chat.id, actual_ranks[0]),
+                    fetch_all=True
+                )
+            else:
+                # عرض رتب متعددة (مثل المالكين = مالك + مالك اساسي)
+                placeholders = ', '.join(['?' for _ in actual_ranks])
+                query = f"SELECT user_id FROM group_ranks WHERE chat_id = ? AND rank_type IN ({placeholders})"
+                ranks = await execute_query(
+                    query,
+                    (message.chat.id, *actual_ranks),
+                    fetch_all=True
+                )
         else:
             # عرض جميع الرتب
             ranks = await execute_query(

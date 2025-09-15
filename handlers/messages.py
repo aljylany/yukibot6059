@@ -2425,24 +2425,6 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'الرابط':
         from modules.group_management import show_group_link
         await show_group_link(message)
-    elif text == 'المالكين الأساسيين':
-        from modules.group_management import show_owners
-        await show_owners(message)
-    elif text == 'المالكين':
-        from modules.group_management import show_group_owners
-        await show_group_owners(message)
-    elif text == 'المنشئين':
-        from modules.group_management import show_creators
-        await show_creators(message)
-    elif text == 'المدراء':
-        from modules.group_management import show_managers
-        await show_managers(message)
-    elif text == 'الإدمنية' or text == 'الادمنيه':
-        from modules.group_management import show_admins
-        await show_admins(message)
-    elif text == 'المميزين':
-        from modules.group_management import show_vips
-        await show_vips(message)
     elif text == 'المحظورين':
         from modules.group_management import show_banned_users
         await show_banned_users(message)
