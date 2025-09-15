@@ -45,9 +45,21 @@ async def show_group_link(message: Message):
 async def show_owners(message: Message):
     """عرض قائمة المالكين الأساسيين"""
     try:
-        from config.hierarchy import hierarchy_data
+        from database.operations import execute_query
         
-        owners = hierarchy_data.get(message.chat.id, {}).get('basic_owners', [])
+        # Get basic owners from database  
+        group_id = message.chat.id
+        db_owners = await execute_query(
+            "SELECT user_id FROM group_ranks WHERE chat_id = ? AND rank_type = 'مالك اساسي'",
+            (group_id,),
+            fetch_all=True
+        )
+        
+        owners = []
+        if db_owners:
+            for owner in db_owners:
+                user_id = owner['user_id'] if isinstance(owner, dict) else owner[0]
+                owners.append(user_id)
         
         if not owners:
             await message.reply("📋 **المالكين الأساسيين:**\nلا يوجد مالكين أساسيين حالياً")
@@ -74,9 +86,28 @@ async def show_owners(message: Message):
 async def show_group_owners(message: Message):
     """عرض قائمة المالكين"""
     try:
-        from config.hierarchy import hierarchy_data
+        from config.hierarchy import GROUP_OWNERS
+        from database.operations import execute_query
         
-        owners = hierarchy_data.get(message.chat.id, {}).get('owners', [])
+        # Get owners from in-memory system and database
+        group_id = message.chat.id
+        memory_owners = GROUP_OWNERS.get(group_id, [])
+        
+        # Also get owners from database to ensure completeness
+        db_owners = await execute_query(
+            "SELECT user_id FROM group_ranks WHERE chat_id = ? AND rank_type IN ('مالك', 'مالك اساسي')",
+            (group_id,),
+            fetch_all=True
+        )
+        
+        # Combine both sources
+        all_owners = set(memory_owners)
+        if db_owners:
+            for owner in db_owners:
+                user_id = owner['user_id'] if isinstance(owner, dict) else owner[0]
+                all_owners.add(user_id)
+        
+        owners = list(all_owners)
         
         if not owners:
             await message.reply("📋 **المالكين:**\nلا يوجد مالكين حالياً")
@@ -103,9 +134,21 @@ async def show_group_owners(message: Message):
 async def show_creators(message: Message):
     """عرض قائمة المنشئين"""
     try:
-        from config.hierarchy import hierarchy_data
+        from database.operations import execute_query
         
-        creators = hierarchy_data.get(message.chat.id, {}).get('creators', [])
+        # Get creators from database
+        group_id = message.chat.id
+        db_creators = await execute_query(
+            "SELECT user_id FROM group_ranks WHERE chat_id = ? AND rank_type = 'منشئ'",
+            (group_id,),
+            fetch_all=True
+        )
+        
+        creators = []
+        if db_creators:
+            for creator in db_creators:
+                user_id = creator['user_id'] if isinstance(creator, dict) else creator[0]
+                creators.append(user_id)
         
         if not creators:
             await message.reply("📋 **المنشئين:**\nلا يوجد منشئين حالياً")
@@ -132,9 +175,21 @@ async def show_creators(message: Message):
 async def show_managers(message: Message):
     """عرض قائمة المدراء"""
     try:
-        from config.hierarchy import hierarchy_data
+        from database.operations import execute_query
         
-        managers = hierarchy_data.get(message.chat.id, {}).get('managers', [])
+        # Get managers from database
+        group_id = message.chat.id
+        db_managers = await execute_query(
+            "SELECT user_id FROM group_ranks WHERE chat_id = ? AND rank_type = 'مدير'",
+            (group_id,),
+            fetch_all=True
+        )
+        
+        managers = []
+        if db_managers:
+            for manager in db_managers:
+                user_id = manager['user_id'] if isinstance(manager, dict) else manager[0]
+                managers.append(user_id)
         
         if not managers:
             await message.reply("📋 **المدراء:**\nلا يوجد مدراء حالياً")
