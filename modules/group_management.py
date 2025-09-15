@@ -100,12 +100,17 @@ async def show_group_owners(message: Message):
             fetch_all=True
         )
         
-        # Combine both sources
+        # Combine both sources and sync memory with database
         all_owners = set(memory_owners)
         if db_owners:
             for owner in db_owners:
                 user_id = owner['user_id'] if isinstance(owner, dict) else owner[0]
                 all_owners.add(user_id)
+                # Sync to memory if missing
+                if user_id not in memory_owners:
+                    if group_id not in GROUP_OWNERS:
+                        GROUP_OWNERS[group_id] = []
+                    GROUP_OWNERS[group_id].append(user_id)
         
         owners = list(all_owners)
         
