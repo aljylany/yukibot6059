@@ -2758,9 +2758,13 @@ async def handle_general_message(message: Message, state: FSMContext):
     has_yuki_mention = (message.text and 
                        any(trigger in message.text.lower() for trigger in ['يوكي', 'yuki', 'يوكى']))
     
-    # تشغيل النظام الذكي إذا ذُكر يوكي أو إذا كان رداً على رسالة يوكي
+    # استثناء الأوامر الخاصة من الذكاء الاصطناعي
+    special_commands = ['رتبته', 'رتبتي', 'فلوسه', 'فلوسي', 'مستواه', 'مستواي', 'كشف']
+    is_special_command = (message.text and message.text.strip() in special_commands)
+    
+    # تشغيل النظام الذكي إذا ذُكر يوكي أو إذا كان رداً على رسالة يوكي (عدا الأوامر الخاصة)
     if (message.text and message.chat.type in ['group', 'supergroup'] and
-        (has_yuki_mention or is_reply_to_yuki)):
+        (has_yuki_mention or is_reply_to_yuki) and not is_special_command):
         
         if has_yuki_mention:
             logging.info(f"🎯 تم اكتشاف رسالة يوكي: '{message.text}' - توجيه للنظام المتقدم")
