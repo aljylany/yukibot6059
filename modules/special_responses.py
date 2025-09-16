@@ -124,22 +124,17 @@ def get_response(user_id: int, message_text: str = "") -> Optional[str]:
         if any(admin_cmd in message_lower for admin_cmd in admin_keywords):
             return None
         
-        # تحديد نوع الرد المطلوب - فقط إذا كانت الكلمة مفردة أو في بداية جملة قصيرة
+        # تحديد نوع الرد المطلوب - فقط إذا كانت الكلمة مفردة تماماً
         response_type = None
-        words = message_lower.split()
         
-        # إذا كانت الرسالة طويلة جداً (أكثر من 4 كلمات)، لا ترد عليها
-        if len(words) > 4:
+        # فحص أن الرسالة كلمة واحدة فقط
+        if len(message_lower.split()) != 1:
             return None
             
         for msg_type, keywords in TRIGGER_KEYWORDS.items():
             for keyword in keywords:
-                # فحص 1: إذا كانت الكلمة لوحدها تماماً
+                # فحص إذا كانت الكلمة تطابق تماماً (مفردة)
                 if message_lower.strip() == keyword.lower():
-                    response_type = msg_type
-                    break
-                # فحص 2: إذا كانت الكلمة الأولى في جملة قصيرة (كلمتين فقط)
-                elif len(words) <= 2 and words[0] == keyword.lower():
                     response_type = msg_type
                     break
             if response_type:
