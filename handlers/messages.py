@@ -2717,6 +2717,14 @@ async def handle_general_message(message: Message, state: FSMContext):
     elif text == 'مسح الرابط':
         await clear_commands.clear_link(message)
     
+    # === أوامر مزامنة المحظورين ===
+    elif text == 'مزامنة المحظورين':
+        from modules.sync_banned_users import sync_banned_users
+        await sync_banned_users(message)
+    elif text == 'مزامنة قوية' or text == 'مزامنة المحظورين قوية':
+        from modules.sync_banned_users import force_sync_with_telegram
+        await force_sync_with_telegram(message)
+    
     # معالجة تخمينات الألعاب (فقط عند وجود ألعاب نشطة)
     elif message.chat.type in ['group', 'supergroup']:
         try:
