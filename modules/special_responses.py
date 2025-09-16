@@ -124,15 +124,22 @@ def get_response(user_id: int, message_text: str = "") -> Optional[str]:
         if any(admin_cmd in message_lower for admin_cmd in admin_keywords):
             return None
         
-        # تحديد نوع الرد المطلوب - يجب أن تكون الكلمة منفصلة تماماً
+        # تحديد نوع الرد المطلوب - فقط إذا كانت الكلمة مفردة أو في بداية جملة قصيرة
         response_type = None
+        words = message_lower.split()
+        
+        # إذا كانت الرسالة طويلة جداً (أكثر من 4 كلمات)، لا ترد عليها
+        if len(words) > 4:
+            return None
+            
         for msg_type, keywords in TRIGGER_KEYWORDS.items():
             for keyword in keywords:
-                # فحص دقيق جداً: الكلمة يجب أن تكون منفصلة تماماً باستخدام حدود الكلمات
-                import re
-                # إنشاء نمط regex للبحث عن الكلمة كاملة منفصلة
-                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
-                if re.search(pattern, message_lower):
+                # فحص 1: إذا كانت الكلمة لوحدها تماماً
+                if message_lower.strip() == keyword.lower():
+                    response_type = msg_type
+                    break
+                # فحص 2: إذا كانت الكلمة الأولى في جملة قصيرة (كلمتين فقط)
+                elif len(words) <= 2 and words[0] == keyword.lower():
                     response_type = msg_type
                     break
             if response_type:
