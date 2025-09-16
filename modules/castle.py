@@ -132,7 +132,7 @@ async def get_user_level(user_id: int) -> int:
             (user_id,),
             fetch_one=True
         )
-        return result['level'] if result else 1
+        return result['level'] if result and 'level' in result else 1
     except Exception:
         return 1
 
@@ -370,6 +370,10 @@ async def get_user_treasure_hunt_stats(user_id: int) -> dict:
 async def create_castle_command(message: Message, state: FSMContext = None):
     """أمر إنشاء قلعة جديدة"""
     try:
+        if not message.from_user:
+            await message.reply("❌ خطأ في معلومات المستخدم!")
+            return
+            
         user = await get_user(message.from_user.id)
         if not user:
             await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
@@ -384,9 +388,12 @@ async def create_castle_command(message: Message, state: FSMContext = None):
         
         # فحص المستوى باستخدام النظام الموحد
         try:
-            from modules.unified_level_system import get_unified_user_level
-            level_info = await get_unified_user_level(message.from_user.id)
-            unified_level = level_info['level']
+            from modules.leveling import get_user_level_info
+            if message.from_user:
+                level_info = await get_user_level_info(message.from_user.id)
+                unified_level = level_info['level'] if level_info and 'level' in level_info else 1
+            else:
+                unified_level = 1
         except Exception as e:
             logging.error(f"خطأ في فحص المستوى الموحد: {e}")
             unified_level = user_level
@@ -408,19 +415,19 @@ async def create_castle_command(message: Message, state: FSMContext = None):
         
         # التحقق من الرصيد
         castle_cost = 5000
-        if user['balance'] < castle_cost:
+        if not user or not isinstance(user, dict) or user.get('balance', 0) < castle_cost:
             await message.reply(
                 f"❌ **رصيد غير كافي!**\n\n"
                 f"💰 تكلفة إنشاء القلعة: {format_number(castle_cost)}$\n"
-                f"💵 رصيدك الحالي: {format_number(user['balance'])}$\n"
-                f"💸 تحتاج إلى: {format_number(castle_cost - user['balance'])}$ إضافية"
+                f"💵 رصيدك الحالي: {format_number(user.get('balance', 0))}$\n"
+                f"💸 تحتاج إلى: {format_number(castle_cost - user.get('balance', 0))}$ إضافية"
             )
             return
         
         await message.reply(
             f"🏰 **إنشاء قلعة جديدة**\n\n"
             f"💰 التكلفة: {format_number(castle_cost)}$\n"
-            f"💵 رصيدك: {format_number(user['balance'])}$\n\n"
+            f"💵 رصيدك: {format_number(user.get('balance', 0))}$\n\n"
             f"✏️ **اكتب اسم قلعتك:**\n"
             f"(سيتم خصم المبلغ عند تأكيد الاسم)"
         )
