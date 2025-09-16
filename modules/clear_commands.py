@@ -4,8 +4,10 @@ Clear and Cleanup Commands Module
 """
 
 import logging
+import aiosqlite
 from aiogram.types import Message
-from config.database import get_database_connection
+from config.database import DATABASE_URL
+from database.operations import execute_query
 from utils.decorators import admin_required
 
 
@@ -13,7 +15,7 @@ from utils.decorators import admin_required
 async def clear_banned(message: Message):
     """مسح قائمة المحظورين"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح المحظورين من المجموعة
             result = await db.execute("""
                 DELETE FROM banned_users WHERE chat_id = ?
@@ -33,7 +35,7 @@ async def clear_banned(message: Message):
 async def clear_muted(message: Message):
     """مسح قائمة المكتومين"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح المكتومين من المجموعة
             result = await db.execute("""
                 DELETE FROM muted_users WHERE chat_id = ?
@@ -53,7 +55,7 @@ async def clear_muted(message: Message):
 async def clear_ban_words(message: Message):
     """مسح قائمة الكلمات المحظورة"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح الكلمات المحظورة من المجموعة
             result = await db.execute("""
                 DELETE FROM banned_words WHERE chat_id = ?
@@ -73,7 +75,7 @@ async def clear_ban_words(message: Message):
 async def clear_replies(message: Message):
     """مسح الردود المخصصة"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح الردود المخصصة من المجموعة
             result = await db.execute("""
                 DELETE FROM custom_replies WHERE chat_id = ?
@@ -93,7 +95,7 @@ async def clear_replies(message: Message):
 async def clear_custom_commands(message: Message):
     """مسح الأوامر المضافة"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح الأوامر المخصصة من المجموعة
             result = await db.execute("""
                 DELETE FROM custom_commands WHERE chat_id = ?
@@ -113,7 +115,7 @@ async def clear_custom_commands(message: Message):
 async def clear_id_template(message: Message):
     """مسح قالب الايدي"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح قالب الايدي المخصص
             await db.execute("""
                 DELETE FROM group_settings 
@@ -133,7 +135,7 @@ async def clear_id_template(message: Message):
 async def clear_welcome(message: Message):
     """مسح رسالة الترحيب"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح رسالة الترحيب المخصصة
             await db.execute("""
                 DELETE FROM group_settings 
@@ -153,7 +155,7 @@ async def clear_welcome(message: Message):
 async def clear_link(message: Message):
     """مسح رابط المجموعة المحفوظ"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح رابط المجموعة المحفوظ
             await db.execute("""
                 DELETE FROM group_settings 
@@ -173,7 +175,7 @@ async def clear_link(message: Message):
 async def clear_all_data(message: Message):
     """مسح جميع بيانات المجموعة"""
     try:
-        async with get_database_connection() as db:
+        async with aiosqlite.connect(DATABASE_URL) as db:
             # مسح جميع البيانات المتعلقة بالمجموعة
             tables_to_clear = [
                 'banned_users',
