@@ -61,8 +61,12 @@ async def show_leaderboard(message: Message):
             leaderboard_text += f"   🏦 البنك: {format_number(player['bank_balance'])}$\n\n"
         
         # العثور على ترتيب المستخدم الحالي
-        user_rank = await get_user_rank(message.from_user.id, 'wealth')
-        user = await get_user(message.from_user.id)
+        if message.from_user:
+            user_rank = await get_user_rank(message.from_user.id, 'wealth')
+            user = await get_user(message.from_user.id)
+        else:
+            user_rank = None
+            user = None
         
         if user and user_rank:
             user_wealth = user['balance'] + user['bank_balance']
@@ -80,21 +84,29 @@ async def show_leaderboard(message: Message):
 async def show_user_ranking(message: Message):
     """عرض ترتيب المستخدم الشخصي"""
     try:
-        user = await get_user(message.from_user.id)
+        if message.from_user:
+            user = await get_user(message.from_user.id)
+        else:
+            await message.reply("❌ حدث خطأ في التعرف على المستخدم")
+            return
         if not user:
             await message.reply("❌ يرجى التسجيل أولاً باستخدام 'انشاء حساب بنكي'")
             return
         
         # الحصول على جميع التصنيفات
-        wealth_rank = await get_user_rank(message.from_user.id, 'wealth')
-        bank_rank = await get_user_rank(message.from_user.id, 'bank')
-        properties_rank = await get_user_rank(message.from_user.id, 'properties')
-        investments_rank = await get_user_rank(message.from_user.id, 'investments')
-        
-        # حساب الإحصائيات
-        total_wealth = user['balance'] + user['bank_balance']
-        properties_count = await get_user_properties_count(message.from_user.id)
-        investments_value = await get_user_investments_value(message.from_user.id)
+        if message.from_user:
+            wealth_rank = await get_user_rank(message.from_user.id, 'wealth')
+            bank_rank = await get_user_rank(message.from_user.id, 'bank')
+            properties_rank = await get_user_rank(message.from_user.id, 'properties')
+            investments_rank = await get_user_rank(message.from_user.id, 'investments')
+            
+            # حساب الإحصائيات
+            total_wealth = user['balance'] + user['bank_balance']
+            properties_count = await get_user_properties_count(message.from_user.id)
+            investments_value = await get_user_investments_value(message.from_user.id)
+        else:
+            wealth_rank = bank_rank = properties_rank = investments_rank = None
+            total_wealth = properties_count = investments_value = 0
         
         ranking_text = f"""
 🎯 **ترتيبك الشخصي**
@@ -340,7 +352,7 @@ async def get_user_properties_count(user_id: int):
         result = await execute_query(
             "SELECT COUNT(*) as count FROM properties WHERE user_id = ?",
             (user_id,),
-            fetch_all=True
+            fetch_one=True
         )
         return result['count'] if result else 0
     except Exception as e:
@@ -354,7 +366,7 @@ async def get_user_investments_value(user_id: int):
         result = await execute_query(
             "SELECT SUM(amount) as total FROM investments WHERE user_id = ? AND status = 'active'",
             (user_id,),
-            fetch_all=True
+            fetch_one=True
         )
         return result['total'] if result and result['total'] else 0
     except Exception as e:
@@ -432,7 +444,7 @@ async def get_global_statistics():
         total_users = await execute_query(
             "SELECT COUNT(*) as count FROM users",
             (),
-            fetch_all=True
+            fetch_one=True
         )
         stats['total_users'] = total_users['count'] if total_users else 0
         
@@ -440,7 +452,7 @@ async def get_global_statistics():
         total_money = await execute_query(
             "SELECT SUM(balance + bank_balance) as total FROM users",
             (),
-            fetch_all=True
+            fetch_one=True
         )
         stats['total_money'] = total_money['total'] if total_money and total_money['total'] else 0
         
@@ -448,7 +460,7 @@ async def get_global_statistics():
         total_transactions = await execute_query(
             "SELECT COUNT(*) as count FROM transactions",
             (),
-            fetch_all=True
+            fetch_one=True
         )
         stats['total_transactions'] = total_transactions['count'] if total_transactions else 0
         
@@ -456,7 +468,7 @@ async def get_global_statistics():
         total_properties = await execute_query(
             "SELECT COUNT(*) as count FROM properties",
             (),
-            fetch_all=True
+            fetch_one=True
         )
         stats['total_properties'] = total_properties['count'] if total_properties else 0
         
@@ -464,7 +476,7 @@ async def get_global_statistics():
         total_investments = await execute_query(
             "SELECT COUNT(*) as count FROM investments WHERE status = 'active'",
             (),
-            fetch_all=True
+            fetch_one=True
         )
         stats['total_investments'] = total_investments['count'] if total_investments else 0
         

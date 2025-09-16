@@ -12,7 +12,8 @@ async def show_levels_guide(message: Message):
     """عرض دليل شامل لنظام المستويات وكيفية التقدم"""
     try:
         # التأكد من تسجيل نشاط المستخدم
-        await update_user_activity(message.from_user.id)
+        if message.from_user:
+            await update_user_activity(message.from_user.id)
         
         guide_text = """
 🌟 **دليل نظام المستويات والتقدم** 🌟
@@ -123,7 +124,8 @@ async def show_levels_guide(message: Message):
         
         await message.reply(guide_text)
         
-        logging.info(f"تم عرض دليل المستويات للمستخدم {message.from_user.id}")
+        if message.from_user:
+            logging.info(f"تم عرض دليل المستويات للمستخدم {message.from_user.id}")
         
     except Exception as e:
         logging.error(f"خطأ في عرض دليل المستويات: {e}")
