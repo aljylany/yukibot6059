@@ -3,7 +3,7 @@ import os
 import shutil
 from datetime import datetime
 
-DB_PATH = 'yukibot.db'
+DB_PATH = 'bot_database.db'  # توحيد قاعدة البيانات مع النظام الجديد
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -68,13 +68,16 @@ def init_db():
         army_level INTEGER DEFAULT 1
     )''')
     
-    # جدول المستويات (جديد)
+    # جدول المستويات - موحد مع النظام الجديد
     c.execute('''CREATE TABLE IF NOT EXISTS levels (
-        user_id INTEGER PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE NOT NULL,
         xp INTEGER DEFAULT 0,
         level_name TEXT DEFAULT 'نجم 1',
         world_name TEXT DEFAULT 'عالم النجوم',
-        last_xp_gain TIMESTAMP DEFAULT 0
+        last_xp_gain REAL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )''')
     
     # جدول إصمات المشرفين - أمر خاص بالسيد الأعلى
