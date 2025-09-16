@@ -1893,12 +1893,36 @@ async def handle_general_message(message: Message, state: FSMContext):
         await handle_list_commands(message)
         return
     
-    # فحص الردود (خاصة أو عامة) بعد الأوامر المهمة
+    # فحص الردود (خاصة أو عامة) بعد الأوامر المهمة - فقط إذا كانت الرسالة موجهة للبوت
     if message.from_user:
-        response = get_special_response(message.from_user.id, text)
-        if response:
-            await message.reply(response)
-            return
+        # التحقق من أن الرسالة موجهة للبوت فعلاً
+        is_directed_to_bot = False
+        
+        # فحص 1: إذا كانت الرسالة تحتوي على اسم البوت أو إشارة إليه
+        bot_mentions = ['يوكي', 'يوكا', '@theyuki_bot', 'yuki']
+        if any(mention in text.lower() for mention in bot_mentions):
+            is_directed_to_bot = True
+        
+        # فحص 2: إذا كانت الرسالة رد على رسالة البوت
+        if message.reply_to_message and message.reply_to_message.from_user.is_bot:
+            is_directed_to_bot = True
+        
+        # فحص 3: إذا كانت المحادثة خاصة (ليست مجموعة)
+        if message.chat.type == 'private':
+            is_directed_to_bot = True
+        
+        # فحص 4: إذا كانت الرسالة تبدأ بتحية مباشرة (مثلاً أول كلمة هي تحية)
+        first_word = text.split()[0] if text.split() else ""
+        direct_greetings = ['مرحبا', 'اهلا', 'هلا', 'هاي', 'كيفك', 'شلونك']
+        if first_word.lower() in direct_greetings and len(text.split()) <= 2:
+            is_directed_to_bot = True
+        
+        # إرسال رد فقط إذا كانت الرسالة موجهة للبوت
+        if is_directed_to_bot:
+            response = get_special_response(message.from_user.id, text)
+            if response:
+                await message.reply(response)
+                return
     
     # التحقق من طلب إنشاء حساب بنكي
     if any(phrase in text for phrase in ['انشاء حساب بنكي', 'إنشاء حساب بنكي', 'انشئ حساب', 'حساب بنكي جديد']):
