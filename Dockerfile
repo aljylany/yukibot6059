@@ -1,53 +1,130 @@
-# استخدام صورة أساسية خفيفة من Python
-FROM python:3.10-slim-bullseye
+# =============================================================================
+# Yuki Bot - Production Dockerfile
+# Multi-stage build for optimal performance and security
+# =============================================================================
 
-# تعيين اللغة والتشفير لتجنب مشاكل الأحرف
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+# =============================================================================
+# Stage 1: Base Python Environment
+# =============================================================================
+FROM python:3.11-slim AS base
 
-# تحديث قائمة الحزم وتثبيت المتطلبات النظامية
-RUN apt-get update --fix-missing && \
-    apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
+# Set environment variables for Python
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    wget \
+    ffmpeg \
+    build-essential \
+    cmake \
     python3-dev \
     libffi-dev \
     libssl-dev \
-    libcairo2 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
-    libgirepository-1.0-1 \
-    ffmpeg \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libgdk-pixbuf-2.0-dev \
+    libgirepository1.0-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# إنشاء مجلد للتطبيق وتعيين صلاحيات
-WORKDIR /app
-RUN chmod 755 /app
+# Create non-root user for security
+RUN groupadd -r yuki && useradd -r -g yuki -d /app yuki
 
-# نسخ متطلبات التطبيق أولاً (للاستفادة من طبقات Docker المحسنة)
+# Set working directory
+WORKDIR /app
+
+# =============================================================================
+# Stage 2: Dependencies Installation
+# =============================================================================
+FROM base AS deps
+
+# Copy requirements first for better cache utilization
 COPY requirements.txt .
 
-# تثبيت متطلبات Python
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# نسخ باقي ملفات التطبيق
-COPY . .
+# =============================================================================
+# Stage 3: Application Build
+# =============================================================================
+FROM base AS app
 
-# تعيين الأمر الافتراضي لتشغيل البوت
+# Copy installed packages from deps stage
+COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=deps /usr/local/bin /usr/local/bin
+
+# Copy only necessary application files
+COPY requirements.txt ./
+COPY main.py ./
+COPY config/ ./config/
+COPY utils/ ./utils/
+COPY handlers/ ./handlers/
+COPY modules/ ./modules/
+COPY services/ ./services/
+COPY database/ ./database/
+
+# Create necessary directories
+RUN mkdir -p logs temp_media && \
+    chown -R yuki:yuki /app
+
+# Remove sensitive files (if any accidentally included)
+RUN rm -f api.txt .env || true
+
+# Switch to non-root user
+USER yuki
+
+# =============================================================================
+# Stage 4: Production Image
+# =============================================================================
+FROM app AS production
+
+# Health check - verify bot core modules without environment dependency
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import handlers, modules, services; print('✅ Bot is healthy')" || exit 1
+
+# Expose port (if needed for webhooks)
+EXPOSE 8000
+
+# Default command
 CMD ["python", "main.py"]
 
-# التعليقات التوضيحية:
-# 1. استخدام python:3.10-slim-bullseye بدلاً من Ubuntu لتقليل حجم الصورة
-# 2. إضافة --no-install-recommends لتجنب تثبيت حزم غير ضرورية
-# 3. إضافة --fix-missing لحل مشاكل التبعيات
-# 4. استخدام --no-cache-dir مع pip لمنع تخزين ذاكرة التخزين المؤقت
-# 5. نسخ requirements.txt أولاً للاستفادة من محاذاة الطبقات في Docker# إعطاء الصلاحيات المناسبة للمستخدم غير root
-RUN chown -R botuser:botuser /app
-RUN chmod +x main.py
+# =============================================================================
+# Stage 5: Development Image (Optional)
+# =============================================================================
+FROM app AS development
 
-USER botuser
+USER root
 
-# تشغيل البوت
+# Install development dependencies
+RUN pip install --no-cache-dir \
+    pytest \
+    pytest-asyncio \
+    black \
+    flake8 \
+    mypy \
+    ipython
+
+USER yuki
+
+# Development command
 CMD ["python", "main.py"]
+
+# =============================================================================
+# Build Arguments and Labels
+# =============================================================================
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+LABEL maintainer="Yuki Bot Team" \
+      org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="yuki-bot" \
+      org.label-schema.description="Advanced Arabic Telegram Bot with AI Integration" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/your-username/yuki-bot" \
+      org.label-schema.schema-version="1.0"
