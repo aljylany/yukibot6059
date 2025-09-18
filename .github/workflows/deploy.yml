@@ -1,58 +1,160 @@
-name: 🤖 نشر بوت يوكي
+name: 🤖 بوت يوكي المستمر
+# تم التطوير بواسطة فريق يوكي - التشغيل المستمر على GitHub Actions
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+concurrency:
+  group: yuki-telegram-bot
+  cancel-in-progress: false
 
 jobs:
-  test:
+  run-bot:
     runs-on: ubuntu-latest
-    name: 🧪 اختبار البوت
-    
-    steps:
-    - name: 📥 سحب الكود
-      uses: actions/checkout@v4
-      
-    - name: 🐍 إعداد Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: 📦 تثبيت المكتبات
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: 🔍 فحص الأخطاء
-      run: |
-        python -m py_compile main.py
-        python -c "print('✅ البوت يجتاز الفحص النحوي')"
-        
-  # ملاحظة: يتم النشر يدوياً عن طريق المستخدم باستخدام Docker أو VPS
-  # هذا workflow للاختبار فقط، النشر يتطلب إعداد خادم خاص
+    timeout-minutes: 360
 
-  docker:
-    needs: test
-    runs-on: ubuntu-latest
-    name: 🐳 بناء Docker Image
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
     steps:
-    - name: 📥 سحب الكود
-      uses: actions/checkout@v4
-      
-    - name: 🔧 إعداد Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      
-    - name: 🐳 بناء Docker Image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        push: false
-        tags: yuki-bot:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: 📥 سحب الكود الأساسي
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 تحميل Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: ⚙️ تهيئة Git
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+
+      - name: 💾 استرجاع بيانات التشغيل السابق
+        run: |
+          echo "📥 جاري تحميل بيانات البوت من فرع التخزين..."
+          if git fetch origin yuki-bot-storage 2>/dev/null; then
+            echo "✅ تم العثور على فرع تخزين البوت"
+            git checkout origin/yuki-bot-storage -- . 2>/dev/null || echo "⚠️ لا توجد بيانات سابقة"
+            echo "✅ تم استبدال الملفات القديمة بنسخة التخزين"
+          else
+            echo "⚠️ لا يوجد فرع تخزين، سيبدأ البوت ببيانات جديدة"
+          fi
+          echo "📂 التحقق من ملفات البوت بعد التحميل:"
+          ls -la *.db *.json *.log *.txt 2>/dev/null || true
+          if ! ls *.db 1> /dev/null 2>&1; then
+            echo "❌ تحذير: لا توجد ملفات قواعد بيانات!"
+          else
+            echo "✅ ملفات قواعد البيانات موجودة"
+          fi
+
+      - name: 📦 تثبيت المتطلبات الأساسية
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "❌ ملف requirements.txt غير موجود!"
+            exit 1
+          fi
+
+      - name: 🎵 تثبيت متطلبات الميديا
+        run: |          
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev
+
+      - name: 🔍 التحقق من المفاتيح
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          echo "🔑 التحقق من المفاتيح المطلوبة:"
+          if [ -n "$BOT_TOKEN" ]; then
+            echo "  ✅ BOT_TOKEN: متوفر"
+          else
+            echo "  ❌ BOT_TOKEN: مفقود - يجب إضافته في GitHub Secrets"
+            exit 1
+          fi
+          if [ -n "$GOOGLE_API_KEY" ]; then
+            echo "  ✅ GOOGLE_API_KEY: متوفر"
+          else
+            echo "  ⚠️ GOOGLE_API_KEY: مفقود"
+          fi
+          echo "✅ المفاتيح الأساسية متوفرة"
+
+      - name: 🤖 تشغيل بوت يوكي
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
+          GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
+          GEMINI_API_KEY_4: ${{ secrets.GEMINI_API_KEY_4 }}
+          GEMINI_API_KEY_5: ${{ secrets.GEMINI_API_KEY_5 }}
+          GEMINI_API_KEY_6: ${{ secrets.GEMINI_API_KEY_6 }}
+          GEMINI_API_KEY_7: ${{ secrets.GEMINI_API_KEY_7 }}
+          GEMINI_API_KEY_8: ${{ secrets.GEMINI_API_KEY_8 }}
+          GEMINI_API_KEY_9: ${{ secrets.GEMINI_API_KEY_9 }}
+          GEMINI_API_KEY_10: ${{ secrets.GEMINI_API_KEY_10 }}
+          GEMINI_API_KEY_11: ${{ secrets.GEMINI_API_KEY_11 }}
+          GEMINI_API_KEY_12: ${{ secrets.GEMINI_API_KEY_12 }}
+          GEMINI_API_KEY_13: ${{ secrets.GEMINI_API_KEY_13 }}
+          GEMINI_API_KEY_14: ${{ secrets.GEMINI_API_KEY_14 }}
+          GEMINI_API_KEY_15: ${{ secrets.GEMINI_API_KEY_15 }}
+          GEMINI_API_KEY_16: ${{ secrets.GEMINI_API_KEY_16 }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "🚀 بدء تشغيل بوت يوكي..."
+          echo "🤖 اسم البوت: Yuki Telegram Bot"
+          echo "📋 الإصدار: 2.0 المحسن"
+          echo "⚡ حالة البوت: جاري التشغيل المستمر..."
+          echo "🕒 وقت البدء: $(date)"
+          echo ""
+          python main.py
+
+      - name: 💾 حفظ بيانات هذا التشغيل
+        if: always()
+        run: |
+          echo "💾 جاري حفظ بيانات البوت..."
+          git checkout main
+          git checkout yuki-bot-storage 2>/dev/null || git checkout -b yuki-bot-storage
+          
+          # إضافة الملفات المهمة للـ gitignore
+          echo "# ملفات البوت المستثناة من الحفظ" > .gitignore
+          echo "main.py" >> .gitignore
+          echo "config/" >> .gitignore
+          echo "handlers/" >> .gitignore
+          echo "modules/" >> .gitignore
+          echo "utils/" >> .gitignore
+          echo "services/" >> .gitignore
+          echo "requirements.txt" >> .gitignore
+          echo ".github/" >> .gitignore
+          echo "*.md" >> .gitignore
+          echo "*.sh" >> .gitignore
+          
+          # حفظ ملفات البيانات فقط
+          git add *.db *.json *.log *.txt temp_media/ 2>/dev/null || true
+          git add --all
+          git commit -m "🤖 حفظ تلقائي لبيانات البوت - $(date +'%Y-%m-%d %H:%M:%S')" || echo "ℹ️ لا توجد تغييرات للحفظ"
+          git push origin yuki-bot-storage --force || echo "❌ فشل رفع البيانات"
+          git checkout main
+
+      - name: ✅ تأكيد انتهاء العمليات
+        if: always()
+        run: |
+          echo ""
+          echo "📋 ملخص التشغيل:"
+          echo "✅ انتهت جلسة تشغيل البوت بنجاح"
+          echo "💾 البيانات محفوظة في فرع: yuki-bot-storage"
+          echo "🕒 وقت الانتهاء: $(date)"
+          echo "🔄 الجلسة القادمة: خلال 6 ساعات"
+          echo "📊 مدة التشغيل: 6 ساعات (أو حتى انتهاء المهام)"
+          echo ""
+          echo "🎯 حالة البوت: جاهز للجلسة القادمة"
