@@ -1,40 +1,49 @@
-# استخدام Python 3.11 كصورة أساسية
-FROM python:3.11-slim
+# استخدام صورة أساسية خفيفة من Python
+FROM python:3.10-slim-bullseye
 
-# تحديد مجلد العمل
-WORKDIR /app
+# تعيين اللغة والتشفير لتجنب مشاكل الأحرف
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
 
-# تثبيت متطلبات النظام
-RUN apt-get update && apt-get install -y \
+# تحديث قائمة الحزم وتثبيت المتطلبات النظامية
+RUN apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     python3-dev \
     libffi-dev \
     libssl-dev \
-    libcairo2-dev \
-    libpango1.0-dev \
-    libgdk-pixbuf2.0-dev \
-    libgirepository1.0-dev \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libgirepository-1.0-1 \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# نسخ ملفات المتطلبات أولاً للاستفادة من التخزين المؤقت
+# إنشاء مجلد للتطبيق وتعيين صلاحيات
+WORKDIR /app
+RUN chmod 755 /app
+
+# نسخ متطلبات التطبيق أولاً (للاستفادة من طبقات Docker المحسنة)
 COPY requirements.txt .
 
-# تثبيت المكتبات المطلوبة
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+# تثبيت متطلبات Python
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# إنشاء مستخدم غير root للأمان
-RUN useradd -m -u 1000 botuser
-
-# نسخ جميع ملفات البوت
+# نسخ باقي ملفات التطبيق
 COPY . .
 
-# إنشاء مجلد للقاعدة البيانات والملفات المؤقتة
-RUN mkdir -p temp_media && mkdir -p attached_assets
+# تعيين الأمر الافتراضي لتشغيل البوت
+CMD ["python", "main.py"]
 
-# إعطاء الصلاحيات المناسبة للمستخدم غير root
+# التعليقات التوضيحية:
+# 1. استخدام python:3.10-slim-bullseye بدلاً من Ubuntu لتقليل حجم الصورة
+# 2. إضافة --no-install-recommends لتجنب تثبيت حزم غير ضرورية
+# 3. إضافة --fix-missing لحل مشاكل التبعيات
+# 4. استخدام --no-cache-dir مع pip لمنع تخزين ذاكرة التخزين المؤقت
+# 5. نسخ requirements.txt أولاً للاستفادة من محاذاة الطبقات في Docker# إعطاء الصلاحيات المناسبة للمستخدم غير root
 RUN chown -R botuser:botuser /app
 RUN chmod +x main.py
 
