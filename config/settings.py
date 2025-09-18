@@ -12,19 +12,19 @@ from utils.api_loader import api_loader
 api_loader.set_environment_variables()
 
 # معلومات البوت الأساسية
-BOT_TOKEN = api_loader.get_key('BOT_TOKEN') or "7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
+BOT_TOKEN = api_loader.get_key('BOT_TOKEN') or os.getenv('BOT_TOKEN')
 BOT_USERNAME = "theyuki_bot"
 
-# قائمة المديرين والمالكين
-ADMINS = [6524680126,8278493069, 6629947448,7155814194,6770426467]
+# قائمة المديرين والمالكين (ضع معرفاتك هنا)
+ADMINS = [123456789, 987654321]  # غيّر هذه القيم إلى معرفاتك الحقيقية
 
 # الأسياد - مستوردة من نظام الهيكل الجديد  
 try:
     from config.hierarchy import MASTERS
 except ImportError:
-    MASTERS = [6524680126, 8278493069, 7155814194]
+    MASTERS = [123456789]  # غيّر هذه القيمة إلى معرفك الحقيقي
 ADMIN_IDS = ADMINS  # اسم بديل للتوافق
-OWNERS = [6524680126]
+OWNERS = [123456789]  # غيّر هذه القيمة إلى معرفك الحقيقي
 
 # إعدادات قاعدة البيانات
 DATABASE_URL = "bot_database.db"

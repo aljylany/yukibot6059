@@ -71,6 +71,10 @@ attached_assets/
 media/
 downloads/
 
-# Config files with sensitive data (uncomment if needed)
-# api.txt
-# config.py
+# Config files with sensitive data
+api.txt
+.env
+
+# Add any other sensitive files
+*.log.*
+restart_info.json

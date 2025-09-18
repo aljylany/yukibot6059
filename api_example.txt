@@ -1,0 +1,23 @@
+AI 
+YOUR_GEMINI_API_KEY_HERE
+tokenbot
+YOUR_BOT_TOKEN_FROM_BOTFATHER_HERE
+apiyutube
+YOUR_YOUTUBE_API_KEY_HERE
+anthropic
+YOUR_ANTHROPIC_API_KEY_HERE
+openai
+YOUR_OPENAI_API_KEY_HERE
+
+# تعليمات:
+# 1. انسخ هذا الملف إلى api.txt
+# 2. ضع مفاتيحك الحقيقية مكان النصوص التوضيحية
+# 3. احتفظ بالتنسيق كما هو (كلمة المفتاح ثم قيمة المفتاح في السطر التالي)
+# 4. لا تشارك ملف api.txt مع أحد
+
+# للحصول على المفاتيح:
+# - BOT_TOKEN: تحدث مع @BotFather في تليجرام
+# - GEMINI_API_KEY: https://makersuite.google.com/app/apikey  
+# - ANTHROPIC_API_KEY: https://console.anthropic.com/
+# - OPENAI_API_KEY: https://platform.openai.com/api-keys
+# - YOUTUBE_API_KEY: https://console.cloud.google.com/

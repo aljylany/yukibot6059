@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![Aiogram](https://img.shields.io/badge/Aiogram-3.21.0+-green.svg)](https://aiogram.dev)
-[![License](https://img.shields.io/badge/License-Private-red.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)]()
 
 ## 📖 حول البوت
@@ -65,24 +65,16 @@ pip install -r requirements.txt
 ```
 
 ### 3️⃣ إعداد المفاتيح
-انسخ ملف `.env.example` إلى `.env` وأضف مفاتيحك:
+أنشئ ملف `api.txt` من المثال:
 ```bash
-cp .env.example .env
+cp api_example.txt api.txt
+# ثم حرر الملف وضع مفاتيحك الحقيقية
 ```
 
-أو أنشئ ملف `api.txt` بالتنسيق التالي:
-```
-AI 
-YOUR_GEMINI_API_KEY_HERE
-tokenbot
-YOUR_BOT_TOKEN_HERE
-apiyutube
-YOUR_YOUTUBE_API_KEY_HERE
-anthropic
-YOUR_ANTHROPIC_API_KEY_HERE
-openai
-YOUR_OPENAI_API_KEY_HERE
-```
+**⚠️ مهم للأمان:**
+- لا تشارك ملف `api.txt` مع أحد
+- تأكد أن `api.txt` في قائمة `.gitignore`
+- إذا كنت تنقل من مستودع آخر، تأكد من إزالة أي ملفات حساسة من التاريخ
 
 ### 4️⃣ إعداد قاعدة البيانات
 ```bash
@@ -170,6 +162,19 @@ yuki-bot/
 - **OPENAI_API_KEY**: من [OpenAI Platform](https://platform.openai.com/api-keys)
 - **YOUTUBE_API_KEY**: من [Google Cloud Console](https://console.cloud.google.com/)
 
+### 🛡️ تنبيه أمني مهم
+إذا كنت تنقل هذا البوت من مكان آخر:
+1. احذف جميع ملفات قواعد البيانات (*.db) والسجلات (*.log) قبل الرفع
+2. تأكد من عدم وجود مفاتيح مكشوفة في تاريخ Git
+3. استخدم مستودع خاص إذا كنت غير متأكد من الأمان
+
+```bash
+# إزالة الملفات الحساسة قبل الرفع
+rm *.db *.log
+git add -A
+git commit -m "إزالة الملفات الحساسة"
+```
+
 ## 🛠️ التطوير والمساهمة
 
 ### إضافة ميزة جديدة
@@ -204,7 +209,7 @@ yuki-bot/
 
 ## 📜 الترخيص
 
-هذا المشروع محمي بحقوق الطبع والنشر. الاستخدام للأغراض الشخصية والتعليمية فقط.
+هذا المشروع مُرخص تحت رخصة MIT. يمكنك استخدامه وتعديله وتوزيعه بحرية.
 
 ## 🙏 شكر وتقدير
 

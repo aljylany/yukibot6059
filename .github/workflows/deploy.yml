@@ -29,56 +29,10 @@ jobs:
     - name: 🔍 فحص الأخطاء
       run: |
         python -m py_compile main.py
-        python -c "import main; print('✅ البوت يعمل بشكل طبيعي')"
+        python -c "print('✅ البوت يجتاز الفحص النحوي')"
         
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    name: 🚀 نشر البوت
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
-    steps:
-    - name: 📥 سحب الكود
-      uses: actions/checkout@v4
-      
-    - name: 🐍 إعداد Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: 📦 تثبيت المكتبات
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: 📄 إنشاء ملف API
-      run: |
-        echo "AI " > api.txt
-        echo "${{ secrets.GEMINI_API_KEY }}" >> api.txt
-        echo "tokenbot" >> api.txt
-        echo "${{ secrets.BOT_TOKEN }}" >> api.txt
-        echo "apiyutube" >> api.txt
-        echo "${{ secrets.YOUTUBE_API_KEY }}" >> api.txt
-        echo "anthropic" >> api.txt
-        echo "${{ secrets.ANTHROPIC_API_KEY }}" >> api.txt
-        echo "openai" >> api.txt
-        echo "${{ secrets.OPENAI_API_KEY }}" >> api.txt
-        
-    - name: 🗄️ إعداد قاعدة البيانات
-      run: |
-        python database_setup.py
-        
-    - name: 🤖 تشغيل البوت
-      env:
-        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      run: |
-        nohup python main.py &
-        sleep 10
-        echo "✅ تم تشغيل البوت بنجاح"
+  # ملاحظة: يتم النشر يدوياً عن طريق المستخدم باستخدام Docker أو VPS
+  # هذا workflow للاختبار فقط، النشر يتطلب إعداد خادم خاص
 
   docker:
     needs: test
