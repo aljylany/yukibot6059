@@ -1,4 +1,4 @@
-name: 🤖 تشغيل بوت يوكي المستمر
+name: 🤖 نشر بوت يوكي
 
 on:
   push:
@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
-  schedule:
-    # كل 5 ساعات و 50 دقيقة (لتجنب تجاوز حد الـ 6 ساعات)
-    - cron: '50 */5 * * *'
 
 jobs:
   test:
@@ -33,6 +30,9 @@ jobs:
       run: |
         python -m py_compile main.py
         python -c "print('✅ البوت يجتاز الفحص النحوي')"
+        
+  # ملاحظة: يتم النشر يدوياً عن طريق المستخدم باستخدام Docker أو VPS
+  # هذا workflow للاختبار فقط، النشر يتطلب إعداد خادم خاص
 
   docker:
     needs: test
@@ -56,157 +56,3 @@ jobs:
         tags: yuki-bot:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
-
-  deploy:
-    needs: [test, docker]
-    runs-on: ubuntu-latest
-    name: 🚀 تشغيل البوت المستمر
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    timeout-minutes: 350  # 5 ساعات و 50 دقيقة
-    
-    steps:
-    - name: 📥 سحب الكود
-      uses: actions/checkout@v4
-      
-    - name: 🐍 إعداد Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: 📦 تثبيت المكتبات
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: 📊 عرض معلومات النظام
-      run: |
-        echo "🕒 وقت بدء التشغيل: $(date)"
-        echo "🖥️ نظام التشغيل: $(uname -a)"
-        echo "🐍 إصدار Python: $(python --version)"
-        echo "📦 المساحة المتاحة: $(df -h /)"
-        
-    - name: 🤖 تشغيل بوت يوكي
-      env:
-        BOT_TOKEN: ${{ secrets.7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o }}
-        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
-        GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
-        GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
-        GEMINI_API_KEY_4: ${{ secrets.GEMINI_API_KEY_4 }}
-        GEMINI_API_KEY_5: ${{ secrets.GEMINI_API_KEY_5 }}
-        GEMINI_API_KEY_6: ${{ secrets.GEMINI_API_KEY_6 }}
-        GEMINI_API_KEY_7: ${{ secrets.GEMINI_API_KEY_7 }}
-        GEMINI_API_KEY_8: ${{ secrets.GEMINI_API_KEY_8 }}
-        GEMINI_API_KEY_9: ${{ secrets.GEMINI_API_KEY_9 }}
-        GEMINI_API_KEY_10: ${{ secrets.GEMINI_API_KEY_10 }}
-        GEMINI_API_KEY_11: ${{ secrets.GEMINI_API_KEY_11 }}
-        GEMINI_API_KEY_12: ${{ secrets.GEMINI_API_KEY_12 }}
-        GEMINI_API_KEY_13: ${{ secrets.GEMINI_API_KEY_13 }}
-        GEMINI_API_KEY_14: ${{ secrets.GEMINI_API_KEY_14 }}
-        GEMINI_API_KEY_15: ${{ secrets.GEMINI_API_KEY_15 }}
-        GEMINI_API_KEY_16: ${{ secrets.GEMINI_API_KEY_16 }}
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      run: |
-        echo "🚀 بدء تشغيل بوت يوكي..."
-        echo "🤖 اسم البوت: Yuki Bot"
-        echo "📋 الإصدار: 2.0"
-        echo "⚡ حالة البوت: جاري التشغيل..."
-        echo ""
-        echo "🔑 التحقق من المفاتيح:"
-        if [ -n "$BOT_TOKEN" ]; then
-          echo "  ✅ BOT_TOKEN: متوفر"
-        else
-          echo "  ❌ BOT_TOKEN: مفقود"
-        fi
-        if [ -n "$GOOGLE_API_KEY" ]; then
-          echo "  ✅ GOOGLE_API_KEY: متوفر"
-        else
-          echo "  ❌ GOOGLE_API_KEY: مفقود"
-        fi
-        echo ""
-        echo "🎯 سيتم تشغيل البوت لمدة 5 ساعات و 50 دقيقة..."
-        echo "🔄 بعدها سيتم إعادة التشغيل تلقائياً حسب الجدولة"
-        echo ""
-        
-        # تشغيل البوت مع timeout
-        timeout 350m python main.py || {
-          echo "⏰ انتهت مدة التشغيل المحددة (5 ساعات 50 دقيقة)"
-          echo "🔄 سيتم إعادة التشغيل في الجدولة القادمة"
-        }
-        
-    - name: 📊 تقرير انتهاء الجلسة
-      if: always()
-      run: |
-        echo ""
-        echo "📋 ملخص جلسة التشغيل:"
-        echo "🕒 وقت انتهاء الجلسة: $(date)"
-        echo "⏱️ مدة التشغيل: 5 ساعات 50 دقيقة (أو حتى انتهاء العمل)"
-        echo "🔄 الجلسة القادمة: خلال 10 دقائق (حسب cron)"
-        echo "📊 حالة الإنجاز: ${{ job.status }}"
-        echo ""
-        echo "✅ تم إنهاء الجلسة بنجاح"
-
-  # تشغيل متوازي للاستمرارية العالية
-  backup-deploy:
-    needs: [test]
-    runs-on: ubuntu-latest
-    name: 🔄 تشغيل احتياطي
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    timeout-minutes: 350
-    strategy:
-      matrix:
-        session: [backup-1, backup-2]
-      fail-fast: false
-    
-    steps:
-    - name: 📥 سحب الكود
-      uses: actions/checkout@v4
-      
-    - name: 🐍 إعداد Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: 📦 تثبيت المكتبات
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: ⏳ انتظار (لتجنب التداخل)
-      run: |
-        if [ "${{ matrix.session }}" = "backup-1" ]; then
-          sleep 300  # انتظار 5 دقائق
-        else
-          sleep 600  # انتظار 10 دقائق
-        fi
-        
-    - name: 🔄 تشغيل احتياطي - ${{ matrix.session }}
-      env:
-        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
-        GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
-        GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
-        GEMINI_API_KEY_4: ${{ secrets.GEMINI_API_KEY_4 }}
-        GEMINI_API_KEY_5: ${{ secrets.GEMINI_API_KEY_5 }}
-        GEMINI_API_KEY_6: ${{ secrets.GEMINI_API_KEY_6 }}
-        GEMINI_API_KEY_7: ${{ secrets.GEMINI_API_KEY_7 }}
-        GEMINI_API_KEY_8: ${{ secrets.GEMINI_API_KEY_8 }}
-        GEMINI_API_KEY_9: ${{ secrets.GEMINI_API_KEY_9 }}
-        GEMINI_API_KEY_10: ${{ secrets.GEMINI_API_KEY_10 }}
-        GEMINI_API_KEY_11: ${{ secrets.GEMINI_API_KEY_11 }}
-        GEMINI_API_KEY_12: ${{ secrets.GEMINI_API_KEY_12 }}
-        GEMINI_API_KEY_13: ${{ secrets.GEMINI_API_KEY_13 }}
-        GEMINI_API_KEY_14: ${{ secrets.GEMINI_API_KEY_14 }}
-        GEMINI_API_KEY_15: ${{ secrets.GEMINI_API_KEY_15 }}
-        GEMINI_API_KEY_16: ${{ secrets.GEMINI_API_KEY_16 }}
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      run: |
-        echo "🔄 تشغيل الجلسة الاحتياطية: ${{ matrix.session }}"
-        timeout 345m python main.py || echo "⏰ انتهت الجلسة الاحتياطية"
