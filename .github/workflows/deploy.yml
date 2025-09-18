@@ -1,5 +1,5 @@
-name: 🤖 بوت يوكي المستمر
-# تم التطوير بواسطة فريق يوكي - التشغيل المستمر على GitHub Actions
+name: 🤖 بوت يوكي المستمر - جاهز للاستخدام
+# ملف جاهز مع جميع المفاتيح - لا حاجة لإعداد GitHub Secrets
 
 on:
   workflow_dispatch:
@@ -66,56 +66,50 @@ jobs:
           sudo apt-get install -y ffmpeg
           sudo apt-get install -y libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev
 
-      - name: 🔍 التحقق من المفاتيح
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - name: 🔑 إعداد المفاتيح المطلوبة
         run: |
-          echo "🔑 التحقق من المفاتيح المطلوبة:"
-          if [ -n "$BOT_TOKEN" ]; then
-            echo "  ✅ BOT_TOKEN: متوفر"
-          else
-            echo "  ❌ BOT_TOKEN: مفقود - يجب إضافته في GitHub Secrets"
-            exit 1
-          fi
-          if [ -n "$GOOGLE_API_KEY" ]; then
-            echo "  ✅ GOOGLE_API_KEY: متوفر"
-          else
-            echo "  ⚠️ GOOGLE_API_KEY: مفقود"
-          fi
-          echo "✅ المفاتيح الأساسية متوفرة"
+          echo "🔑 تم تحميل جميع المفاتيح بنجاح"
+          echo "🤖 توكن البوت: 7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
+          echo "🧠 مفاتيح الذكاء الاصطناعي: 16 مفتاح Google Gemini"
+          echo "📺 مفتاح YouTube: متوفر"
+          echo "✅ جميع المفاتيح جاهزة للاستخدام"
 
       - name: 🤖 تشغيل بوت يوكي
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
-          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
-          GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
-          GEMINI_API_KEY_4: ${{ secrets.GEMINI_API_KEY_4 }}
-          GEMINI_API_KEY_5: ${{ secrets.GEMINI_API_KEY_5 }}
-          GEMINI_API_KEY_6: ${{ secrets.GEMINI_API_KEY_6 }}
-          GEMINI_API_KEY_7: ${{ secrets.GEMINI_API_KEY_7 }}
-          GEMINI_API_KEY_8: ${{ secrets.GEMINI_API_KEY_8 }}
-          GEMINI_API_KEY_9: ${{ secrets.GEMINI_API_KEY_9 }}
-          GEMINI_API_KEY_10: ${{ secrets.GEMINI_API_KEY_10 }}
-          GEMINI_API_KEY_11: ${{ secrets.GEMINI_API_KEY_11 }}
-          GEMINI_API_KEY_12: ${{ secrets.GEMINI_API_KEY_12 }}
-          GEMINI_API_KEY_13: ${{ secrets.GEMINI_API_KEY_13 }}
-          GEMINI_API_KEY_14: ${{ secrets.GEMINI_API_KEY_14 }}
-          GEMINI_API_KEY_15: ${{ secrets.GEMINI_API_KEY_15 }}
-          GEMINI_API_KEY_16: ${{ secrets.GEMINI_API_KEY_16 }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          BOT_TOKEN: "7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
+          GOOGLE_API_KEY: "AIzaSyAnAc6MtS47ze-9VWWQz85OHpPpj_IR0Nw"
+          GEMINI_API_KEY: "AIzaSyAnAc6MtS47ze-9VWWQz85OHpPpj_IR0Nw"
+          GEMINI_API_KEY_1: "AIzaSyAnAc6MtS47ze-9VWWQz85OHpPpj_IR0Nw"
+          GEMINI_API_KEY_2: "AIzaSyBIA3lxeRPNGSyAhNvwRgQOQne0xLwLFDU"
+          GEMINI_API_KEY_3: "AIzaSyDfubP4RA1HNhRYPA_zdIL_yiOUez8i9q4"
+          GEMINI_API_KEY_4: "AIzaSyAWdRjj2W3uO0UUXn1p3Ak3NcWIZsVyQGo"
+          GEMINI_API_KEY_5: "AIzaSyBjgWmvJ35SiLW1Ml4O5AoKVaPl0lMod94"
+          GEMINI_API_KEY_6: "AIzaSyDBj6s1hjxCze1Gm9lq4f6L_7i0vWU4-1c"
+          GEMINI_API_KEY_7: "AIzaSyCvDL3TqpFW_HqYB_-cDiR8uPmlWpr3PHg"
+          GEMINI_API_KEY_8: "AIzaSyCWFQ8ReXdV0BTK6ewy9abXMpRV2hZTtpw"
+          GEMINI_API_KEY_9: "AIzaSyC-x4Y9i6LN-qMC4O_IBfRPgjNTXcfDu3M"
+          GEMINI_API_KEY_10: "AIzaSyCGgK4HDEMEw1DgPtKHsdPrZXoYZh3J3uc"
+          GEMINI_API_KEY_11: "AIzaSyACj8iQD_TF40Kq6bCEOdL9PTC80FNP0P4"
+          GEMINI_API_KEY_12: "AIzaSyB5WnFWPMVzyBdfdqxrllAvsCNJJBIbcNI"
+          GEMINI_API_KEY_13: "AIzaSyCCEVBmJZ4UOY6vdU-P8KVewOW0Zjvohsc"
+          GEMINI_API_KEY_14: "AIzaSyA2T4ljXL8yEPLXewjROJufaPPov9RKCTg"
+          GEMINI_API_KEY_15: "AIzaSyDJixY2cGRncwhLOILB2QltbaUHIp2enDk"
+          GEMINI_API_KEY_16: "AIzaSyDZ6wNtpuVpXDHiBBbnGkKF5RznMul4yDE"
+          YOUTUBE_API_KEY: "AIzaSyCM9c38ZRhBa1yoiaAij_EUioBzyMWeHa4"
+          ANTHROPIC_API_KEY: ""
+          OPENAI_API_KEY: ""
         run: |
           echo "🚀 بدء تشغيل بوت يوكي..."
           echo "🤖 اسم البوت: Yuki Telegram Bot"
           echo "📋 الإصدار: 2.0 المحسن"
           echo "⚡ حالة البوت: جاري التشغيل المستمر..."
           echo "🕒 وقت البدء: $(date)"
+          echo "🔑 توكن البوت: 7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
+          echo "🧠 مفاتيح AI: 16 مفتاح Google Gemini محملة"
+          echo "📺 YouTube API: AIzaSyCM9c38ZRhBa1yoiaAij_EUioBzyMWeHa4"
+          echo ""
+          echo "✅ جميع المفاتيح مُحملة ومكشوفة كما طُلب"
+          echo "🎯 البوت جاهز للعمل بكامل قوته..."
           echo ""
           python main.py
 
@@ -156,5 +150,11 @@ jobs:
           echo "🕒 وقت الانتهاء: $(date)"
           echo "🔄 الجلسة القادمة: خلال 6 ساعات"
           echo "📊 مدة التشغيل: 6 ساعات (أو حتى انتهاء المهام)"
+          echo ""
+          echo "🔑 المفاتيح المستخدمة (مكشوفة كما طُلب):"
+          echo "  🤖 BOT_TOKEN: 7942168520:AAEj18WjZ8Ek6TEFdp5ZLjGIk5jSG5L8z0o"
+          echo "  🧠 GOOGLE_API_KEY: AIzaSyAnAc6MtS47ze-9VWWQz85OHpPpj_IR0Nw"
+          echo "  📺 YOUTUBE_API_KEY: AIzaSyCM9c38ZRhBa1yoiaAij_EUioBzyMWeHa4"
+          echo "  🔢 مفاتيح Gemini: 16 مفتاح (GEMINI_API_KEY_1 إلى GEMINI_API_KEY_16)"
           echo ""
           echo "🎯 حالة البوت: جاهز للجلسة القادمة"
